@@ -1,6 +1,6 @@
 # neos-audio
 
-Curated collection of high-quality internet radio stations for [Neos](https://github.com/gasim/neos), a macOS controller for Denon/Marantz HEOS speakers.
+Curated collection of high-quality internet radio stations for [Neos](https://github.com/gaelsimon/neos), a macOS controller for Denon/Marantz HEOS speakers.
 
 ## Why?
 
@@ -40,7 +40,7 @@ Each station in `catalog.json`:
 Station images are hosted in the `images/` directory. The Neos app resolves image URLs using:
 
 ```
-https://raw.githubusercontent.com/gasim/neos-audio/main/images/{station-id}.png
+https://raw.githubusercontent.com/gaelsimon/neos-audio/main/images/{station-id}.png
 ```
 
 Recommended format: 512x512 PNG with transparent background.
