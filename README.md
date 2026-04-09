@@ -17,13 +17,13 @@ A native macOS app for controlling Denon and Marantz HEOS speakers. Built with S
 
 I spend most of my day at my computer, and I got tired of reaching for my phone every time I wanted to skip a track or browse my Tidal library on my Marantz speaker. There's no official HEOS app for Mac, so I built one.
 
-Using the Tidal desktop app with HEOS isn't great either — it only supports Tidal Connect, which means no queue management, no browse integration, and you can't mix in radio stations or local music. With Neos I can jump from a Tidal album to a TuneIn radio station to a SoundCloud mix to a FLAC from my NAS, all from the same place.
+Using the Tidal desktop app with HEOS isn't great either. It only supports Tidal Connect, which means no queue management, no browse integration, and you can't mix in radio stations or local music. With Neos I can jump from a Tidal album to a TuneIn radio station to a SoundCloud mix to a FLAC from my NAS, all from the same place.
 
-- **Lives in your menu bar** — always one click away, never in the way.
-- **Fast** — connects to your last speaker in under 500ms. No splash screen, no loading spinner.
-- **All your music in one place** — switch between Tidal, SoundCloud, TuneIn, Deezer, and local music without changing apps.
-- **Audio quality info** — shows what's actually playing: bit depth, sample rate, and codec (e.g. "16-bit / 44.1 kHz FLAC").
-- **Native macOS** — SwiftUI, no Electron, no web wrapper.
+- **Lives in your menu bar** - always one click away, never in the way.
+- **Fast** - connects to your last speaker in under 500ms. No splash screen, no loading spinner.
+- **All your music in one place** - switch between Tidal, SoundCloud, TuneIn, Deezer, and local music without changing apps.
+- **Audio quality info** - shows what's actually playing: bit depth, sample rate, and codec (e.g. "16-bit / 44.1 kHz FLAC").
+- **Native macOS** - SwiftUI, no Electron, no web wrapper.
 
 ## Features
 
@@ -42,7 +42,7 @@ Using the Tidal desktop app with HEOS isn't great either — it only supports Ti
 
 ## Tested With
 
-Neos has been primarily tested with **Tidal**, **SoundCloud**, **TuneIn**, and **local music** (USB / NAS). Deezer works but has had less testing. Other HEOS-supported services (Spotify, Amazon Music, Pandora, Napster, etc.) should work through the standard HEOS protocol but haven't been tested yet — feedback welcome.
+Neos has been primarily tested with **Tidal**, **SoundCloud**, **TuneIn**, and **local music** (USB / NAS). Deezer works but has had less testing. Other HEOS-supported services (Spotify, Amazon Music, Pandora, Napster, etc.) should work through the standard HEOS protocol but haven't been tested yet. Feedback welcome.
 
 Speaker grouping (multi-room) is implemented but hasn't been tested with multiple speakers.
 
@@ -52,7 +52,7 @@ Speaker grouping (multi-room) is implemented but hasn't been tested with multipl
 
 1. Download the latest DMG from [Releases](https://github.com/gaelsimon/neos-audio/releases/latest)
 2. Open the DMG and drag Neos to your Applications folder
-3. Launch Neos — it appears in your menu bar
+3. Launch Neos - it appears in your menu bar
 4. Your speaker should be discovered automatically
 
 ## How It Works
@@ -69,17 +69,17 @@ Neos talks directly to your speaker over the local network. No cloud, no interne
 
 ## Built With
 
-Swift and SwiftUI. Only Apple frameworks (Network.framework, Foundation, Security). No Combine — async/await throughout.
+Swift and SwiftUI. Only Apple frameworks (Network.framework, Foundation, Security). No Combine, async/await throughout.
 
 ## Known Limitations
 
 - Speaker grouping is untested (I only have one speaker)
 - Some music services beyond Tidal/SoundCloud/TuneIn/Deezer are untested
-- Not notarized yet — you may need to right-click > Open on first launch
+- Not notarized yet - you may need to right-click > Open on first launch
 
 ### About the HEOS protocol
 
-Neos uses the public [HEOS CLI protocol](https://rn.dmglobal.com/usmodel/HEOS_CLI_ProtocolSpecification-Version-1.17.pdf), which is what Denon documents for third-party integrations. It works well for playback, browsing, and queue management, but it has limits — some features available in the official HEOS iOS app (like "Go to Artist" on a non-playing queue track, or adding to a Tidal playlist) use a separate proprietary protocol that isn't publicly documented. Neos works around some of these gaps (e.g. searching for the artist instead), but a few things just aren't possible through the public API.
+Neos uses the public [HEOS CLI protocol](https://rn.dmglobal.com/usmodel/HEOS_CLI_ProtocolSpecification-Version-1.17.pdf), which is what Denon documents for third-party integrations. It works well for playback, browsing, and queue management, but it has limits. Some features available in the official HEOS iOS app (like "Go to Artist" on a non-playing queue track, or adding to a Tidal playlist) use a separate proprietary protocol that isn't publicly documented. Neos works around some of these gaps (e.g. searching for the artist instead), but a few things just aren't possible with the public API.
 
 ## Support
 
