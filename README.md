@@ -1,69 +1,92 @@
-# neos-audio
+# Neos
 
-Curated collection of high-quality internet radio stations for [Neos](https://github.com/gaelsimon/neos), a macOS controller for Denon/Marantz HEOS speakers.
+A native macOS app for controlling Denon and Marantz HEOS speakers. Built with SwiftUI. No third-party dependencies.
+
+[![Download](https://img.shields.io/github/v/release/gaelsimon/neos-audio?label=Download&style=for-the-badge&logo=apple&logoColor=white)](https://github.com/gaelsimon/neos-audio/releases/latest)
+[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Neos-ff5e5b?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/galela)
+
+![Neos Home](screenshots/home.png)
+
+![Neos Now Playing](screenshots/now-playing.png)
+
+![Neos Browse Album](screenshots/browse-album.png)
+
+![Neos Search](screenshots/search.png)
 
 ## Why?
 
-Most internet radio directories (TuneIn, etc.) serve low-bitrate MP3 streams. HEOS speakers support lossless and high-bitrate codecs — FLAC, AAC 320kbps, WAV, ALAC — so they deserve better sources.
+I spend most of my day at my computer, and I got tired of reaching for my phone every time I wanted to skip a track or browse my Tidal library on my Marantz speaker. There's no official HEOS app for Mac, so I built one.
 
-This repository maintains a hand-picked catalog of stations that stream in high quality.
+Using the Tidal desktop app with HEOS isn't great either — it only supports Tidal Connect, which means no queue management, no browse integration, and you can't mix in radio stations or local music. With Neos I can jump from a Tidal album to a TuneIn radio station to a SoundCloud mix to a FLAC from my NAS, all from the same place.
 
-## Structure
+- **Lives in your menu bar** — always one click away, never in the way.
+- **Fast** — connects to your last speaker in under 500ms. No splash screen, no loading spinner.
+- **All your music in one place** — switch between Tidal, SoundCloud, TuneIn, Deezer, and local music without changing apps.
+- **Audio quality info** — shows what's actually playing: bit depth, sample rate, and codec (e.g. "16-bit / 44.1 kHz FLAC").
+- **Native macOS** — SwiftUI, no Electron, no web wrapper.
 
-```
-stations/
-  catalog.json        # Station catalog (array of station objects)
-images/
-  {station-id}.png    # Station logos (512x512 recommended)
-```
+## Features
 
-## Station Schema
+- Play, pause, skip, previous with seekable progress bar
+- Shuffle and repeat modes
+- Volume slider with mute, dB readout, and hardware volume limit
+- Home screen with recently played, favorites, and quick access to your services
+- Browse music sources with infinite scroll
+- Search across services with category filters (tracks, artists, albums)
+- Full-screen Now Playing view with album art and queue panel
+- Click an artist or album name to jump to their page
+- Automatic speaker discovery on your local network
+- Power on/off your receiver
+- HEOS account sign-in for favorites across devices
+- Menu bar compact player with playback controls and volume
 
-Each station in `catalog.json`:
+## Tested With
 
-| Field       | Type     | Required | Description                              |
-|-------------|----------|----------|------------------------------------------|
-| `id`        | string   | yes      | Unique identifier (kebab-case)           |
-| `name`      | string   | yes      | Display name                             |
-| `streamURL` | string   | yes      | Direct stream URL (HTTP/HTTPS)           |
-| `codec`     | string   | yes      | `flac`, `aac`, `mp3`, `wav`, `alac`      |
-| `bitrate`   | int      | no       | Bitrate in kbps (omit for lossless)      |
-| `sampleRate`| int      | no       | Sample rate in kHz (e.g. 44, 48, 96)     |
-| `genre`     | string   | yes      | Primary genre                            |
-| `country`   | string   | yes      | ISO 3166-1 alpha-2 country code          |
-| `language`  | string   | no       | ISO 639-1 language code                  |
-| `website`   | string   | no       | Station website URL                      |
-| `imageURL`  | string   | auto     | Resolved from GitHub raw URL + `images/` |
+Neos has been primarily tested with **Tidal**, **SoundCloud**, **TuneIn**, and **local music** (USB / NAS). Deezer works but has had less testing. Other HEOS-supported services (Spotify, Amazon Music, Pandora, Napster, etc.) should work through the standard HEOS protocol but haven't been tested yet — feedback welcome.
 
-## Image URLs
+Speaker grouping (multi-room) is implemented but hasn't been tested with multiple speakers.
 
-Station images are hosted in the `images/` directory. The Neos app resolves image URLs using:
+## Download
 
-```
-https://raw.githubusercontent.com/gaelsimon/neos-audio/main/images/{station-id}.png
-```
+**Requires** macOS 14.0 (Sonoma) or later and a Denon or Marantz speaker with HEOS built-in, on the same network.
 
-Recommended format: 512x512 PNG with transparent background.
+1. Download the latest DMG from [Releases](https://github.com/gaelsimon/neos-audio/releases/latest)
+2. Open the DMG and drag Neos to your Applications folder
+3. Launch Neos — it appears in your menu bar
+4. Your speaker should be discovered automatically
 
-## Codec Support (HEOS)
+## How It Works
 
-| Codec | Bitrate            | Sample Rate     |
-|-------|--------------------|-----------------|
-| FLAC  | Lossless           | 44.1–192 kHz    |
-| AAC   | 48–320 kbps        | Up to 48 kHz    |
-| MP3   | 32–320 kbps        | Up to 48 kHz    |
-| WAV   | Lossless           | 44.1–192 kHz    |
-| ALAC  | Lossless           | 44.1–192 kHz    |
+Neos talks directly to your speaker over the local network. No cloud, no internet required for playback.
 
-## Contributing
+| Protocol | Port | Purpose |
+|----------|------|---------|
+| HEOS CLI | TCP 1255 | Commands, events, browsing |
+| UPnP AVTransport | HTTP 60006 | Seek, position, track metadata |
+| UPnP ACT Denon | HTTP 60006 | Hardware volume limit |
+| AVR Telnet | TCP 23 | Power on/off |
+| SSDP | UDP 1900 | Speaker discovery |
 
-Contributions welcome! To add a station:
+## Built With
 
-1. Verify the stream URL works and serves the advertised codec/bitrate
-2. Add the station object to `stations/catalog.json`
-3. Add a 512x512 PNG logo to `images/{station-id}.png`
-4. Open a pull request
+Swift and SwiftUI. Only Apple frameworks (Network.framework, Foundation, Security). No Combine — async/await throughout.
+
+## Known Limitations
+
+- Speaker grouping is untested (I only have one speaker)
+- Some music services beyond Tidal/SoundCloud/TuneIn/Deezer are untested
+- Not notarized yet — you may need to right-click > Open on first launch
+
+### About the HEOS protocol
+
+Neos uses the public [HEOS CLI protocol](https://rn.dmglobal.com/usmodel/HEOS_CLI_ProtocolSpecification-Version-1.17.pdf), which is what Denon documents for third-party integrations. It works well for playback, browsing, and queue management, but it has limits — some features available in the official HEOS iOS app (like "Go to Artist" on a non-playing queue track, or adding to a Tidal playlist) use a separate proprietary protocol that isn't publicly documented. Neos works around some of these gaps (e.g. searching for the artist instead), but a few things just aren't possible through the public API.
+
+## Support
+
+If you find Neos useful, consider supporting its development:
+
+[Buy me a coffee on Ko-fi](https://ko-fi.com/galela)
 
 ## License
 
-This catalog is provided as-is for personal use with Neos.
+Copyright 2025-2026 Gael Simon. All rights reserved.
