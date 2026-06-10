@@ -1,0 +1,56 @@
+{
+  "_comment": "SEARCH ALBUMS — Results for searching 'a' with scid=2 (Album). Rendered as square tile cards in SearchResultsView.",
+  "_command": "heos://browse/search?sid=2&search=a&scid=2&range=0,4",
+  "heos": {
+    "command": "browse/search",
+    "result": "success",
+    "message": "sid=2&scid=2&returned=5&count=150"
+  },
+  "payload": [
+    {
+      "name": "Abbey Road",
+      "type": "album",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/cover/abbey/250x250.jpg",
+      "cid": "alb-12345",
+      "artist": "The Beatles",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "A Night at the Opera",
+      "type": "album",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/cover/opera/250x250.jpg",
+      "cid": "alb-67890",
+      "artist": "Queen",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "AM",
+      "type": "album",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/cover/am/250x250.jpg",
+      "cid": "alb-11111",
+      "artist": "Arctic Monkeys",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "After Hours",
+      "type": "album",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/cover/afterhours/250x250.jpg",
+      "cid": "alb-22222",
+      "artist": "The Weeknd",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "Anti",
+      "type": "album",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/cover/anti/250x250.jpg",
+      "cid": "alb-33333",
+      "artist": "Rihanna",
+      "playable": "yes",
+      "container": "yes"
+    }
+  ]
+}

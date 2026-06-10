@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (without leading v), e.g. 1.6.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Publish
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+
+      - name: Install tools
+        run: brew install xcodegen
+
+      - name: Derive version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned DMG
+        run: ./scripts/release.sh "${{ steps.version.outputs.version }}"
+
+      - name: Compute DMG checksum
+        id: checksum
+        run: |
+          DMG="build/Neos-${{ steps.version.outputs.version }}.dmg"
+          SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          DMG: ${{ steps.checksum.outputs.dmg }}
+          SHA: ${{ steps.checksum.outputs.sha256 }}
+        run: |
+          # workflow_dispatch path may need to create the tag itself
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+          NOTES_FILE=$(mktemp)
+          cat > "$NOTES_FILE" <<EOF
+          ## Neos $TAG
+
+          ### Install
+          1. Download \`Neos-${VERSION}.dmg\` below
+          2. Open the DMG, drag Neos to Applications
+          3. First launch: right-click Neos → Open (the DMG is unsigned)
+
+          ### Checksum
+          \`\`\`
+          SHA-256: ${SHA}
+          \`\`\`
+
+          ### What's new
+          EOF
+
+          gh release create "$TAG" "$DMG" \
+            --title "Neos $TAG" \
+            --notes-file "$NOTES_FILE" \
+            --generate-notes \
+            --verify-tag

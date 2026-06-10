@@ -1,0 +1,19 @@
+{
+  "heos": {
+    "command": "player/get_players",
+    "result": "success",
+    "message": ""
+  },
+  "payload": [
+    {
+      "name": "Marantz MODEL 40n",
+      "pid": 1059911841,
+      "model": "Marantz MODEL 40n",
+      "version": "3.88.532",
+      "ip": "192.168.8.219",
+      "network": "wired",
+      "lineout": 0,
+      "serial": "MBQB092301773"
+    }
+  ]
+}

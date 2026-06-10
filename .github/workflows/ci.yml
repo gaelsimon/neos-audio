@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift-packages:
+    name: Swift packages (HEOSKit + NeosDomain)
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+
+      - name: HEOSKit tests
+        working-directory: HEOSKit
+        run: swift test --parallel
+
+      - name: NeosDomain tests
+        working-directory: NeosDomain
+        run: swift test --parallel
+
+  app-build:
+    name: App build & lint
+    runs-on: macos-14
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # SonarCloud needs full history for blame
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+
+      - name: Install tools
+        run: brew install xcodegen swiftlint xcbeautify
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: SwiftLint
+        run: swiftlint --reporter github-actions-logging
+
+      - name: Build app (ad-hoc signed, no archive)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Neos.xcodeproj \
+            -scheme Neos \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM= \
+            | xcbeautify
+
+      - name: SonarCloud Scan
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

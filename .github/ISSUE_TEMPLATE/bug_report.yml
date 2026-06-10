@@ -1,0 +1,66 @@
+name: Bug report
+description: Report something that's broken or behaving unexpectedly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill out the fields below so I can reproduce and fix it.
+
+  - type: input
+    id: speaker
+    attributes:
+      label: Speaker model
+      description: The exact model name, e.g. "Marantz MODEL 40n", "Denon AVR-X3700H"
+      placeholder: Denon HEOS Drive HS2
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Speaker firmware version
+      description: Found in the HEOS app under Settings → About, or your AVR's setup menu
+      placeholder: "3.88.532"
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "14.5"
+    validations:
+      required: true
+
+  - type: input
+    id: neos-version
+    attributes:
+      label: Neos version
+      description: Shown in the menu bar > Settings, or in About
+      placeholder: "1.0.2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, what actually happened?
+      placeholder: |
+        1. I clicked X
+        2. I expected Y
+        3. Instead I saw Z
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console logs (optional)
+      description: |
+        Open Console.app, filter on "Neos", reproduce the issue, and paste any error lines here.
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots (optional)

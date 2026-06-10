@@ -1,0 +1,27 @@
+{
+  "configurations" : [
+    {
+      "id" : "9A1B2C3D-4E5F-6789-ABCD-EF0123456789",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testExecutionOrdering" : "alphabetical"
+  },
+  "testTargets" : [
+    {
+      "selectedTests" : [
+        "SmokeTests"
+      ],
+      "target" : {
+        "containerPath" : "container:Neos.xcodeproj",
+        "identifier" : "00F452EED3D7F98F3EF7ABA6",
+        "name" : "NeosUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

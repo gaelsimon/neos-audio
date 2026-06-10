@@ -1,0 +1,27 @@
+{
+  "heos": {
+    "command": "browse/browse",
+    "result": "success",
+    "message": "sid=1026&returned=2&count=2"
+  },
+  "payload": [
+    {
+      "container": "yes",
+      "playable": "yes",
+      "type": "container",
+      "name": "TRACKS",
+      "image_uri": "",
+      "image_url": "",
+      "cid": "TRACKS"
+    },
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "STATIONS",
+      "image_uri": "",
+      "image_url": "",
+      "cid": "STATIONS"
+    }
+  ]
+}

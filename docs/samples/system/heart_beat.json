@@ -1,0 +1,9 @@
+{
+  "_comment": "HEART BEAT — Keep-alive ping sent every ~10s.",
+  "_command": "heos://system/heart_beat",
+  "heos": {
+    "command": "system/heart_beat",
+    "result": "success",
+    "message": ""
+  }
+}

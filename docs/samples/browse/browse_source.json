@@ -1,0 +1,73 @@
+{
+  "heos": {
+    "command": "browse/browse",
+    "result": "success",
+    "message": "sid=5&returned=8&count=8"
+  },
+  "payload": [
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "Flow",
+      "image_url": "",
+      "cid": "Flow"
+    },
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "Deezer Picks",
+      "image_url": "",
+      "cid": "Deezer Picks"
+    },
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "What's Hot",
+      "image_url": "",
+      "cid": "What's Hot"
+    },
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "Radio Channels",
+      "image_url": "",
+      "cid": "Radio Channels"
+    },
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "Recommendations",
+      "image_url": "",
+      "cid": "Recommendations"
+    },
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "My Playlists",
+      "image_url": "",
+      "cid": "My Playlists"
+    },
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "My Albums",
+      "image_url": "",
+      "cid": "My Albums"
+    },
+    {
+      "container": "yes",
+      "playable": "no",
+      "type": "container",
+      "name": "Favorite Artists",
+      "image_url": "",
+      "cid": "Favorite Artists"
+    }
+  ]
+}

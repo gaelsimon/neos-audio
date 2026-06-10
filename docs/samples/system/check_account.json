@@ -1,0 +1,7 @@
+{
+  "heos": {
+    "command": "system/check_account",
+    "result": "success",
+    "message": "signed_in&un=user@example.com"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "60924B25-06DF-4D48-A9A5-278D699769FA",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Neos.xcodeproj",
+        "identifier" : "00F452EED3D7F98F3EF7ABA6",
+        "name" : "NeosUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an improvement or new feature
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the use case before the solution. What are you trying to do that's currently awkward or impossible?
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea (optional)
+      description: If you have a specific suggestion for how this could work, describe it here.
+
+  - type: input
+    id: speaker
+    attributes:
+      label: Relevant speaker model (if applicable)
+      placeholder: Marantz MODEL 40n

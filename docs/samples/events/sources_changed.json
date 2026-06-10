@@ -1,0 +1,7 @@
+{
+  "_comment": "SOURCES CHANGED — Push event when music service availability changes. Triggers getMusicSources() refresh.",
+  "heos": {
+    "command": "event/sources_changed",
+    "message": ""
+  }
+}

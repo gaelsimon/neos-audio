@@ -1,0 +1,7 @@
+{
+  "_comment": "PLAYER VOLUME CHANGED — Push event on volume change (user or remote).",
+  "heos": {
+    "command": "event/player_volume_changed",
+    "message": "pid=1845498270&level=50&mute=off"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "heos": {
+    "command": "browse/search",
+    "result": "success",
+    "message": "sid=5&search=creep&scid=3&range=0,4&returned=5&count=238"
+  },
+  "payload": [
+    {
+      "container": "no",
+      "mid": "138547415",
+      "type": "song",
+      "artist": "Radiohead",
+      "album": "Pablo Honey",
+      "album_id": "14880711",
+      "playable": "yes",
+      "name": "Creep",
+      "image_url": "http://api.deezer.com/2.0/album/14880711/image?size=big"
+    },
+    {
+      "container": "no",
+      "mid": "2215315187",
+      "type": "song",
+      "artist": "Radiohead",
+      "album": "Creep EP",
+      "album_id": "423524437",
+      "playable": "yes",
+      "name": "Creep (Acoustic)",
+      "image_url": "http://api.deezer.com/2.0/album/423524437/image?size=big"
+    },
+    {
+      "container": "no",
+      "mid": "2047662477",
+      "type": "song",
+      "artist": "Metro Boomin",
+      "album": "HEROES & VILLAINS",
+      "album_id": "382760377",
+      "playable": "yes",
+      "name": "Creepin'",
+      "image_url": "http://api.deezer.com/2.0/album/382760377/image?size=big"
+    },
+    {
+      "container": "no",
+      "mid": "65823405",
+      "type": "song",
+      "artist": "Daniela Andrade",
+      "album": "Covers, Vol. 1",
+      "album_id": "6453025",
+      "playable": "yes",
+      "name": "Creep",
+      "image_url": "http://api.deezer.com/2.0/album/6453025/image?size=big"
+    },
+    {
+      "container": "no",
+      "mid": "2580253682",
+      "type": "song",
+      "artist": "Creepy Nuts",
+      "album": "Bling-Bang-Bang-Born",
+      "album_id": "522318972",
+      "playable": "yes",
+      "name": "Bling-Bang-Bang-Born",
+      "image_url": "http://api.deezer.com/2.0/album/522318972/image?size=big"
+    }
+  ]
+}

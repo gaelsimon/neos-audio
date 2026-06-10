@@ -1,8 +1,10 @@
 # Neos
 
-A native macOS app for controlling Denon and Marantz HEOS speakers. Built with SwiftUI. No third-party dependencies.
+A native macOS app for controlling Denon and Marantz HEOS speakers. Built with SwiftUI. No third-party dependencies. Open source, MIT licensed.
 
 [![Download](https://img.shields.io/github/v/release/gaelsimon/neos-audio?label=Download&style=for-the-badge&logo=apple&logoColor=white)](https://github.com/gaelsimon/neos-audio/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/gaelsimon/neos-audio/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/gaelsimon/neos-audio/actions/workflows/ci.yml)
 [![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Neos-ff5e5b?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/galela)
 
 ![Neos Home](screenshots/home.png)
@@ -75,11 +77,25 @@ Swift and SwiftUI. Only Apple frameworks (Network.framework, Foundation, Securit
 
 - Speaker grouping is untested (I only have one speaker)
 - Some music services beyond Tidal/SoundCloud/TuneIn/Deezer are untested
-- Not notarized yet - you may need to right-click > Open on first launch
+- DMG is unsigned and unnotarized. First launch needs right-click > Open. Signing requires an Apple Developer Program subscription ($99/year), which I haven't taken on. Happy to add it if there's interest; [Ko-fi](https://ko-fi.com/galela) helps make that decision easier.
 
 ### About the HEOS protocol
 
 Neos uses the public [HEOS CLI protocol](https://rn.dmglobal.com/usmodel/HEOS_CLI_ProtocolSpecification-Version-1.17.pdf), which is what Denon documents for third-party integrations. It works well for playback, browsing, and queue management, but it has limits. Some features available in the official HEOS iOS app (like "Go to Artist" on a non-playing queue track, or adding to a Tidal playlist) use a separate proprietary protocol that isn't publicly documented. Neos works around some of these gaps (e.g. searching for the artist instead), but a few things just aren't possible with the public API.
+
+## Building from Source
+
+```bash
+brew install xcodegen swiftlint
+xcodegen generate
+open Neos.xcodeproj
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture, protocol details, and how to run the test suite.
+
+## Contributing
+
+Bug reports, test results from speakers I can't test against, and PRs are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 ## Support
 
@@ -89,4 +105,4 @@ If you find Neos useful, consider supporting its development:
 
 ## License
 
-Copyright 2025-2026 Gael Simon. All rights reserved.
+[MIT](LICENSE) © 2025-2026 Gael Simon

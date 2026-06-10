@@ -1,0 +1,7 @@
+{
+  "_comment": "NOW PLAYING CHANGED — Push event when track changes. Triggers getNowPlayingMedia() fetch.",
+  "heos": {
+    "command": "event/player_now_playing_changed",
+    "message": "pid=1845498270"
+  }
+}

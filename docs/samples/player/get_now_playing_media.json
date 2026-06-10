@@ -1,0 +1,29 @@
+{
+  "heos": {
+    "command": "player/get_now_playing_media",
+    "result": "success",
+    "message": "pid=1059911841"
+  },
+  "payload": {
+    "type": "station",
+    "song": "128 kbps mp3",
+    "station": "Radio Choco (Soul)",
+    "album": "",
+    "artist": "",
+    "image_url": "",
+    "album_id": "s50262",
+    "mid": "http://www.djamradio.com/sound",
+    "qid": 1,
+    "sid": 3
+  },
+  "options": [
+    {
+      "play": [
+        {
+          "id": 19,
+          "name": "Add to HEOS Favorites"
+        }
+      ]
+    }
+  ]
+}

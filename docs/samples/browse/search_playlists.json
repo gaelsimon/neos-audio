@@ -1,0 +1,51 @@
+{
+  "_comment": "SEARCH PLAYLISTS — Results for searching 'a' with scid=4 (Playlist). Rendered as square tile cards in SearchResultsView.",
+  "_command": "heos://browse/search?sid=2&search=a&scid=4&range=0,4",
+  "heos": {
+    "command": "browse/search",
+    "result": "success",
+    "message": "sid=2&scid=4&returned=5&count=80"
+  },
+  "payload": [
+    {
+      "name": "Acoustic Hits",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/acoustic/250x250.jpg",
+      "cid": "pl-123456",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "Alternative Rock Essentials",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/altrock/250x250.jpg",
+      "cid": "pl-789012",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "Ambient Relaxation",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/ambient/250x250.jpg",
+      "cid": "pl-345678",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "A Perfect Day",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/perfect/250x250.jpg",
+      "cid": "pl-901234",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "Arabic Music",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/arabic/250x250.jpg",
+      "cid": "pl-567890",
+      "playable": "yes",
+      "container": "yes"
+    }
+  ]
+}

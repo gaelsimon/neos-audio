@@ -1,0 +1,27 @@
+{
+  "heos": {
+    "command": "player/get_queue",
+    "result": "success",
+    "message": "pid=1059911841&range=0,9&returned=2&count=2"
+  },
+  "payload": [
+    {
+      "song": "Sister Nancy - Bam Bam (Gregory House Bootleg)",
+      "album": "",
+      "artist": "Gregory House",
+      "image_url": "https://i1.sndcdn.com/artworks-BPE9dYs5hfaDy1zs-3jeTLA-t500x500.jpg",
+      "qid": 1,
+      "mid": "soundcloud:tracks:1350748969",
+      "album_id": ""
+    },
+    {
+      "song": "EUPHORIA - Rhino Soulsystem | Mixtape",
+      "album": "",
+      "artist": "RHINO SOULSYSTEM",
+      "image_url": "https://i1.sndcdn.com/artworks-NbSrsjGmETtLoK1g-FVA00Q-t500x500.jpg",
+      "qid": 2,
+      "mid": "soundcloud:tracks:1969502487",
+      "album_id": ""
+    }
+  ]
+}

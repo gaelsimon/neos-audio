@@ -1,0 +1,49 @@
+{
+  "heos": {
+    "command": "browse/search",
+    "result": "success",
+    "message": "sid=5&search=radiohead&scid=1&range=0,4&returned=5&count=11"
+  },
+  "payload": [
+    {
+      "container": "yes",
+      "type": "artist",
+      "cid": "Artists-399",
+      "playable": "no",
+      "name": "Radiohead",
+      "image_url": "http://api.deezer.com/2.0/artist/399/image?size=small"
+    },
+    {
+      "container": "yes",
+      "type": "artist",
+      "cid": "Artists-323887691",
+      "playable": "no",
+      "name": "Radiohead",
+      "image_url": "http://api.deezer.com/2.0/artist/323887691/image?size=small"
+    },
+    {
+      "container": "yes",
+      "type": "artist",
+      "cid": "Artists-1431492",
+      "playable": "no",
+      "name": "Gigamesh",
+      "image_url": "http://api.deezer.com/2.0/artist/1431492/image?size=small"
+    },
+    {
+      "container": "yes",
+      "type": "artist",
+      "cid": "Artists-171883",
+      "playable": "no",
+      "name": "NTO",
+      "image_url": "http://api.deezer.com/2.0/artist/171883/image?size=small"
+    },
+    {
+      "container": "yes",
+      "type": "artist",
+      "cid": "Artists-53477202",
+      "playable": "no",
+      "name": "DJ Radiohead",
+      "image_url": "http://api.deezer.com/2.0/artist/53477202/image?size=small"
+    }
+  ]
+}

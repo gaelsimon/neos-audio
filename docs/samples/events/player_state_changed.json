@@ -1,0 +1,7 @@
+{
+  "_comment": "PLAYER STATE CHANGED — Push event when play/pause/stop changes. No result field (unsolicited event).",
+  "heos": {
+    "command": "event/player_state_changed",
+    "message": "pid=1845498270&state=play"
+  }
+}

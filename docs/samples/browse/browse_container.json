@@ -1,0 +1,51 @@
+{
+  "_comment": "BROWSE CONTAINER — Items inside a container (e.g., Deezer Charts). Used when drilling into a service category from Home or Browse.",
+  "_command": "heos://browse/browse?sid=2&cid=charts&range=0,49",
+  "heos": {
+    "command": "browse/browse",
+    "result": "success",
+    "message": "sid=2&cid=charts&returned=5&count=20"
+  },
+  "payload": [
+    {
+      "name": "Top France",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/top_fr/250x250.jpg",
+      "cid": "dz-chart-fr",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "Top Global",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/top_global/250x250.jpg",
+      "cid": "dz-chart-global",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "Top UK",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/top_uk/250x250.jpg",
+      "cid": "dz-chart-uk",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "Top US",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/top_us/250x250.jpg",
+      "cid": "dz-chart-us",
+      "playable": "yes",
+      "container": "yes"
+    },
+    {
+      "name": "Top Germany",
+      "type": "playlist",
+      "image_url": "https://e-cdns-images.dzcdn.net/images/playlist/top_de/250x250.jpg",
+      "cid": "dz-chart-de",
+      "playable": "yes",
+      "container": "yes"
+    }
+  ]
+}

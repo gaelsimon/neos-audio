@@ -1,0 +1,115 @@
+{
+  "heos": {
+    "command": "browse/browse",
+    "result": "success",
+    "message": "sid=1028&returned=14&count=14"
+  },
+  "payload": [
+    {
+      "container": "no",
+      "mid": "https://icecast.radiofrance.fr/fip-hifi.aac",
+      "type": "station",
+      "playable": "yes",
+      "name": "FIP Hifi",
+      "image_url": ""
+    },
+    {
+      "container": "no",
+      "mid": "s44491",
+      "type": "station",
+      "playable": "yes",
+      "name": "BBC Radio 6 Music",
+      "image_url": ""
+    },
+    {
+      "container": "no",
+      "mid": "s25419",
+      "type": "station",
+      "playable": "yes",
+      "name": "BBC Radio 4",
+      "image_url": ""
+    },
+    {
+      "container": "no",
+      "mid": "s220854",
+      "type": "station",
+      "playable": "yes",
+      "name": "Rebel Spinner PM",
+      "image_url": ""
+    },
+    {
+      "container": "no",
+      "mid": "s17696",
+      "type": "station",
+      "playable": "yes",
+      "name": "101.5 | Radio Nova (House)",
+      "image_url": ""
+    },
+    {
+      "container": "no",
+      "mid": "s50262",
+      "type": "station",
+      "playable": "yes",
+      "name": "Radio Choco",
+      "image_url": ""
+    },
+    {
+      "container": "no",
+      "mid": "s220855",
+      "type": "station",
+      "playable": "yes",
+      "name": "Rebel Spinner AM",
+      "image_url": ""
+    },
+    {
+      "container": "no",
+      "mid": "s32537",
+      "type": "station",
+      "playable": "yes",
+      "name": "KEXP",
+      "image_url": ""
+    },
+    {
+      "container": "no",
+      "mid": "s17439",
+      "type": "station",
+      "playable": "yes",
+      "name": "WEFUNK Radio (Classic Hip Hop)",
+      "image_url": "http://cdn-radiotime-logos.tunein.com/s17439q.png"
+    },
+    {
+      "container": "no",
+      "mid": "s96527",
+      "type": "station",
+      "playable": "yes",
+      "name": "Radio Brisa Tropical (Salsa Music)",
+      "image_url": "http://cdn-profiles.tunein.com/s96527/images/logoq.jpg?t=160632"
+    },
+    {
+      "container": "no",
+      "mid": "s304269",
+      "type": "station",
+      "playable": "yes",
+      "name": "Aji Picante Radio (Latin Music)",
+      "image_url": "http://cdn-profiles.tunein.com/s304269/images/logoq.png?t=1690907903000"
+    },
+    {
+      "container": "no",
+      "mid": "s50262",
+      "type": "station",
+      "playable": "yes",
+      "name": "Radio Choco (Soul)",
+      "image_url": "http://cdn-profiles.tunein.com/s50262/images/logoq.jpg?t=1721925282000"
+    }
+  ],
+  "options": [
+    {
+      "browse": [
+        {
+          "id": 20,
+          "name": "Remove from HEOS Favorites"
+        }
+      ]
+    }
+  ]
+}

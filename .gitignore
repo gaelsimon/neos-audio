@@ -1,3 +1,67 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserdata
+*.xcworkspace/xcuserdata/
+xcuserdata/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# Xcode build artifacts
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Distribution
+*.dmg
+*.app
+*.zip
+
+# Test results
+*.xcresult
+coverage.xml
+sonar-coverage.xml
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDEs
+.idea/
+.vscode/
+.fleet/
+
+# AI agents / local notes
+.claude/
+.planning/
+CLAUDE.md
+sessions/
+
+# Network captures (may contain identifiable data)
+*.pcap
+
+# Misc
 *.swp
 *~
