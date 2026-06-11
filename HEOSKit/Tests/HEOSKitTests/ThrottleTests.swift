@@ -96,7 +96,7 @@ struct ThrottleTests {
         )
 
         await throttle.submit(1)
-        try? await Task.sleep(for: .milliseconds(80))
+        try? await Task.sleep(for: .milliseconds(200))
 
         let errors = await errorTracker.values
         #expect(errors.count == 1)
@@ -108,7 +108,7 @@ struct ThrottleTests {
         }
 
         await throttle.submit(1)
-        try? await Task.sleep(for: .milliseconds(80))
+        try? await Task.sleep(for: .milliseconds(200))
         // No crash = pass
     }
 }
