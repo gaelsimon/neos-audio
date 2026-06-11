@@ -20,7 +20,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.0'
+          xcode-version: '16'
 
       - name: HEOSKit tests
         working-directory: HEOSKit
@@ -41,7 +41,7 @@ jobs:
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.0'
+          xcode-version: '16'
 
       - name: Install tools
         run: brew install xcodegen swiftlint xcbeautify
