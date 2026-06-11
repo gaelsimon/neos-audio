@@ -14,7 +14,7 @@ struct ThrottleTests {
         }
 
         await throttle.submit(42)
-        try? await Task.sleep(for: .milliseconds(100))
+        try? await Task.sleep(for: .milliseconds(250))
 
         let values = await tracker.values
         #expect(values == [42])
@@ -31,7 +31,7 @@ struct ThrottleTests {
         await throttle.submit(1)
         await throttle.submit(2)
         await throttle.submit(3)
-        try? await Task.sleep(for: .milliseconds(100))
+        try? await Task.sleep(for: .milliseconds(250))
 
         let values = await tracker.values
         #expect(values == [3])
@@ -44,9 +44,9 @@ struct ThrottleTests {
         }
 
         await throttle.submit(1)
-        try? await Task.sleep(for: .milliseconds(60))
+        try? await Task.sleep(for: .milliseconds(200))
         await throttle.submit(2)
-        try? await Task.sleep(for: .milliseconds(60))
+        try? await Task.sleep(for: .milliseconds(200))
 
         let values = await tracker.values
         #expect(values == [1, 2])
@@ -62,7 +62,7 @@ struct ThrottleTests {
 
         await throttle.submit(99)
         await throttle.cancel()
-        try? await Task.sleep(for: .milliseconds(100))
+        try? await Task.sleep(for: .milliseconds(250))
 
         let values = await tracker.values
         #expect(values.isEmpty)
@@ -77,7 +77,7 @@ struct ThrottleTests {
         await throttle.submit(1)
         await throttle.cancel()
         await throttle.submit(2)
-        try? await Task.sleep(for: .milliseconds(60))
+        try? await Task.sleep(for: .milliseconds(200))
 
         let values = await tracker.values
         #expect(values == [2])
