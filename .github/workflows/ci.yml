@@ -24,11 +24,11 @@ jobs:
 
       - name: HEOSKit tests
         working-directory: HEOSKit
-        run: swift test --parallel
+        run: swift test
 
       - name: NeosDomain tests
         working-directory: NeosDomain
-        run: swift test --parallel
+        run: swift test
 
   app-build:
     name: App build & lint
