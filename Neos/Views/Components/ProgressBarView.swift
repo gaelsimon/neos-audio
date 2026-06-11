@@ -146,9 +146,9 @@ private struct SeekerPerformanceIsland: View {
 
         if inlineTimeLabels && showTimeLabels {
             HStack(spacing: DS.Spacing.sm) {
-                elapsedLabel(currentMillis).frame(width: 44, alignment: .trailing)
+                elapsedLabel(currentMillis).frame(minWidth: 44, alignment: .trailing)
                 seekBar(progress: progress)
-                remainingLabel(currentMillis).frame(width: 50, alignment: .leading)
+                remainingLabel(currentMillis).frame(minWidth: 50, alignment: .leading)
             }
         } else {
             VStack(spacing: DS.Spacing.sm) {
@@ -217,6 +217,8 @@ private struct SeekerPerformanceIsland: View {
             .typography(.badge)
             .foregroundStyle(DS.Colors.textSecondary)
             .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     @ViewBuilder
@@ -225,6 +227,8 @@ private struct SeekerPerformanceIsland: View {
             .typography(.badge)
             .foregroundStyle(DS.Colors.textSecondary)
             .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     // MARK: - Helpers
