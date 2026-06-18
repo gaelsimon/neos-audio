@@ -20,7 +20,7 @@ final class SpeakerListViewModel {
     }
 
     func selectPlayer(_ player: Player) {
-        state.selectedPlayerID = state.groups.leaderPID(for: player.pid)
+        state.selectedPlayerID = state.groups.leaderPID(for: player.pid, expanded: state.multiRoomGroupIDs)
     }
 
     func discover() {

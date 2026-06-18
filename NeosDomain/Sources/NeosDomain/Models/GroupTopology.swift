@@ -1,18 +1,15 @@
 import Foundation
 
-// HEOS exposes no flag separating a stereo pair from a multi-room group, so both are
-// treated the same: the leader represents the group, and control/state target the
-// leader — the speaker the device reports playback events for.
+// Stereo/surround bonds (members carry LEFT/RIGHT/… channels) collapse to one leader row;
+// plain multi-room groups (all NORMAL) stay expanded. Missing channel info → collapse (safe).
+
+public let normalAudioChannel = "NORMAL"
 
 public extension Array where Element == SpeakerGroup {
-    /// PIDs of non-leader members, hidden from the main list.
-    var groupedMemberPIDs: Set<Int> {
-        Set(flatMap { $0.members.map(\.pid) })
-    }
-
-    /// The leader's PID for a grouped member; the PID itself when ungrouped.
-    func leaderPID(for pid: Int) -> Int {
-        for group in self where group.players.contains(where: { $0.pid == pid }) {
+    /// Leader PID for a member of a collapsed group; the pid unchanged otherwise.
+    func leaderPID(for pid: Int, expanded: Set<Int> = []) -> Int {
+        for group in self where !expanded.contains(group.gid)
+            && group.players.contains(where: { $0.pid == pid }) {
             return group.leader?.pid ?? pid
         }
         return pid
@@ -22,12 +19,19 @@ public extension Array where Element == SpeakerGroup {
     func group(ledBy pid: Int) -> SpeakerGroup? {
         first { $0.leader?.pid == pid }
     }
+
+    /// GIDs whose every member reports NORMAL; anything else collapses.
+    func multiRoomGroupIDs(channelsByPID: [Int: String]) -> Set<Int> {
+        Set(filter { group in
+            group.players.allSatisfy { channelsByPID[$0.pid] == normalAudioChannel }
+        }.map(\.gid))
+    }
 }
 
 public extension Array where Element == Player {
-    /// Drops non-leader members so each pair/group shows as a single (leader) row.
-    func collapsingGroups(_ groups: [SpeakerGroup]) -> [Player] {
-        let hidden = groups.groupedMemberPIDs
+    /// Hides non-leader members of collapsed groups; `expanded` groups keep their members.
+    func collapsingGroups(_ groups: [SpeakerGroup], expanded: Set<Int> = []) -> [Player] {
+        let hidden = Set(groups.filter { !expanded.contains($0.gid) }.flatMap { $0.members.map(\.pid) })
         guard !hidden.isEmpty else { return self }
         return filter { !hidden.contains($0.pid) }
     }

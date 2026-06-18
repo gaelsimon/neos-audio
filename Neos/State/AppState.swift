@@ -33,6 +33,9 @@ final class AppState: StateUpdater {
     var players: [Player] = []
     var selectedPlayerID: Int?
     var groups: [SpeakerGroup] = []
+    /// GIDs of multi-room groups (members stay listed). Empty until classified, so groups
+    /// collapse by default.
+    var multiRoomGroupIDs: Set<Int> = []
 
     // Playback (forwarded from sub-state)
     var playState: PlayState { playback.playState }
@@ -107,14 +110,22 @@ final class AppState: StateUpdater {
         players.first { $0.pid == selectedPlayerID }
     }
 
-    /// Main-list players with grouped members collapsed into their leader.
+    /// Main-list players with collapsed groups reduced to their leader; multi-room members stay.
     var displayPlayers: [Player] {
-        players.collapsingGroups(groups)
+        players.collapsingGroups(groups, expanded: multiRoomGroupIDs)
     }
 
-    /// Group name when the player leads a group, else its own name.
+    /// Group name when the player leads a *collapsed* group, else its own name.
     func displayName(for player: Player) -> String {
-        groups.group(ledBy: player.pid)?.name ?? player.name
+        if let group = groups.group(ledBy: player.pid), !multiRoomGroupIDs.contains(group.gid) {
+            return group.name
+        }
+        return player.name
+    }
+
+    /// Display name for the current selection (group name for a collapsed leader).
+    var selectedPlayerDisplayName: String? {
+        selectedPlayer.map { displayName(for: $0) }
     }
 
     var isPlaying: Bool { playback.isPlaying }
@@ -154,6 +165,11 @@ final class AppState: StateUpdater {
 
     func setGroups(_ groups: [SpeakerGroup]) {
         self.groups = groups
+        self.multiRoomGroupIDs = [] // collapse until reclassified
+    }
+
+    func setMultiRoomGroups(_ gids: Set<Int>) {
+        self.multiRoomGroupIDs = gids
     }
 
     func setMusicSources(_ sources: [MusicSource]) {
@@ -161,8 +177,8 @@ final class AppState: StateUpdater {
     }
 
     func setSelectedPlayerID(_ pid: Int) {
-        // Target the leader; the device reports events for the leader's PID, not members'.
-        self.selectedPlayerID = groups.leaderPID(for: pid)
+        // Collapsed groups target the leader; expanded members stay selectable.
+        self.selectedPlayerID = groups.leaderPID(for: pid, expanded: multiRoomGroupIDs)
     }
 
     func setPlayState(_ state: PlayState) {

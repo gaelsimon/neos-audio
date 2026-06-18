@@ -223,6 +223,9 @@ extension HEOSService {
         await stateUpdater.setGroups(groups)
         await stateUpdater.setMusicSources(sources)
 
+        // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
+        Task { await self.refreshGroupTopology(groups: groups, players: players) }
+
         // Phase 2: remaining global state (account check may hit cloud servers)
         let signedInUser = await accountResult
         await stateUpdater.setSignedInUser(signedInUser)
@@ -286,6 +289,9 @@ extension HEOSService {
         await stateUpdater.setGroups(groups)
         await stateUpdater.setMusicSources(sources)
 
+        // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
+        Task { await self.refreshGroupTopology(groups: groups, players: players) }
+
         let signedInUser = await accountResult
         await stateUpdater.setSignedInUser(signedInUser)
 
@@ -335,6 +341,29 @@ extension HEOSService {
 
     func apply(snapshot: PlayerSnapshot) async {
         await stateUpdater.applyPlayerSnapshot(snapshot)
+    }
+
+    /// Reads each member's UPnP channel to find which groups are plain multi-room, and publishes
+    /// those GIDs. Best-effort: a failed query leaves the group collapsed.
+    func refreshGroupTopology(groups: [SpeakerGroup], players: [Player]) async {
+        guard !groups.isEmpty else { return }
+        let ipByPID = Dictionary(players.map { ($0.pid, $0.ip) }, uniquingKeysWith: { first, _ in first })
+        var channels: [Int: String] = [:]
+        for group in groups {
+            for member in group.players {
+                guard let ip = ipByPID[member.pid], !ip.isEmpty,
+                      let channel = try? await memberAudioChannel(host: ip) else { continue }
+                channels[member.pid] = channel
+            }
+        }
+        await stateUpdater.setMultiRoomGroups(groups.multiRoomGroupIDs(channelsByPID: channels))
+    }
+
+    private func memberAudioChannel(host: String) async throws -> String {
+        let client = try UPnPGroupControlClient(host: host)
+        let channel = try await client.memberChannel()
+        await client.invalidateSession()
+        return channel
     }
 
     func startEventListening() {
