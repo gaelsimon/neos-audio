@@ -361,9 +361,8 @@ extension HEOSService {
 
     private func memberAudioChannel(host: String) async throws -> String {
         let client = try UPnPGroupControlClient(host: host)
-        let channel = try await client.memberChannel()
-        await client.invalidateSession()
-        return channel
+        defer { Task { await client.invalidateSession() } } // also invalidate on throw (unreachable host)
+        return try await client.memberChannel()
     }
 
     func startEventListening() {
