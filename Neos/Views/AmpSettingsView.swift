@@ -59,9 +59,9 @@ struct AmpSettingsView: View {
                     .typography(.secondary)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(state.players) { player in
+                    ForEach(state.displayPlayers) { player in
                         playerRow(player)
-                        if player.id != state.players.last?.id {
+                        if player.id != state.displayPlayers.last?.id {
                             Divider().opacity(0.2)
                         }
                     }
@@ -81,7 +81,7 @@ struct AmpSettingsView: View {
                         .foregroundStyle(DS.Colors.textSecondary)
                         .frame(width: 24)
 
-                    Text(player.name)
+                    Text(state.displayName(for: player))
                         .typography(.bodyPrimary)
                         .lineLimit(1)
                         .truncationMode(.tail)

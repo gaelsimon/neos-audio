@@ -107,6 +107,16 @@ final class AppState: StateUpdater {
         players.first { $0.pid == selectedPlayerID }
     }
 
+    /// Main-list players with grouped members collapsed into their leader.
+    var displayPlayers: [Player] {
+        players.collapsingGroups(groups)
+    }
+
+    /// Group name when the player leads a group, else its own name.
+    func displayName(for player: Player) -> String {
+        groups.group(ledBy: player.pid)?.name ?? player.name
+    }
+
     var isPlaying: Bool { playback.isPlaying }
     var progressPercent: Double { playback.progressPercent }
 
@@ -151,7 +161,8 @@ final class AppState: StateUpdater {
     }
 
     func setSelectedPlayerID(_ pid: Int) {
-        self.selectedPlayerID = pid
+        // Target the leader; the device reports events for the leader's PID, not members'.
+        self.selectedPlayerID = groups.leaderPID(for: pid)
     }
 
     func setPlayState(_ state: PlayState) {
