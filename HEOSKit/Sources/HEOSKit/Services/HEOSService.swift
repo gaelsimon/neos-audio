@@ -203,13 +203,9 @@ public actor HEOSService {
     /// transient failure never overwrites good state with defaults.
     public func resyncPlaybackState(pid: Int) async {
         guard let playerService else { return }
-        if let playState = try? await playerService.getPlayState(pid: pid) {
-            await stateUpdater.setPlayState(playState)
-        }
-        if let result = try? await playerService.getNowPlayingMedia(pid: pid) {
-            await stateUpdater.setNowPlaying(result.media)
-            await stateUpdater.setNowPlayingOptions(result.options)
-        }
+        let playState = try? await playerService.getPlayState(pid: pid)
+        let nowPlaying = try? await playerService.getNowPlayingMedia(pid: pid)
+        await applyResyncedPlayback(playState: playState, nowPlaying: nowPlaying, to: stateUpdater)
     }
 
     public func next(pid: Int) async throws {
@@ -477,5 +473,21 @@ public enum HEOSServiceError: Error, Sendable, LocalizedError {
         switch self {
         case .notConnected: "Not connected to speaker"
         }
+    }
+}
+
+/// Applies resynced playback values, skipping any that failed to fetch (`nil`) so a
+/// transient failure never overwrites good state with defaults.
+func applyResyncedPlayback(
+    playState: PlayState?,
+    nowPlaying: (media: NowPlayingMedia, options: [ServiceOption])?,
+    to stateUpdater: StateUpdater
+) async {
+    if let playState {
+        await stateUpdater.setPlayState(playState)
+    }
+    if let nowPlaying {
+        await stateUpdater.setNowPlaying(nowPlaying.media)
+        await stateUpdater.setNowPlayingOptions(nowPlaying.options)
     }
 }
