@@ -269,4 +269,10 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         calls.append("getTransportActions")
         return []
     }
+
+    // MARK: - Playback Sync
+
+    func resyncPlaybackState(pid: Int) async {
+        calls.append("resyncPlaybackState:\(pid)")
+    }
 }

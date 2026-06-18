@@ -320,4 +320,50 @@ final class PlayerViewModelTests: XCTestCase {
 
         XCTAssertEqual(state.playbackPosition, 60_000)
     }
+
+    // MARK: - resyncPlaybackState
+
+    @MainActor
+    func testResyncPlaybackStateResyncsSelectedPlayerWhenConnected() async {
+        let state = AppState()
+        state.connectionState = .connected
+        state.selectedPlayerID = 7
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.resyncPlaybackState()
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertTrue(mock.calls.contains("resyncPlaybackState:7"))
+    }
+
+    @MainActor
+    func testResyncPlaybackStateNoOpWhenDisconnected() async {
+        let state = AppState()
+        state.connectionState = .disconnected
+        state.selectedPlayerID = 7
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.resyncPlaybackState()
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertFalse(mock.calls.contains { $0.hasPrefix("resyncPlaybackState") })
+    }
+
+    @MainActor
+    func testResyncPlaybackStateNoOpWithoutSelectedPlayer() async {
+        let state = AppState()
+        state.connectionState = .connected
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.resyncPlaybackState()
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertFalse(mock.calls.contains { $0.hasPrefix("resyncPlaybackState") })
+    }
 }

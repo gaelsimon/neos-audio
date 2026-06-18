@@ -126,4 +126,8 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     }
 
     func getTransportActions() async throws -> Set<String> { [] }
+
+    // MARK: - Playback Sync
+
+    func resyncPlaybackState(pid: Int) async {}
 }

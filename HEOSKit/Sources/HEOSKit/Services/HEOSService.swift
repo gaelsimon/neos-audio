@@ -199,6 +199,19 @@ public actor HEOSService {
         try await requirePlayerService().setPlayState(pid: pid, state: .stop)
     }
 
+    /// Re-reads play state and now-playing for `pid`, applying each only on success so a
+    /// transient failure never overwrites good state with defaults.
+    public func resyncPlaybackState(pid: Int) async {
+        guard let playerService else { return }
+        if let playState = try? await playerService.getPlayState(pid: pid) {
+            await stateUpdater.setPlayState(playState)
+        }
+        if let result = try? await playerService.getNowPlayingMedia(pid: pid) {
+            await stateUpdater.setNowPlaying(result.media)
+            await stateUpdater.setNowPlayingOptions(result.options)
+        }
+    }
+
     public func next(pid: Int) async throws {
         try await ensureConnected()
         try await ensurePoweredOn()

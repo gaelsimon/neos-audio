@@ -19,6 +19,7 @@ final class PlayerViewModel {
     private let seekTask = CancellableTaskHandle()
     private let metadataTask = CancellableTaskHandle()
     private let serviceOptionTask = CancellableTaskHandle()
+    private let resyncTask = CancellableTaskHandle()
 
     init(service: any AudioService, state: AppState) {
         self.service = service
@@ -72,6 +73,15 @@ final class PlayerViewModel {
         } catch {
             playerLogger.debug("Metadata fetch failed (non-fatal): \(error.localizedDescription)")
         }
+    }
+
+    /// Re-syncs the selected player's playback state, recovering from any push events
+    /// missed while the connection stayed alive. Triggered when a UI surface appears.
+    func resyncPlaybackState() {
+        guard let pid = state.selectedPlayerID, state.isConnected else { return }
+        resyncTask.replace(with: Task {
+            await service.resyncPlaybackState(pid: pid)
+        })
     }
 
     func togglePlayPause() {
