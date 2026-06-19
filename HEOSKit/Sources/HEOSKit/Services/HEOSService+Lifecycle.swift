@@ -4,23 +4,28 @@ import os
 
 // MARK: - Player Selection
 
-/// Picks the best default player from a list.
-/// 1. If `cachedPID` exists in the list, return that player (user's last choice).
-/// 2. Otherwise prefer standalone speakers (`lineout == 0`) over AVR zones (`lineout > 0`).
-/// 3. Fall back to the first player in the list.
-func preferredPlayer(from players: [Player], cachedPID: Int?) -> Player? {
+/// Picks the default player: cached choice if still present, else a standalone speaker
+/// over an AVR zone. Grouped members collapse to their leader so a pair is never picked.
+func preferredPlayer(from players: [Player], groups: [SpeakerGroup], cachedPID: Int?) -> Player? {
     guard !players.isEmpty else { return nil }
 
-    if let cachedPID, let cached = players.first(where: { $0.pid == cachedPID }) {
-        return cached
+    // Never default to a stereo pair/group member; pick from the collapsed (leader) list.
+    let collapsed = players.collapsingGroups(groups)
+    let pool = collapsed.isEmpty ? players : collapsed
+
+    if let cachedPID {
+        let resolvedPID = groups.leaderPID(for: cachedPID)
+        if let cached = pool.first(where: { $0.pid == resolvedPID }) {
+            return cached
+        }
     }
 
     // Prefer standalone speakers (lineout == 0) over AVR zones
-    if let standalone = players.first(where: { $0.lineout == 0 }) {
+    if let standalone = pool.first(where: { $0.lineout == 0 }) {
         return standalone
     }
 
-    return players.first
+    return pool.first
 }
 
 // MARK: - Lifecycle & State Loading
@@ -218,12 +223,15 @@ extension HEOSService {
         await stateUpdater.setGroups(groups)
         await stateUpdater.setMusicSources(sources)
 
+        // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
+        Task { await self.refreshGroupTopology(groups: groups, players: players) }
+
         // Phase 2: remaining global state (account check may hit cloud servers)
         let signedInUser = await accountResult
         await stateUpdater.setSignedInUser(signedInUser)
 
         // Determine the correct PID; prefer cached if it still exists, then standalone speakers
-        guard let preferred = preferredPlayer(from: players, cachedPID: cachedPID) else {
+        guard let preferred = preferredPlayer(from: players, groups: groups, cachedPID: cachedPID) else {
             HEOSLogger.service.warning("getPlayers returned empty during parallel load; skipping player state")
             return
         }
@@ -281,10 +289,13 @@ extension HEOSService {
         await stateUpdater.setGroups(groups)
         await stateUpdater.setMusicSources(sources)
 
+        // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
+        Task { await self.refreshGroupTopology(groups: groups, players: players) }
+
         let signedInUser = await accountResult
         await stateUpdater.setSignedInUser(signedInUser)
 
-        if let player = preferredPlayer(from: players, cachedPID: nil) {
+        if let player = preferredPlayer(from: players, groups: groups, cachedPID: nil) {
             await connectionCoordinator.updateLastPlayerID(player.pid)
             await stateUpdater.setSelectedPlayerID(player.pid)
             await loadPlayerState(pid: player.pid)
@@ -330,6 +341,28 @@ extension HEOSService {
 
     func apply(snapshot: PlayerSnapshot) async {
         await stateUpdater.applyPlayerSnapshot(snapshot)
+    }
+
+    /// Reads each member's UPnP channel to find which groups are plain multi-room, and publishes
+    /// those GIDs. Best-effort: a failed query leaves the group collapsed.
+    func refreshGroupTopology(groups: [SpeakerGroup], players: [Player]) async {
+        guard !groups.isEmpty else { return }
+        let ipByPID = Dictionary(players.map { ($0.pid, $0.ip) }, uniquingKeysWith: { first, _ in first })
+        var channels: [Int: String] = [:]
+        for group in groups {
+            for member in group.players {
+                guard let ip = ipByPID[member.pid], !ip.isEmpty,
+                      let channel = try? await memberAudioChannel(host: ip) else { continue }
+                channels[member.pid] = channel
+            }
+        }
+        await stateUpdater.setMultiRoomGroups(groups.multiRoomGroupIDs(channelsByPID: channels))
+    }
+
+    private func memberAudioChannel(host: String) async throws -> String {
+        let client = try UPnPGroupControlClient(host: host)
+        defer { Task { await client.invalidateSession() } } // also invalidate on throw (unreachable host)
+        return try await client.memberChannel()
     }
 
     func startEventListening() {

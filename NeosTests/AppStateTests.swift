@@ -431,4 +431,25 @@ final class AppStateTests: XCTestCase {
 
         XCTAssertNil(state.pendingStreamContext)
     }
+
+    // MARK: - Group collapse / expand
+
+    @MainActor
+    func testGroupCollapsesByDefaultThenExpandsWhenMultiRoom() {
+        let state = AppState()
+        state.players = [Player(pid: 1, name: "Kitchen Left"), Player(pid: 2, name: "Kitchen Right")]
+        state.setGroups([SpeakerGroup(gid: 1, name: "Kitchen", players: [
+            GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+        ])])
+
+        // Collapsed by default: one row, labelled with the group name.
+        XCTAssertEqual(state.displayPlayers.map(\.pid), [1])
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen")
+
+        // Classified as multi-room: both rows, individual names.
+        state.setMultiRoomGroups([1])
+        XCTAssertEqual(state.displayPlayers.map(\.pid), [1, 2])
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen Left")
+    }
 }

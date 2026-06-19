@@ -29,6 +29,7 @@ public protocol StateUpdater: AnyObject, Sendable {
     func applyPlayerSnapshot(_ snapshot: PlayerSnapshot)
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities)
     func setNowPlayingOptions(_ options: [ServiceOption])
+    func setMultiRoomGroups(_ gids: Set<Int>)
 }
 
 public extension StateUpdater {
@@ -42,6 +43,7 @@ public extension StateUpdater {
 
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities) {}
     func setNowPlayingOptions(_ options: [ServiceOption]) {}
+    func setMultiRoomGroups(_ gids: Set<Int>) {}
 
     func applyPlayerSnapshot(_ snapshot: PlayerSnapshot) {
         setPlayState(snapshot.playState)

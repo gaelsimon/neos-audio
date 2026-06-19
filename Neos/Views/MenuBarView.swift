@@ -27,12 +27,12 @@ struct MenuBarView: View {
             Divider()
 
             // Speaker picker (compact)
-            if state.isConnected && state.players.count > 1 {
+            if state.isConnected && state.displayPlayers.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: DS.Spacing.sm) {
-                        ForEach(state.players) { player in
+                        ForEach(state.displayPlayers) { player in
                             Button(action: { speakerVM.selectPlayer(player) }) {
-                                Text(player.name)
+                                Text(state.displayName(for: player))
                                     .typography(.secondary)
                                     .padding(.horizontal, DS.Spacing.sm)
                                     .padding(.vertical, DS.Spacing.xs)

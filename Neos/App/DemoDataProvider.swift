@@ -12,8 +12,26 @@ enum DemoDataProvider {
     static let avrZone2PID = 1_845_498_271
     static let home150PID = 927_361_084
 
+    // Kitchen stereo pair (collapses to one row) + Den/Bath multi-room group (stays expanded).
+    static let kitchenLeftPID = 5_001
+    static let kitchenRightPID = 5_002
+    static let denPID = 5_003
+    static let bathPID = 5_004
+
     /// The player that should be auto-selected (standalone speaker, lineout == 0).
     static let playerID = home150PID
+
+    /// Demo groups: a stereo pair (Kitchen) and a multi-room group (Den + Bathroom).
+    static let groups: [SpeakerGroup] = [
+        SpeakerGroup(gid: kitchenLeftPID, name: "Kitchen", players: [
+            GroupPlayer(name: "Kitchen Left", pid: kitchenLeftPID, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: kitchenRightPID, role: .member)
+        ]),
+        SpeakerGroup(gid: denPID, name: "Den + Bathroom", players: [
+            GroupPlayer(name: "Den", pid: denPID, role: .leader),
+            GroupPlayer(name: "Bathroom", pid: bathPID, role: .member)
+        ])
+    ]
 
     // MARK: - Public Entry Point
 
@@ -60,8 +78,21 @@ enum DemoDataProvider {
                 network: .wifi,
                 lineout: 0,
                 serial: "H150PAIR01"
-            )
+            ),
+            Player(pid: kitchenLeftPID, name: "Kitchen Left", model: "HEOS Home 150",
+                   ip: "192.0.2.30", network: .wifi, lineout: 0, serial: "H150KITL"),
+            Player(pid: kitchenRightPID, name: "Kitchen Right", model: "HEOS Home 150",
+                   ip: "192.0.2.31", network: .wifi, lineout: 0, serial: "H150KITR"),
+            Player(pid: denPID, name: "Den", model: "HEOS Home 350",
+                   ip: "192.0.2.40", network: .wifi, lineout: 0, serial: "H350DEN"),
+            Player(pid: bathPID, name: "Bathroom", model: "HEOS 1",
+                   ip: "192.0.2.41", network: .wifi, lineout: 0, serial: "H1BATH")
         ])
+
+        // Kitchen is a stereo pair (collapses to one row); Den + Bathroom is multi-room (expanded).
+        state.setGroups(groups)
+        state.setMultiRoomGroups([denPID])
+
         state.setSelectedPlayerID(playerID)
 
         setupPlayback(state)
