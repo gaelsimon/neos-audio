@@ -87,6 +87,11 @@ public protocol UPnPTransportService: Sendable {
     func getTransportActions() async throws -> Set<String>
 }
 
+/// Re-reads live playback state to recover from missed push events.
+public protocol PlaybackSyncService: Sendable {
+    func resyncPlaybackState(pid: Int) async
+}
+
 // MARK: - Composite Protocol
 
 /// Abstracts vendor-specific speaker services so the app layer never imports
@@ -97,7 +102,7 @@ public protocol AudioService:
     ConnectionService & DiscoveryService &
     PlayerControlService & QueueService & GroupService &
     BrowseService & SearchService & AccountService &
-    PowerControlService & UPnPTransportService {}
+    PowerControlService & UPnPTransportService & PlaybackSyncService {}
 
 // MARK: - Default Parameter Overloads
 

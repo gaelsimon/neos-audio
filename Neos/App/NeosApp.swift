@@ -7,6 +7,7 @@ struct NeosApp: App {
     @State private var appState = AppState()
     @State private var service: HEOSService?
     @State private var container: ViewModelContainer?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         // Main app window
@@ -16,6 +17,10 @@ struct NeosApp: App {
                     state: appState,
                     container: container
                 )
+                .onChange(of: scenePhase) { _, phase in
+                    // Recover any playback events missed while the window was inactive.
+                    if phase == .active { container.playerVM.resyncPlaybackState() }
+                }
 
             } else {
                 VStack(spacing: DS.Spacing.md) {

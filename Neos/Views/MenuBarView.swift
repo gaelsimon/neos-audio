@@ -61,5 +61,6 @@ struct MenuBarView: View {
             ConnectionStatusView(state: state)
         }
         .frame(width: 280)
+        .onAppear { playerVM.resyncPlaybackState() }
     }
 }
