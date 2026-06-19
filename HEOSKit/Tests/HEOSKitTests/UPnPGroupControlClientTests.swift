@@ -59,4 +59,30 @@ struct UPnPGroupControlClientTests {
         await #expect(throws: (any Error).self) { try await client.memberChannel() }
         await client.invalidateSession()
     }
+
+    @Test func throwsOnSoapFault() async throws {
+        let fault = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+        <s:Body><s:Fault><detail><UPnPError>
+        <errorCode>501</errorCode><errorDescription>Action Failed</errorDescription>
+        </UPnPError></detail></s:Fault></s:Body></s:Envelope>
+        """
+        MockURLProtocol.register(pathContaining: Self.path) { _ in (500, fault) }
+        let client = try makeClient()
+        await #expect(throws: (any Error).self) { try await client.memberChannel() }
+        await client.invalidateSession()
+    }
+
+    @Test func throwsOnHTTPError() async throws {
+        MockURLProtocol.register(pathContaining: Self.path) { _ in (404, "") }
+        let client = try makeClient()
+        await #expect(throws: (any Error).self) { try await client.memberChannel() }
+        await client.invalidateSession()
+    }
+
+    @Test func productionInitBuildsAndInvalidates() async throws {
+        let client = try UPnPGroupControlClient(host: "127.0.0.1")
+        await client.invalidateSession()
+    }
 }
