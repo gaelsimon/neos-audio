@@ -164,8 +164,12 @@ final class AppState: StateUpdater {
     }
 
     func setGroups(_ groups: [SpeakerGroup]) {
+        // Only drop the classification when the group set changes, so a plain reload
+        // (e.g. opening settings) doesn't wipe the current pair/multi-room split.
+        if Set(groups.map(\.gid)) != Set(self.groups.map(\.gid)) {
+            self.multiRoomGroupIDs = []
+        }
         self.groups = groups
-        self.multiRoomGroupIDs = [] // collapse until reclassified
     }
 
     func setMultiRoomGroups(_ gids: Set<Int>) {
