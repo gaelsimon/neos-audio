@@ -313,7 +313,7 @@ struct MainWindowView: View {
                     .font(DS.IconFont.sm)
                     .foregroundStyle(DS.Colors.accent)
 
-                Text(state.selectedPlayer?.name ?? "No Player")
+                Text(state.selectedPlayerDisplayName ?? "No Player")
                     .typography(.secondary)
                     .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : .white.opacity(0.8))
                     .lineLimit(1)

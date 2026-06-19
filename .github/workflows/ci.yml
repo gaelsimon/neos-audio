@@ -66,6 +66,9 @@ jobs:
             DEVELOPMENT_TEAM= \
             | xcbeautify
 
+      - name: Generate coverage report
+        run: ./scripts/sonar-coverage.sh
+
       - name: SonarCloud Scan
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v6
