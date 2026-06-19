@@ -14,10 +14,9 @@ struct ThrottleTests {
         }
 
         await throttle.submit(42)
-        try? await Task.sleep(for: .milliseconds(250))
 
-        let values = await tracker.values
-        #expect(values == [42])
+        await waitUntil { await tracker.values == [42] }
+        #expect(await tracker.values == [42])
     }
 
     // MARK: - Debounce Behavior
@@ -31,10 +30,9 @@ struct ThrottleTests {
         await throttle.submit(1)
         await throttle.submit(2)
         await throttle.submit(3)
-        try? await Task.sleep(for: .milliseconds(250))
 
-        let values = await tracker.values
-        #expect(values == [3])
+        await waitUntil { await tracker.values == [3] }
+        #expect(await tracker.values == [3])
     }
 
     @Test func submitsSpacedApartAllExecute() async {
@@ -44,12 +42,11 @@ struct ThrottleTests {
         }
 
         await throttle.submit(1)
-        try? await Task.sleep(for: .milliseconds(200))
+        await waitUntil { await tracker.values == [1] }
         await throttle.submit(2)
-        try? await Task.sleep(for: .milliseconds(200))
+        await waitUntil { await tracker.values == [1, 2] }
 
-        let values = await tracker.values
-        #expect(values == [1, 2])
+        #expect(await tracker.values == [1, 2])
     }
 
     // MARK: - Cancellation
@@ -62,6 +59,7 @@ struct ThrottleTests {
 
         await throttle.submit(99)
         await throttle.cancel()
+        // Negative assertion: wait well past the interval, then confirm nothing fired.
         try? await Task.sleep(for: .milliseconds(250))
 
         let values = await tracker.values
@@ -77,10 +75,9 @@ struct ThrottleTests {
         await throttle.submit(1)
         await throttle.cancel()
         await throttle.submit(2)
-        try? await Task.sleep(for: .milliseconds(200))
 
-        let values = await tracker.values
-        #expect(values == [2])
+        await waitUntil { await tracker.values == [2] }
+        #expect(await tracker.values == [2])
     }
 
     // MARK: - Error Handling
@@ -96,24 +93,39 @@ struct ThrottleTests {
         )
 
         await throttle.submit(1)
-        try? await Task.sleep(for: .milliseconds(200))
 
-        let errors = await errorTracker.values
-        #expect(errors.count == 1)
+        await waitUntil { await errorTracker.values.count == 1 }
+        #expect(await errorTracker.values.count == 1)
     }
 
     @Test func actionErrorWithoutOnErrorDoesNotCrash() async {
+        let ran = ValueTracker<Bool>()
         let throttle = Throttle<Int>(interval: .milliseconds(30)) { _ in
+            await ran.record(true)
             throw TestError.intentional
         }
 
         await throttle.submit(1)
-        try? await Task.sleep(for: .milliseconds(200))
-        // No crash = pass
+        // The throwing action runs and the missing onError must not crash.
+        await waitUntil { await ran.values == [true] }
+        #expect(await ran.values == [true])
     }
 }
 
 // MARK: - Helpers
+
+/// Polls until `condition` holds or the timeout elapses — a deterministic replacement for the
+/// fixed sleeps that flaked under CI load. A genuine failure still surfaces after the timeout.
+private func waitUntil(
+    timeout: Duration = .seconds(5),
+    _ condition: @Sendable () async -> Bool
+) async {
+    let deadline = ContinuousClock.now + timeout
+    while ContinuousClock.now < deadline {
+        if await condition() { return }
+        try? await Task.sleep(for: .milliseconds(5))
+    }
+}
 
 private enum TestError: Error {
     case intentional
