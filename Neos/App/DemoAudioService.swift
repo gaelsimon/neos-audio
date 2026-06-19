@@ -42,7 +42,7 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
 
     // MARK: - Group Actions
 
-    func getGroups() async throws -> [SpeakerGroup] { [] }
+    func getGroups() async throws -> [SpeakerGroup] { DemoDataProvider.groups }
     func createGroup(leaderPID: Int, memberPIDs: [Int]) async throws {}
     func ungroup(pid: Int) async throws {}
     func setGroupVolume(gid: Int, level: Int) async throws {}

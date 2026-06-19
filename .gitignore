@@ -41,6 +41,8 @@ playground.xcworkspace
 *.xcresult
 coverage.xml
 sonar-coverage.xml
+coverage-sonar.xml
+coverage.lcov
 
 # macOS
 .DS_Store
