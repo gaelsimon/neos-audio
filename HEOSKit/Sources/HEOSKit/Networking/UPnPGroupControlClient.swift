@@ -29,44 +29,22 @@ public actor UPnPGroupControlClient {
 
     /// This device's audio channel within its current group (e.g. NORMAL, LEFT, RIGHT).
     public func memberChannel() async throws -> String {
-        let uuidXML = try await sendAction("GetGroupUUID")
+        let uuidXML = try await send("GetGroupUUID")
         guard let uuid = SOAPEnvelope.extractTag("GroupUUID", from: uuidXML), !uuid.isEmpty else {
             throw UPnPError.invalidResponse
         }
-        let channelXML = try await sendAction("GetGroupMemberChannel", arguments: [("GroupUUID", uuid)])
+        let channelXML = try await send("GetGroupMemberChannel", arguments: [("GroupUUID", uuid)])
         guard let channel = SOAPEnvelope.extractTag("AudioChannel", from: channelXML) else {
             throw UPnPError.invalidResponse
         }
         return channel
     }
 
-    private func sendAction(_ action: String, arguments: [(String, String)] = []) async throws -> String {
-        let controlURL = baseURL.appendingPathComponent(Self.controlPath)
-        var request = URLRequest(url: controlURL)
-        request.httpMethod = "POST"
-        request.setValue("text/xml; charset=\"utf-8\"", forHTTPHeaderField: "Content-Type")
-        request.setValue(
-            SOAPEnvelope.soapAction(action, serviceType: Self.serviceType),
-            forHTTPHeaderField: "SOAPACTION"
+    private func send(_ action: String, arguments: [(String, String)] = []) async throws -> String {
+        try await SOAPEnvelope.send(
+            action: action, arguments: arguments,
+            controlURL: baseURL.appendingPathComponent(Self.controlPath),
+            serviceType: Self.serviceType, session: session
         )
-        request.httpBody = SOAPEnvelope.request(
-            action: action,
-            serviceType: Self.serviceType,
-            includeInstanceID: false,
-            arguments: arguments
-        )
-
-        let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else { throw UPnPError.invalidResponse }
-        let xml = String(decoding: data, as: UTF8.self)
-
-        if httpResponse.statusCode == 500 {
-            if let fault = SOAPEnvelope.parseFault(from: xml) { throw fault }
-            throw UPnPError.httpError(statusCode: 500)
-        }
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw UPnPError.httpError(statusCode: httpResponse.statusCode)
-        }
-        return xml
     }
 }

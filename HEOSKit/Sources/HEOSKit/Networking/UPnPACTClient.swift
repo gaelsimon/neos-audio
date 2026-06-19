@@ -51,42 +51,11 @@ public actor UPnPACTClient {
 
     // MARK: - Private
 
-    @discardableResult
     private func sendAction(_ action: String, arguments: [(String, String)] = []) async throws -> String {
-        let controlURL = baseURL.appendingPathComponent(Self.controlPath)
-        var request = URLRequest(url: controlURL)
-        request.httpMethod = "POST"
-        request.setValue("text/xml; charset=\"utf-8\"", forHTTPHeaderField: "Content-Type")
-        request.setValue(
-            SOAPEnvelope.soapAction(action, serviceType: Self.serviceType),
-            forHTTPHeaderField: "SOAPACTION"
+        try await SOAPEnvelope.send(
+            action: action, arguments: arguments,
+            controlURL: baseURL.appendingPathComponent(Self.controlPath),
+            serviceType: Self.serviceType, session: session
         )
-        request.httpBody = SOAPEnvelope.request(
-            action: action,
-            serviceType: Self.serviceType,
-            includeInstanceID: false,
-            arguments: arguments
-        )
-
-        let (data, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw UPnPError.invalidResponse
-        }
-
-        let xml = String(decoding: data, as: UTF8.self)
-
-        if httpResponse.statusCode == 500 {
-            if let fault = SOAPEnvelope.parseFault(from: xml) {
-                throw fault
-            }
-            throw UPnPError.httpError(statusCode: 500)
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw UPnPError.httpError(statusCode: httpResponse.statusCode)
-        }
-
-        return xml
     }
 }

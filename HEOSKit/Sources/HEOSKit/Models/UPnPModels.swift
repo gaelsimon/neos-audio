@@ -87,4 +87,34 @@ enum SOAPEnvelope {
         let description = extractTag("errorDescription", from: xml) ?? "Unknown error"
         return .soapFault(code: code, description: description)
     }
+
+    /// POST a SOAP action and return the response XML, throwing on fault or HTTP error.
+    static func send(
+        action: String,
+        arguments: [(String, String)] = [],
+        controlURL: URL,
+        serviceType: String,
+        includeInstanceID: Bool = false,
+        session: URLSession
+    ) async throws -> String {
+        var req = URLRequest(url: controlURL)
+        req.httpMethod = "POST"
+        req.setValue("text/xml; charset=\"utf-8\"", forHTTPHeaderField: "Content-Type")
+        req.setValue(soapAction(action, serviceType: serviceType), forHTTPHeaderField: "SOAPACTION")
+        req.httpBody = request(action: action, serviceType: serviceType,
+                               includeInstanceID: includeInstanceID, arguments: arguments)
+
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else { throw UPnPError.invalidResponse }
+        let xml = String(decoding: data, as: UTF8.self)
+
+        if http.statusCode == 500 {
+            if let fault = parseFault(from: xml) { throw fault }
+            throw UPnPError.httpError(statusCode: 500)
+        }
+        guard (200...299).contains(http.statusCode) else {
+            throw UPnPError.httpError(statusCode: http.statusCode)
+        }
+        return xml
+    }
 }
