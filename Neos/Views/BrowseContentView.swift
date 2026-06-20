@@ -287,7 +287,7 @@ struct BrowseContentView: View {
                 let listItems = isTrackList
                     ? browseVM.items.filter { $0.playable && !$0.browsable }
                     : playableItems
-                ForEach(Array(listItems.enumerated()), id: \.offset) { index, item in
+                ForEach(Array(listItems.enumerated()), id: \.element.id) { index, item in
                     Group {
                         if isTrackList {
                             TrackListRow(
