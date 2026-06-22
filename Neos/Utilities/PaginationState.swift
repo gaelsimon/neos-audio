@@ -28,38 +28,35 @@ struct PaginationState {
 
     /// Record a page of items, filtering duplicates. Returns only new (unseen) items.
     mutating func recordPage(_ items: [BrowseItem], serverCount: Int?) -> [BrowseItem] {
-        let effectiveCount = (serverCount ?? 0) > 0 ? serverCount : nil
-        if !items.isEmpty {
-            let newItems = items.filter { seenIDs.insert($0.id).inserted }
-            currentOffset += items.count
-            if totalCount == nil || totalCount == 0 {
-                totalCount = effectiveCount
-            }
-            // Fewer items than page size means we've reached the end.
-            if totalCount == nil || totalCount == 0, items.count < pageSize {
-                totalCount = currentOffset
-            }
-            return newItems
-        } else {
+        let newItems = items.filter { seenIDs.insert($0.id).inserted }
+        currentOffset += items.count
+        if let total = serverCount, total > 0 {
+            if totalCount == nil || totalCount == 0 { totalCount = total }
+        } else if newItems.isEmpty {
+            // Unknown total and this page added nothing new -- empty, or a count=0
+            // service re-serving seen items past the end (SoundCloud ignores the
+            // offset on finite containers). Either way, end of unique content.
             totalCount = currentOffset
-            return []
         }
+        return newItems
     }
 
-    /// Record the initial page of items and seed the seen-IDs set.
-    mutating func recordInitialPage(_ items: [BrowseItem], serverCount: Int?) {
-        for item in items {
-            seenIDs.insert(item.id)
-        }
-        // Some HEOS services report count=0 meaning "unknown", not "zero items".
-        // Treat 0 as nil so the pageSize heuristic below can handle it.
-        let effectiveCount = (serverCount ?? 0) > 0 ? serverCount : nil
-        if let effectiveCount {
-            totalCount = effectiveCount
-        } else if items.count < pageSize {
-            totalCount = items.count
-        }
+    /// Record the initial page, seed the seen-IDs set, and return the page with
+    /// intra-page duplicates removed -- SoundCloud can repeat items within one page,
+    /// and the UI keys rows by item id, which must be unique.
+    @discardableResult
+    mutating func recordInitialPage(_ items: [BrowseItem], serverCount: Int?) -> [BrowseItem] {
+        let newItems = items.filter { seenIDs.insert($0.id).inserted }
         currentOffset = items.count
+        if let total = serverCount, total > 0 {
+            totalCount = total
+        } else if items.isEmpty {
+            totalCount = 0
+        }
+        // A short, non-empty page with no usable total (count=0) does NOT mean
+        // end-of-list: SoundCloud pages in ~44/50-item chunks mid-feed. recordPage
+        // ends pagination when a later fetch yields no new items.
+        return newItems
     }
 
     /// Reset all pagination state for a fresh fetch.
