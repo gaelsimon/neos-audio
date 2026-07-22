@@ -238,7 +238,10 @@ final class SearchViewModel {
 
     // MARK: - Search Execution
 
-    private func executeSearch(query: String) async {
+    /// Runs the search for `query`. Pass `reusingCache: true` for a filter change
+    /// (same query): it only searches target services with no cached results and
+    /// keeps results for services outside the current filter.
+    private func executeSearch(query: String, reusingCache: Bool = false) async {
         SearchHistoryStore.addQuery(query)
         recentQueries = SearchHistoryStore.recentQueries()
         let requestID = searchTracker.next()
@@ -252,27 +255,30 @@ final class SearchViewModel {
         await loadMissingSearchCriteria()
         guard searchTracker.isCurrent(requestID) else { return }
 
-        // Build searchable set from state.searchCriteria; safe because
-        // loadMissingSearchCriteria awaits fully before returning.
-        // Includes both top-level services and discovered sub-sources.
-        // When a service filter is active, only search that specific service.
+        // Target services: the filtered one, or all when no filter is set.
+        // Includes top-level services and discovered sub-sources.
         let allSIDs = Set(allSearchableServices.map(\.sid))
-        let searchableSIDs: Set<Int>
+        let targetSIDs: Set<Int>
         if let filteredSID = selectedServiceFilter {
-            searchableSIDs = allSIDs.intersection([filteredSID])
+            targetSIDs = allSIDs.intersection([filteredSID])
         } else {
-            searchableSIDs = allSIDs
+            targetSIDs = allSIDs
         }
-        let searchable = state.searchCriteria.filter { searchableSIDs.contains($0.key) && !$0.value.isEmpty }
+        var searchable = state.searchCriteria.filter { targetSIDs.contains($0.key) && !$0.value.isEmpty }
+
+        // Filter change: only fetch target services we don't already have.
+        if reusingCache {
+            let cachedSIDs = Set(serviceResults.keys.map(\.sid))
+            searchable = searchable.filter { !cachedSIDs.contains($0.key) }
+        }
+
         for sid in searchable.keys {
             loadingServiceSIDs.insert(sid)
         }
 
-        // Search everything sequentially; one command at a time. The HEOS
-        // device processes browse/search commands single-threaded; concurrent
-        // dispatch (even gated) causes "command under process" responses and
-        // unmatched response misrouting. Results stream to the UI after each
-        // service completes all its criteria.
+        // Search sequentially; the HEOS device processes browse/search commands
+        // single-threaded, so concurrent dispatch causes "command under process"
+        // responses and misrouting. Results stream in as each service completes.
         for (sid, criteria) in searchable {
             guard searchTracker.isCurrent(requestID) else { return }
             await searchService(sid: sid, criteria: criteria, query: query, requestID: requestID)
@@ -280,10 +286,13 @@ final class SearchViewModel {
 
         guard searchTracker.isCurrent(requestID) else { return }
 
-        // Remove results from services that weren't part of this search
-        let searchedSIDs = Set(searchable.keys)
-        for key in Array(serviceResults.keys) where !searchedSIDs.contains(key.sid) {
-            serviceResults.removeValue(forKey: key)
+        // Fresh query only: drop results from services not part of this search.
+        // A filter change keeps them, so switching back to "All" is instant.
+        if !reusingCache {
+            let searchedSIDs = Set(searchable.keys)
+            for key in Array(serviceResults.keys) where !searchedSIDs.contains(key.sid) {
+                serviceResults.removeValue(forKey: key)
+            }
         }
 
         loadingServiceSIDs = []
@@ -449,5 +458,29 @@ final class SearchViewModel {
         } else {
             selectedServiceFilter = sid
         }
+        // A filter change alters which SIDs executeSearch covers, so re-fetch.
+        rerunSearchForCurrentQuery()
+    }
+
+    /// Re-runs the search after a filter change (same query, no typing debounce).
+    /// No-op when every targeted service already has results -- switching is then
+    /// a pure display filter handled by `filteredServiceSIDs`.
+    private func rerunSearchForCurrentQuery() {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, hasUnloadedTargetServices else { return }
+        isSearching = true
+        searchTask.replace(with: Task {
+            guard !Task.isCancelled else { return }
+            await executeSearch(query: trimmed, reusingCache: true)
+        })
+    }
+
+    /// True when the current service filter targets a service with no cached results.
+    private var hasUnloadedTargetServices: Bool {
+        let cachedSIDs = Set(serviceResults.keys.map(\.sid))
+        if let sid = selectedServiceFilter {
+            return !cachedSIDs.contains(sid)
+        }
+        return allSearchableServices.contains { !cachedSIDs.contains($0.sid) }
     }
 }
