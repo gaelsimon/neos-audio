@@ -25,6 +25,8 @@ final class AppState: StateUpdater {
     var connectionState: ConnectionState = .disconnected
     var discoveredDevices: [DiscoveredDevice] = []
     var connectedDevice: DiscoveredDevice?
+    /// Serials of known stereo/surround followers, hidden from the pre-connect discovery list.
+    var knownFollowerSerials: Set<String> = FollowerCache.load()
 
     // Power
     var isPoweredOn: Bool = true
@@ -115,6 +117,11 @@ final class AppState: StateUpdater {
         players.collapsingGroups(groups, expanded: multiRoomGroupIDs)
     }
 
+    /// Discovery list with known stereo/surround followers hidden, so a pair shows as one card.
+    var visibleDiscoveredDevices: [DiscoveredDevice] {
+        discoveredDevices.hidingKnownFollowers(knownFollowerSerials)
+    }
+
     /// Group name when the player leads a *collapsed* group, else its own name.
     func displayName(for player: Player) -> String {
         if let group = groups.group(ledBy: player.pid), !multiRoomGroupIDs.contains(group.gid) {
@@ -174,6 +181,11 @@ final class AppState: StateUpdater {
 
     func setMultiRoomGroups(_ gids: Set<Int>) {
         self.multiRoomGroupIDs = gids
+        // Remember this system's stereo/surround followers so the next launch hides them pre-connect.
+        guard !groups.isEmpty else { return }
+        let followers = groups.collapsedFollowerSerials(players: players, expanded: gids)
+        knownFollowerSerials = followers
+        FollowerCache.save(followers)
     }
 
     func setMusicSources(_ sources: [MusicSource]) {

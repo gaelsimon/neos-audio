@@ -36,3 +36,20 @@ public extension Array where Element == Player {
         return filter { !hidden.contains($0.pid) }
     }
 }
+
+public extension Array where Element == SpeakerGroup {
+    /// Serials of collapsed-group followers (stereo/surround members), resolved via `players`.
+    func collapsedFollowerSerials(players: [Player], expanded: Set<Int> = []) -> Set<String> {
+        let followerPIDs = Set(filter { !expanded.contains($0.gid) }.flatMap { $0.members.map(\.pid) })
+        guard !followerPIDs.isEmpty else { return [] }
+        return Set(players.filter { followerPIDs.contains($0.pid) }.map(\.serial).filter { !$0.isEmpty })
+    }
+}
+
+public extension Array where Element == DiscoveredDevice {
+    /// Hides devices that are known stereo/surround followers (by serial), so a pair shows as one card.
+    func hidingKnownFollowers(_ followerSerials: Set<String>) -> [DiscoveredDevice] {
+        guard !followerSerials.isEmpty else { return self }
+        return filter { $0.serialNumber.isEmpty || !followerSerials.contains($0.serialNumber) }
+    }
+}

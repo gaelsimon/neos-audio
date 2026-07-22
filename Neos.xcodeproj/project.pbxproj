@@ -76,6 +76,7 @@
 		85764AD105C44E17A3802FDC /* ServiceConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1181CD0362BB83B407E2663E /* ServiceConfigView.swift */; };
 		879D7D64748F5DF9C6AE22B9 /* NowPlayingCanvasScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383FF0D84BD7F55F61801554 /* NowPlayingCanvasScreen.swift */; };
 		8871ADC8F0BBB6C60C7D56FF /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 273D79415E28F115DE532CF1 /* MockData.swift */; };
+		88900A9AAB8C56ECBB057C2A /* FollowerCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9031C15F4727281C9794BEDB /* FollowerCache.swift */; };
 		88B3EB1856A3E921DE2B767E /* TrackListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B5BF2A378AB393273F0E9D4 /* TrackListRow.swift */; };
 		8A50A357A8AB7D6E935E1FBB /* StationImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC288A8E7CB02C0BC265FD8 /* StationImageStore.swift */; };
 		8AAE490EB336A14BFA936DD8 /* RequestTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69ED4EF743B3D4FAD3F936A0 /* RequestTracker.swift */; };
@@ -254,6 +255,7 @@
 		8B5BF2A378AB393273F0E9D4 /* TrackListRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackListRow.swift; sourceTree = "<group>"; };
 		8CF406002C37C42E58EDCCF7 /* InputSelectorGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputSelectorGrid.swift; sourceTree = "<group>"; };
 		90044F8478E5D42DDE8EC252 /* DemoNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoNavigationTests.swift; sourceTree = "<group>"; };
+		9031C15F4727281C9794BEDB /* FollowerCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowerCache.swift; sourceTree = "<group>"; };
 		90E55AE0C7006ED130F8BF45 /* HomePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomePreferences.swift; sourceTree = "<group>"; };
 		91597F46308DB5FFF462EB48 /* QueueViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueViewModelTests.swift; sourceTree = "<group>"; };
 		91D076663E56C2D7781A497B /* LiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTests.swift; sourceTree = "<group>"; };
@@ -476,6 +478,7 @@
 				4E9FF08DEF156D5FF9EC8A9B /* AppState.swift */,
 				0ABFC3AC950F31B5B72C396B /* BrowseState.swift */,
 				9EA00DA8E807AB81B7B3B7D9 /* DeviceCache.swift */,
+				9031C15F4727281C9794BEDB /* FollowerCache.swift */,
 				DAF7C9ED214C9AD984E3889B /* HomeCacheStore.swift */,
 				90E55AE0C7006ED130F8BF45 /* HomePreferences.swift */,
 				665534F8F9737292E81E1371 /* ImageCacheState.swift */,
@@ -795,6 +798,7 @@
 				DDC85D6F8AC3CBF84B7A7644 /* ErrorStateView.swift in Sources */,
 				65C6DA9EC49F7EBDE5411712 /* FadingHorizontalScroll.swift in Sources */,
 				7A456AB801CF1CD3DDECFCB0 /* FilterChipRow.swift in Sources */,
+				88900A9AAB8C56ECBB057C2A /* FollowerCache.swift in Sources */,
 				98F8CB8CBC0F974CCA5B9E51 /* GroupViewModel.swift in Sources */,
 				545EE17BFB7BC135E6523EB3 /* HEOSConstants.swift in Sources */,
 				DB9476AB36D13138C91F1F4F /* HistoryLoader.swift in Sources */,

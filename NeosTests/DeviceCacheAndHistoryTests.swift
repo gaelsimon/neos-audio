@@ -47,6 +47,30 @@ final class DeviceCacheTests: XCTestCase {
     }
 }
 
+final class FollowerCacheTests: XCTestCase {
+
+    override func tearDown() {
+        FollowerCache.clear()
+        super.tearDown()
+    }
+
+    func testSaveAndLoadRoundtrip() {
+        FollowerCache.save(["SN-A", "SN-B"])
+        XCTAssertEqual(FollowerCache.load(), ["SN-A", "SN-B"])
+    }
+
+    func testLoadReturnsEmptyWhenUnset() {
+        FollowerCache.clear()
+        XCTAssertTrue(FollowerCache.load().isEmpty)
+    }
+
+    func testClearRemovesData() {
+        FollowerCache.save(["SN-A"])
+        FollowerCache.clear()
+        XCTAssertTrue(FollowerCache.load().isEmpty)
+    }
+}
+
 final class SearchHistoryStoreTests: XCTestCase {
 
     override func tearDown() {
