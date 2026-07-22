@@ -52,6 +52,8 @@ struct NeosApp: App {
                         .typography(.secondary)
                 }
                 .frame(width: 280, height: 100)
+                .background(DS.Colors.background)
+                .preferredColorScheme(.dark)
             }
         }
         .menuBarExtraStyle(.window)

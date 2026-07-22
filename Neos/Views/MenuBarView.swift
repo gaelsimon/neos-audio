@@ -61,6 +61,9 @@ struct MenuBarView: View {
             ConnectionStatusView(state: state)
         }
         .frame(width: 280)
+        // App is dark-only; force it here so the popover stays legible under the light OS theme.
+        .background(DS.Colors.background)
+        .preferredColorScheme(.dark)
         .onAppear { playerVM.resyncPlaybackState() }
     }
 }
