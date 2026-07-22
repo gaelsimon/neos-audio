@@ -319,10 +319,17 @@ final class BrowseViewModel {
 
     // MARK: - Navigation Actions
 
+    /// Cancel an in-flight browse and clear its loading flags when leaving the view.
+    private func cancelBrowsing() {
+        browseTask.cancel()
+        isLoading = false
+        isLoadingMore = false
+    }
+
     func navigateToHome() {
         pushEntry(destination: .home, browseStack: [])
         navigationTapCount += 1
-        browseTask.cancel()
+        cancelBrowsing()
         items = []
     }
 
@@ -362,19 +369,19 @@ final class BrowseViewModel {
     func selectQueue() {
         pushEntry(destination: .queue, browseStack: [])
         navigationTapCount += 1
-        browseTask.cancel()
+        cancelBrowsing()
         items = []
     }
 
     func navigateToSettings() {
         pushEntry(destination: .settings, browseStack: [])
-        browseTask.cancel()
+        cancelBrowsing()
         items = []
     }
 
     func navigateToAmpSettings() {
         pushEntry(destination: .ampSettings, browseStack: [])
-        browseTask.cancel()
+        cancelBrowsing()
         items = []
     }
 

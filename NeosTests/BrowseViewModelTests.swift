@@ -543,6 +543,27 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testNavigatingAwayMidLoadClearsLoadingState() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = BrowseViewModel(
+            service: mock,
+            state: state,
+            browseSource: { _ in
+                try? await Task.sleep(for: .milliseconds(50))
+                return BrowseResult(items: [BrowseItem(name: "Folder", cid: "c1", browsable: true)])
+            }
+        )
+
+        vm.selectSource(MusicSource(sid: 1, name: "TIDAL"))
+        XCTAssertTrue(vm.isLoading)
+
+        // Leaving mid-fetch must clear the spinner.
+        vm.navigateToHome()
+        XCTAssertFalse(vm.isLoading)
+    }
+
+    @MainActor
     func testRetryRefetchesCurrentBreadcrumb() async {
         let state = AppState()
         let mock = MockAudioService()
