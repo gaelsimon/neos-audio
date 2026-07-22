@@ -75,6 +75,24 @@ final class PaginationStateTests: XCTestCase {
     }
 
     @MainActor
+    func testRecordInitialPageRemovesIntraPageDuplicates() {
+        var pagination = PaginationState(pageSize: 50)
+
+        // SoundCloud can repeat an item within a single page; the returned list
+        // must be unique (UI keys rows by id), while the offset tracks raw count.
+        let items = [
+            BrowseItem(name: "A", mid: "m1"),
+            BrowseItem(name: "B", mid: "m2"),
+            BrowseItem(name: "A again", mid: "m1")
+        ]
+
+        let deduped = pagination.recordInitialPage(items, serverCount: nil)
+
+        XCTAssertEqual(deduped.map(\.id), ["m1", "m2"])
+        XCTAssertEqual(pagination.currentOffset, 3)
+    }
+
+    @MainActor
     func testRecordInitialPageWithNilServerCount() {
         var pagination = PaginationState(pageSize: 10)
         let items = [BrowseItem(name: "A", cid: "c1")]
@@ -82,8 +100,9 @@ final class PaginationStateTests: XCTestCase {
         pagination.recordInitialPage(items, serverCount: nil)
 
         XCTAssertEqual(pagination.currentOffset, 1)
-        // Fewer items than pageSize → infers end-of-list
-        XCTAssertEqual(pagination.totalCount, 1)
+        // Unknown total: a short page is not assumed to be the end; the next
+        // fetch (no new items) is what ends pagination.
+        XCTAssertNil(pagination.totalCount)
     }
 
     @MainActor
@@ -234,15 +253,15 @@ final class PaginationStateTests: XCTestCase {
     }
 
     @MainActor
-    func testInitialPageFewerThanPageSizeSetsTotalCount() {
+    func testInitialShortPageWithUnknownCountKeepsPaginating() {
         var pagination = PaginationState(pageSize: 50)
 
-        // Server returns 3 items with no count; fewer than page size
+        // Server returns 3 items with no count. A short page is NOT treated as
+        // end-of-list; SoundCloud returns short pages mid-feed.
         let items = (0..<3).map { BrowseItem(name: "I\($0)", cid: "c\($0)") }
         pagination.recordInitialPage(items, serverCount: nil)
 
-        // Should infer end-of-list from under-sized page
-        XCTAssertEqual(pagination.totalCount, 3)
+        XCTAssertNil(pagination.totalCount)
         XCTAssertEqual(pagination.currentOffset, 3)
     }
 
@@ -260,17 +279,36 @@ final class PaginationStateTests: XCTestCase {
     }
 
     @MainActor
-    func testRecordPageFewerThanPageSizeSetsTotalCount() {
+    func testUnknownCountShortPagesKeepPagingUntilNoNewItems() {
         var pagination = PaginationState(pageSize: 10)
 
-        // First page: full
-        let page1 = (0..<10).map { BrowseItem(name: "P1\($0)", cid: "p1c\($0)") }
+        // Short pages with unknown count keep paging as long as they bring new items.
+        let page1 = (0..<7).map { BrowseItem(name: "P1\($0)", cid: "p1c\($0)") }
         _ = pagination.recordPage(page1, serverCount: nil)
         XCTAssertNil(pagination.totalCount)
 
-        // Second page: partial (3 items); end of list
         let page2 = (0..<3).map { BrowseItem(name: "P2\($0)", cid: "p2c\($0)") }
         _ = pagination.recordPage(page2, serverCount: nil)
-        XCTAssertEqual(pagination.totalCount, 13)
+        XCTAssertNil(pagination.totalCount)
+
+        // A page that yields no new items ends pagination.
+        let page3 = pagination.recordPage(page2, serverCount: nil)
+        XCTAssertTrue(page3.isEmpty)
+        XCTAssertEqual(pagination.totalCount, pagination.currentOffset)
+    }
+
+    @MainActor
+    func testUnknownCountReservedDuplicatesEndPagination() {
+        var pagination = PaginationState(pageSize: 50)
+
+        // SoundCloud finite container: ignores the offset and re-serves the same
+        // items, never returning an empty page. The all-duplicate page ends paging.
+        let items = (0..<3).map { BrowseItem(name: "I\($0)", cid: "c\($0)") }
+        pagination.recordInitialPage(items, serverCount: 0)
+        XCTAssertNil(pagination.totalCount)
+
+        let refetched = pagination.recordPage(items, serverCount: 0)
+        XCTAssertTrue(refetched.isEmpty)
+        XCTAssertNotNil(pagination.totalCount)
     }
 }
