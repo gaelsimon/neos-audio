@@ -78,7 +78,9 @@ jobs:
           ### Install
           1. Download \`Neos-${VERSION}.dmg\` below
           2. Open the DMG, drag Neos to Applications
-          3. First launch: right-click Neos → Open (the DMG is unsigned)
+          3. First launch (the DMG is unsigned): right-click Neos → Open → Open.
+             Alternatively, System Settings → Privacy & Security → Open Anyway,
+             or run \`xattr -dr com.apple.quarantine /Applications/Neos.app\`.
 
           ### Checksum
           \`\`\`

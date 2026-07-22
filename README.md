@@ -57,6 +57,17 @@ Speaker grouping (multi-room) is implemented but hasn't been tested with multipl
 3. Launch Neos - it appears in your menu bar
 4. Your speaker should be discovered automatically
 
+### First launch (Gatekeeper)
+
+The DMG is unsigned and unnotarized (see [Known Limitations](#known-limitations)), so macOS blocks it on first open. This is a one-time step per version — pick whichever you prefer:
+
+- **Right-click → Open:** in Applications, right-click (or Control-click) Neos → **Open** → **Open** in the dialog.
+- **Privacy & Security:** try to open Neos normally, then go to  → System Settings → Privacy & Security and click **Open Anyway**.
+- **Terminal:** clear the quarantine flag directly:
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/Neos.app
+  ```
+
 ## How It Works
 
 Neos talks directly to your speaker over the local network. No cloud, no internet required for playback.
