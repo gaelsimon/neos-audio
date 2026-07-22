@@ -14,9 +14,9 @@ struct DiscoveryView: View {
                 Spacer()
                     .frame(maxHeight: 100)
 
-                if state.isDiscovering && state.discoveredDevices.isEmpty {
+                if state.isDiscovering && state.visibleDiscoveredDevices.isEmpty {
                     discoveringState
-                } else if !state.discoveredDevices.isEmpty {
+                } else if !state.visibleDiscoveredDevices.isEmpty {
                     devicesFoundState
                 } else {
                     noDevicesState
@@ -61,7 +61,7 @@ struct DiscoveryView: View {
                 .foregroundStyle(DS.Colors.textSecondary)
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: DS.Spacing.md) {
-                ForEach(state.discoveredDevices) { device in
+                ForEach(state.visibleDiscoveredDevices) { device in
                     DiscoveredDeviceCard(device: device) {
                         speakerVM.connectToDevice(device)
                     }

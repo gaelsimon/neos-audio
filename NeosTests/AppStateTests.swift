@@ -452,4 +452,54 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.displayPlayers.map(\.pid), [1, 2])
         XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen Left")
     }
+
+    // MARK: - Stereo follower discovery
+
+    @MainActor
+    func testStereoPairFollowerHiddenFromDiscoveryList() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = AppState()
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left", serialNumber: "SN-L"),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right", serialNumber: "SN-R")
+        ]
+        state.players = [
+            Player(pid: 1, name: "Kitchen Left", serial: "SN-L"),
+            Player(pid: 2, name: "Kitchen Right", serial: "SN-R")
+        ]
+        state.setGroups([SpeakerGroup(gid: 1, name: "Kitchen", players: [
+            GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+        ])])
+
+        // Stereo classification (members not multi-room) records the follower serial and persists it.
+        state.setMultiRoomGroups([])
+        XCTAssertEqual(state.knownFollowerSerials, ["SN-R"])
+        XCTAssertEqual(state.visibleDiscoveredDevices.map(\.serialNumber), ["SN-L"])
+        XCTAssertEqual(FollowerCache.load(), ["SN-R"])
+    }
+
+    @MainActor
+    func testMultiRoomMembersNotHiddenFromDiscoveryList() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = AppState()
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", serialNumber: "SN-L"),
+            DiscoveredDevice(host: "10.0.0.2", serialNumber: "SN-R")
+        ]
+        state.players = [
+            Player(pid: 1, name: "Kitchen", serial: "SN-L"),
+            Player(pid: 2, name: "Bedroom", serial: "SN-R")
+        ]
+        state.setGroups([SpeakerGroup(gid: 1, name: "Everywhere", players: [
+            GroupPlayer(name: "Kitchen", pid: 1, role: .leader),
+            GroupPlayer(name: "Bedroom", pid: 2, role: .member)
+        ])])
+
+        state.setMultiRoomGroups([1])
+        XCTAssertTrue(state.knownFollowerSerials.isEmpty)
+        XCTAssertEqual(state.visibleDiscoveredDevices.count, 2)
+    }
 }
