@@ -42,6 +42,12 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          # Semver pre-release: any hyphen suffix (e.g. 1.1.0-beta.1) ships as a prerelease, not Latest.
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -64,6 +70,7 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           DMG: ${{ steps.checksum.outputs.dmg }}
           SHA: ${{ steps.checksum.outputs.sha256 }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
           # workflow_dispatch path may need to create the tag itself
           if ! git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -72,7 +79,11 @@ jobs:
           fi
 
           NOTES_FILE=$(mktemp)
-          cat > "$NOTES_FILE" <<EOF
+          if [ "$PRERELEASE" = "true" ]; then
+            echo "> Beta build for testing. Not a stable release." >> "$NOTES_FILE"
+            echo "" >> "$NOTES_FILE"
+          fi
+          cat >> "$NOTES_FILE" <<EOF
           ## Neos $TAG
 
           ### Install
@@ -90,8 +101,10 @@ jobs:
           ### What's new
           EOF
 
-          gh release create "$TAG" "$DMG" \
-            --title "Neos $TAG" \
-            --notes-file "$NOTES_FILE" \
-            --generate-notes \
-            --verify-tag
+          FLAGS=(--title "Neos $TAG" --notes-file "$NOTES_FILE" --generate-notes --verify-tag)
+          if [ "$PRERELEASE" = "true" ]; then
+            FLAGS+=(--prerelease --latest=false)
+          else
+            FLAGS+=(--latest)
+          fi
+          gh release create "$TAG" "$DMG" "${FLAGS[@]}"
