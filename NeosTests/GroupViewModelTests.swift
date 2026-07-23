@@ -110,4 +110,49 @@ final class GroupViewModelTests: XCTestCase {
         await yieldForTask()
         XCTAssertNotNil(state.error)
     }
+
+    // MARK: - Per-speaker volume
+
+    @MainActor
+    func testLoadMemberVolumesPopulatesEachMember() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.playerVolume = 37
+        let vm = GroupViewModel(service: mock, state: state)
+        let group = SpeakerGroup(gid: 1, name: "Den + Bath", players: [
+            GroupPlayer(name: "Den", pid: 5003, role: .leader),
+            GroupPlayer(name: "Bath", pid: 5004, role: .member)
+        ])
+
+        vm.loadMemberVolumes(for: group)
+
+        await yieldForTask()
+        XCTAssertEqual(state.playerVolumes[5003], 37)
+        XCTAssertEqual(state.playerVolumes[5004], 37)
+    }
+
+    @MainActor
+    func testSetMemberVolumeCallsServiceWithPid() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+
+        vm.setMemberVolume(pid: 5004, level: 25)
+
+        // Debounced ~100ms; poll rather than fixed sleep.
+        for _ in 0..<100 where !mock.calls.contains("setVolume:5004:25") {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertTrue(mock.calls.contains("setVolume:5004:25"))
+    }
+
+    @MainActor
+    func testSetAdjustingMemberVolumeTogglesState() {
+        let state = AppState()
+        let vm = GroupViewModel(service: MockAudioService(), state: state)
+        vm.setAdjustingMemberVolume(pid: 5004, true)
+        XCTAssertTrue(state.adjustingVolumePIDs.contains(5004))
+        vm.setAdjustingMemberVolume(pid: 5004, false)
+        XCTAssertFalse(state.adjustingVolumePIDs.contains(5004))
+    }
 }

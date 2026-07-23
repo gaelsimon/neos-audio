@@ -21,6 +21,7 @@ public protocol StateUpdater: AnyObject, Sendable {
     func setError(_ error: AppError?)
     func setGroupVolume(gid: Int, level: Int)
     func setGroupMuted(gid: Int, muted: Bool)
+    func setPlayerVolume(pid: Int, level: Int)
     func addDiscoveredDevice(_ device: DiscoveredDevice)
     func setPowerState(_ isPoweredOn: Bool)
     func setMaxVolume(_ level: Int?)
@@ -44,6 +45,9 @@ public extension StateUpdater {
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities) {}
     func setNowPlayingOptions(_ options: [ServiceOption]) {}
     func setMultiRoomGroups(_ gids: Set<Int>) {}
+    func setPlayerVolume(pid _: Int, level _: Int) {
+        // Optional; only conformers that track per-speaker volume implement this.
+    }
 
     func applyPlayerSnapshot(_ snapshot: PlayerSnapshot) {
         setPlayState(snapshot.playState)

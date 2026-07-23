@@ -59,6 +59,9 @@ final class AppState: StateUpdater {
     // Groups
     var groupVolumes: [Int: Int] = [:]
     var groupMutes: [Int: Bool] = [:]
+    // Per-speaker volume (by pid), for individual sliders in a multi-room group.
+    var playerVolumes: [Int: Int] = [:]
+    var adjustingVolumePIDs: Set<Int> = []
 
     // Browse (forwarded from sub-state)
     var musicSources: [MusicSource] {
@@ -309,6 +312,20 @@ final class AppState: StateUpdater {
 
     func setGroupMuted(gid: Int, muted: Bool) {
         self.groupMutes[gid] = muted
+    }
+
+    func setPlayerVolume(pid: Int, level: Int) {
+        guard !adjustingVolumePIDs.contains(pid) else { return }
+        self.playerVolumes[pid] = level
+    }
+
+    /// Marks a speaker's slider as being dragged so incoming events don't fight the drag.
+    func setAdjustingVolume(pid: Int, _ adjusting: Bool) {
+        if adjusting {
+            adjustingVolumePIDs.insert(pid)
+        } else {
+            adjustingVolumePIDs.remove(pid)
+        }
     }
 
     func setPowerState(_ isPoweredOn: Bool) {

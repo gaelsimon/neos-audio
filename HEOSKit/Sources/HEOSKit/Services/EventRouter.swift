@@ -127,8 +127,15 @@ actor EventRouter {
     }
 
     private func handlePlayerVolumeChanged(_ event: HEOSEvent) async {
+        let pid = event.message["pid"].flatMap(Int.init)
+        let level = event.message["level"].flatMap(Int.init)
+        // Track every player's volume (for per-speaker sliders), not only the selected one.
+        if let pid, let level {
+            await stateUpdater.setPlayerVolume(pid: pid, level: level)
+        }
+        // Keep the main single-slider state in sync only for the selected player.
         guard await isSelectedPlayer(event) else { return }
-        if let level = event.message["level"].flatMap(Int.init) {
+        if let level {
             await stateUpdater.setVolume(level)
         }
         if let muteStr = event.message["mute"] {
