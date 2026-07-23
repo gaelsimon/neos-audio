@@ -92,6 +92,15 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         if let error = previousError { throw error }
     }
 
+    var playerVolume: Int = 50
+    var getVolumeError: Error?
+
+    func getVolume(pid: Int) async throws -> Int {
+        calls.append("getVolume:\(pid)")
+        if let error = getVolumeError { throw error }
+        return playerVolume
+    }
+
     func setVolume(pid: Int, level: Int) async throws {
         calls.append("setVolume:\(pid):\(level)")
         if let error = setVolumeError { throw error }

@@ -22,6 +22,7 @@ public protocol PlayerControlService: Sendable {
     func stop(pid: Int) async throws
     func next(pid: Int) async throws
     func previous(pid: Int) async throws
+    func getVolume(pid: Int) async throws -> Int
     func setVolume(pid: Int, level: Int) async throws
     func toggleMute(pid: Int) async throws
     func setPlayMode(pid: Int, repeat repeatMode: RepeatMode, shuffle: ShuffleMode) async throws

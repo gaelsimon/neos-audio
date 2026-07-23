@@ -220,6 +220,11 @@ public actor HEOSService {
         try await requirePlayerService().playPrevious(pid: pid)
     }
 
+    public func getVolume(pid: Int) async throws -> Int {
+        try await ensureConnected()
+        return try await requirePlayerService().getVolume(pid: pid)
+    }
+
     public func setVolume(pid: Int, level: Int) async throws {
         try await ensureConnected()
         await volumeThrottle?.submit((pid: pid, level: level))

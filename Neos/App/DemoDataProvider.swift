@@ -18,6 +18,17 @@ enum DemoDataProvider {
     static let denPID = 5_003
     static let bathPID = 5_004
 
+    /// Per-speaker demo volume so the group volume sliders show distinct values.
+    static func volume(for pid: Int) -> Int {
+        switch pid {
+        case kitchenLeftPID: return 42
+        case kitchenRightPID: return 38
+        case denPID: return 55
+        case bathPID: return 30
+        default: return 45
+        }
+    }
+
     /// The player that should be auto-selected (standalone speaker, lineout == 0).
     static let playerID = home150PID
 

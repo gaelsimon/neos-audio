@@ -149,21 +149,14 @@ struct AmpSettingsView: View {
 
             ForEach(group.players, id: \.pid) { player in
                 HStack(spacing: DS.Spacing.sm) {
-                    if player.role == .leader {
-                        Image(systemName: DS.Icons.star)
-                            .font(DS.IconFont.sm)
-                            .foregroundStyle(DS.Colors.accent)
-                    } else {
-                        Image(systemName: DS.Icons.speaker)
-                            .font(DS.IconFont.sm)
-                            .foregroundStyle(DS.Colors.textSecondary)
-                    }
+                    Image(systemName: player.role == .leader ? DS.Icons.star : DS.Icons.speaker)
+                        .font(DS.IconFont.sm)
+                        .foregroundStyle(player.role == .leader ? DS.Colors.accent : DS.Colors.textSecondary)
                     Text(player.name)
                         .typography(.secondary)
-                    if player.role == .leader {
-                        Text("(leader)")
-                            .typography(.secondary)
-                    }
+                        .lineLimit(1)
+                        .frame(width: 88, alignment: .leading)
+                    MemberVolumeSlider(state: state, groupVM: groupVM, pid: player.pid)
                 }
             }
 
@@ -189,6 +182,7 @@ struct AmpSettingsView: View {
         }
         .padding(DS.Spacing.md)
         .background(DS.Colors.surfaceContainer, in: RoundedRectangle(cornerRadius: DS.Radius.medium))
+        .onAppear { groupVM.loadMemberVolumes(for: group) }
     }
 
     // MARK: - Group Volume Slider
@@ -374,5 +368,64 @@ struct AmpSettingsView: View {
                 }
             }
         )
+    }
+}
+
+/// One speaker's volume slider in a group card. Reads live volume from `playerVolumes[pid]`.
+private struct MemberVolumeSlider: View {
+    let state: AppState
+    let groupVM: GroupViewModel
+    let pid: Int
+
+    @State private var sliderVolume: Double = 0
+    @State private var isDragging = false
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            GeometryReader { geo in
+                let width = geo.size.width
+                let fraction = sliderVolume / 100
+
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.15))
+                        .frame(height: 4)
+                    Capsule()
+                        .fill(DS.Colors.accent)
+                        .frame(width: max(0, fraction * width), height: 4)
+                }
+                .frame(height: geo.size.height)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            if !isDragging {
+                                isDragging = true
+                                groupVM.setAdjustingMemberVolume(pid: pid, true)
+                            }
+                            let clamped = max(0, min(1, value.location.x / width))
+                            sliderVolume = clamped * 100
+                            groupVM.setMemberVolume(pid: pid, level: Int(sliderVolume))
+                        }
+                        .onEnded { _ in
+                            isDragging = false
+                            groupVM.setAdjustingMemberVolume(pid: pid, false)
+                        }
+                )
+            }
+            .frame(height: 14)
+
+            Text("\(Int(sliderVolume))")
+                .typography(.secondary)
+                .monospacedDigit()
+                .frame(width: 24, alignment: .trailing)
+        }
+        .onAppear { sliderVolume = Double(state.playerVolumes[pid] ?? 0) }
+        .onChange(of: state.playerVolumes[pid]) { _, newValue in
+            if !isDragging, let newValue { sliderVolume = Double(newValue) }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Speaker volume")
+        .accessibilityValue("\(Int(sliderVolume)) percent")
     }
 }

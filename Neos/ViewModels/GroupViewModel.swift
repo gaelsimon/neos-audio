@@ -7,6 +7,8 @@ final class GroupViewModel {
     private let service: any AudioService
     private let state: AppState
     private let groupVolumeTask = CancellableTaskHandle()
+    private let memberVolumeTask = CancellableTaskHandle()
+    private let memberVolumesLoadTask = CancellableTaskHandle()
     private let loadGroupsTask = CancellableTaskHandle()
     private let createGroupTask = CancellableTaskHandle()
     private let ungroupTask = CancellableTaskHandle()
@@ -84,5 +86,35 @@ final class GroupViewModel {
                 state.error = .groupFailed(error.localizedDescription)
             }
         })
+    }
+
+    /// Sets one speaker's volume, debounced.
+    func setMemberVolume(pid: Int, level: Int) {
+        memberVolumeTask.replace(with: Task {
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            do {
+                try await service.setVolume(pid: pid, level: level)
+            } catch {
+                state.error = .groupFailed(error.localizedDescription)
+            }
+        })
+    }
+
+    /// Fetches each member's current volume for the sliders.
+    func loadMemberVolumes(for group: SpeakerGroup) {
+        memberVolumesLoadTask.replace(with: Task {
+            for player in group.players {
+                guard !Task.isCancelled else { return }
+                if let level = try? await service.getVolume(pid: player.pid) {
+                    guard !Task.isCancelled else { return }
+                    state.setPlayerVolume(pid: player.pid, level: level)
+                }
+            }
+        })
+    }
+
+    func setAdjustingMemberVolume(pid: Int, _ adjusting: Bool) {
+        state.setAdjustingVolume(pid: pid, adjusting)
     }
 }

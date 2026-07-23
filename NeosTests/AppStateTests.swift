@@ -502,4 +502,38 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(state.knownFollowerSerials.isEmpty)
         XCTAssertEqual(state.visibleDiscoveredDevices.count, 2)
     }
+
+    // MARK: - Per-speaker volume
+
+    @MainActor
+    func testSetPlayerVolumeStoresPerPid() {
+        let state = AppState()
+        state.setPlayerVolume(pid: 5001, level: 42)
+        state.setPlayerVolume(pid: 5002, level: 38)
+        XCTAssertEqual(state.playerVolumes[5001], 42)
+        XCTAssertEqual(state.playerVolumes[5002], 38)
+    }
+
+    @MainActor
+    func testSetPlayerVolumeIgnoredWhileAdjusting() {
+        let state = AppState()
+        state.setPlayerVolume(pid: 5001, level: 40)
+        state.setAdjustingVolume(pid: 5001, true)
+
+        state.setPlayerVolume(pid: 5001, level: 90) // event during drag, must be ignored
+
+        XCTAssertEqual(state.playerVolumes[5001], 40)
+
+        state.setAdjustingVolume(pid: 5001, false)
+        state.setPlayerVolume(pid: 5001, level: 90)
+        XCTAssertEqual(state.playerVolumes[5001], 90)
+    }
+
+    @MainActor
+    func testAdjustingOnePidDoesNotBlockAnother() {
+        let state = AppState()
+        state.setAdjustingVolume(pid: 5001, true)
+        state.setPlayerVolume(pid: 5002, level: 55)
+        XCTAssertEqual(state.playerVolumes[5002], 55)
+    }
 }
