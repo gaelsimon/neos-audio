@@ -45,7 +45,9 @@ public extension StateUpdater {
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities) {}
     func setNowPlayingOptions(_ options: [ServiceOption]) {}
     func setMultiRoomGroups(_ gids: Set<Int>) {}
-    func setPlayerVolume(pid: Int, level: Int) {}
+    func setPlayerVolume(pid _: Int, level _: Int) {
+        // Optional; only conformers that track per-speaker volume implement this.
+    }
 
     func applyPlayerSnapshot(_ snapshot: PlayerSnapshot) {
         setPlayState(snapshot.playState)
