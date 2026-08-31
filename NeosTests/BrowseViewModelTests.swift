@@ -836,6 +836,10 @@ final class BrowseViewModelTests: XCTestCase {
 
         XCTAssertNil(state.toast)
         XCTAssertEqual(vm.playingItemID, second.id)
+
+        // Drain the slow play: a task still in flight competes with the next test's yields.
+        try await Task.sleep(for: .milliseconds(250))
+        XCTAssertNil(vm.playingItemID)
     }
 
     @MainActor

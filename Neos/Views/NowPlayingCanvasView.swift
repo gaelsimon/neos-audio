@@ -131,7 +131,7 @@ struct NowPlayingCanvasView: View {
 
         // Use cached image from CachedAsyncImage if available, otherwise download
         let nsImage: NSImage?
-        if let cached = ImageCache.shared.get(url) {
+        if let cached = await ImageCache.shared.load(url) {
             nsImage = cached
         } else {
             do {
