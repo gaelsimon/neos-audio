@@ -61,7 +61,7 @@ struct NeosApp: App {
             }
         } label: {
             // The status item renders at launch, so this boots the app even with no window.
-            Image(systemName: menuBarIcon)
+            Image(nsImage: menuBarIcon)
                 .onAppear { initializeServices() }
         }
         .menuBarExtraStyle(.window)
@@ -102,8 +102,8 @@ struct NeosApp: App {
         }
     }
 
-    private var menuBarIcon: String {
-        menuBarIconName(connectionState: appState.connectionState, isPlaying: appState.isPlaying)
+    private var menuBarIcon: NSImage {
+        menuBarVinyl(connectionState: appState.connectionState, isPlaying: appState.isPlaying).image()
     }
 
     /// Space is owned by a key monitor, which reads the first responder as the key lands.
