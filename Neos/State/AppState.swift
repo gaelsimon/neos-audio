@@ -27,6 +27,10 @@ final class AppState: StateUpdater {
     var connectedDevice: DiscoveredDevice?
     /// Serials of known stereo/surround followers, hidden from the pre-connect discovery list.
     var knownFollowerSerials: Set<String> = FollowerCache.load()
+    /// Follower names, used for discovery entries without a serial (Bonjour reports none).
+    var knownFollowerNames: Set<String> = FollowerCache.loadFollowerNames()
+    /// Leader serial and leader name → pair room name, for naming a pair before connecting.
+    var knownPairNames: [String: String] = FollowerCache.loadPairNames()
 
     // Power
     var isPoweredOn: Bool = true
@@ -124,15 +128,23 @@ final class AppState: StateUpdater {
 
     /// Discovery list with known stereo/surround followers hidden, so a pair shows as one card.
     var visibleDiscoveredDevices: [DiscoveredDevice] {
-        discoveredDevices.hidingKnownFollowers(knownFollowerSerials)
+        discoveredDevices.hidingKnownFollowers(knownFollowerSerials, names: knownFollowerNames)
     }
 
     /// Group name when the player leads a *collapsed* group, else its own name.
     func displayName(for player: Player) -> String {
         if let group = groups.group(ledBy: player.pid), !multiRoomGroupIDs.contains(group.gid) {
-            return group.name
+            return group.collapsedDisplayName
         }
         return player.name
+    }
+
+    /// Pre-connect name for a discovered device; a known pair leader shows its room name.
+    func displayName(for device: DiscoveredDevice) -> String {
+        if !device.serialNumber.isEmpty, let paired = knownPairNames[device.serialNumber] {
+            return paired
+        }
+        return knownPairNames[device.friendlyName] ?? device.friendlyName
     }
 
     /// Display name for the current selection (group name for a collapsed leader).
@@ -191,6 +203,12 @@ final class AppState: StateUpdater {
         let followers = groups.collapsedFollowerSerials(players: players, expanded: gids)
         knownFollowerSerials = followers
         FollowerCache.save(followers)
+        let followerNames = groups.collapsedFollowerNames(expanded: gids)
+        knownFollowerNames = followerNames
+        FollowerCache.saveFollowerNames(followerNames)
+        let pairNames = groups.collapsedPairNames(players: players, expanded: gids)
+        knownPairNames = pairNames
+        FollowerCache.savePairNames(pairNames)
     }
 
     func setMusicSources(_ sources: [MusicSource]) {

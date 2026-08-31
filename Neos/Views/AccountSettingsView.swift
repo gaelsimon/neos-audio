@@ -17,7 +17,6 @@ struct AccountSettingsView: View {
                     .padding(.bottom, DS.Spacing.sm)
 
                 accountSection
-                generalSection
                 servicesSection
                 playbackSection
                 cacheSection
@@ -171,34 +170,6 @@ struct AccountSettingsView: View {
                     hiddenSIDs: homeVM.hiddenSIDs,
                     onToggle: { sid in homeVM.toggleServiceVisibility(sid: sid) }
                 )
-            }
-        }
-    }
-
-    // MARK: - General Section
-
-    private var generalSection: some View {
-        sectionCard(header: "General") {
-            HStack {
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text("Open at Login")
-                        .typography(.bodyMedium)
-                    Text(settingsVM.launchAtLoginNeedsApproval
-                         ? "Waiting for approval in System Settings › General › Login Items."
-                         : "Start Neos automatically when you log in.")
-                        .typography(.secondary)
-                }
-
-                Spacer()
-
-                Toggle("", isOn: Binding(
-                    get: { settingsVM.launchAtLoginEnabled },
-                    set: { settingsVM.setLaunchAtLogin($0) }
-                ))
-                .toggleStyle(.switch)
-                .tint(DS.Colors.accent)
-                .labelsHidden()
-                .accessibilityIdentifier(AccessibilityID.Settings.launchAtLoginToggle)
             }
         }
     }

@@ -3,8 +3,12 @@ import NeosDomain
 
 struct DiscoveredDeviceCard: View {
     let device: DiscoveredDevice
+    /// Resolved by AppState so a known stereo pair shows its room name, not the leader's.
+    var name: String?
     let onConnect: () -> Void
     @State private var isHovered = false
+
+    private var displayName: String { name ?? device.friendlyName }
 
     var body: some View {
         Button(action: onConnect) {
@@ -14,11 +18,11 @@ struct DiscoveredDeviceCard: View {
                     .foregroundStyle(DS.Colors.textSecondary)
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text(device.friendlyName.isEmpty || device.friendlyName == device.host
+                    Text(displayName.isEmpty || displayName == device.host
                          ? device.host
-                         : device.friendlyName)
+                         : displayName)
                         .typography(.secondaryEmphasis)
-                    if !device.friendlyName.isEmpty, device.friendlyName != device.host {
+                    if !displayName.isEmpty, displayName != device.host {
                         Text(device.host)
                             .typography(.secondary)
                             .foregroundStyle(DS.Colors.textTertiary)

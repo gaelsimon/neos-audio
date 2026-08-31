@@ -93,8 +93,6 @@ enum AccessibilityID {
         static let signOutButton = "settings.signOutButton"
         static let signedInUser = "settings.signedInUser"
         static let signInError = "settings.signInError"
-        // General
-        static let launchAtLoginToggle = "settings.launchAtLoginToggle"
         // Volume Limit
         static let volumeLimitToggle = "settings.volumeLimitToggle"
         static let volumeLimitSlider = "settings.volumeLimitSlider"

@@ -154,7 +154,7 @@ struct QueuePanelView: View {
                         isStation: false,
                         isNowPlaying: true,
                         showRemoveButton: false,
-                        onTap: { }
+                        onTap: nil
                     )
                     .id("now-playing")
                 } else {
@@ -166,7 +166,7 @@ struct QueuePanelView: View {
                         isStation: state.nowPlaying.station != nil,
                         isNowPlaying: true,
                         showRemoveButton: false,
-                        onTap: { }
+                        onTap: nil
                     )
                     .id("now-playing")
                 }

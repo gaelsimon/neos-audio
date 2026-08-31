@@ -62,7 +62,7 @@ struct DiscoveryView: View {
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: DS.Spacing.md) {
                 ForEach(state.visibleDiscoveredDevices) { device in
-                    DiscoveredDeviceCard(device: device) {
+                    DiscoveredDeviceCard(device: device, name: state.displayName(for: device)) {
                         speakerVM.connectToDevice(device)
                     }
                 }

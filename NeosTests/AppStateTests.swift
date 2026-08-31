@@ -503,6 +503,115 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.visibleDiscoveredDevices.count, 2)
     }
 
+    // MARK: - Stereo pair naming
+
+    @MainActor
+    private func makePairState() -> AppState {
+        let state = AppState()
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left", serialNumber: "SN-L"),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right", serialNumber: "SN-R")
+        ]
+        state.players = [
+            Player(pid: 1, name: "Kitchen Left", serial: "SN-L"),
+            Player(pid: 2, name: "Kitchen Right", serial: "SN-R")
+        ]
+        // HEOS reports the leader's name as the group name for a configured pair.
+        state.setGroups([SpeakerGroup(gid: 1, name: "Kitchen Left", players: [
+            GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+        ])])
+        return state
+    }
+
+    @MainActor
+    func testPairLeaderShowsRoomNameNotLeaderName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([])
+
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen")
+    }
+
+    @MainActor
+    func testPairNameIsPersistedForPreConnectDiscovery() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([])
+
+        // Keyed by serial and by leader name; discovery may report either.
+        let expected = ["SN-L": "Kitchen", "Kitchen Left": "Kitchen"]
+        XCTAssertEqual(state.knownPairNames, expected)
+        XCTAssertEqual(FollowerCache.loadPairNames(), expected)
+    }
+
+    @MainActor
+    func testDiscoveredPairLeaderUsesCachedRoomName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setMultiRoomGroups([])
+
+        let leader = state.visibleDiscoveredDevices[0]
+        XCTAssertEqual(state.displayName(for: leader), "Kitchen")
+    }
+
+    @MainActor
+    func testBonjourPairLeaderWithoutSerialStillShowsRoomName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setMultiRoomGroups([])
+
+        // Bonjour reports no serial, so only the leader name can carry the mapping.
+        let bonjourLeader = DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left")
+        XCTAssertEqual(state.displayName(for: bonjourLeader), "Kitchen")
+    }
+
+    @MainActor
+    func testBonjourFollowerWithoutSerialIsHidden() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setMultiRoomGroups([])
+
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left"),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right")
+        ]
+
+        XCTAssertEqual(state.visibleDiscoveredDevices.map(\.friendlyName), ["Kitchen Left"])
+    }
+
+    @MainActor
+    func testUnknownDeviceKeepsItsFriendlyName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = AppState()
+        let device = DiscoveredDevice(host: "10.0.0.9", friendlyName: "Office", serialNumber: "SN-X")
+
+        XCTAssertEqual(state.displayName(for: device), "Office")
+    }
+
+    @MainActor
+    func testCorrectGroupNameIsLeftAlone() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setGroups([SpeakerGroup(gid: 1, name: "Kitchen", players: [
+            GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+        ])])
+
+        state.setMultiRoomGroups([])
+
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen")
+    }
+
     // MARK: - Per-speaker volume
 
     @MainActor

@@ -122,4 +122,23 @@ struct GroupTopologyTests {
         let unknown = [DiscoveredDevice(host: "10.0.0.9", friendlyName: "Mystery")]
         #expect(unknown.hidingKnownFollowers(["SN-RIGHT"]).count == 1)
     }
+
+    @Test func hidingKnownFollowersMatchesNamesWhenSerialIsMissing() {
+        // Bonjour results carry no serial, so the follower can only be matched by name.
+        let bonjour = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left"),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right")
+        ]
+
+        let visible = bonjour.hidingKnownFollowers([], names: ["Kitchen Right"])
+
+        #expect(visible.map(\.friendlyName) == ["Kitchen Left"])
+    }
+
+    @Test func hidingKnownFollowersPrefersSerialOverName() {
+        // A serial is authoritative: a name collision must not hide a different speaker.
+        let devices = [DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Right", serialNumber: "SN-OTHER")]
+
+        #expect(devices.hidingKnownFollowers(["SN-RIGHT"], names: ["Kitchen Right"]).count == 1)
+    }
 }

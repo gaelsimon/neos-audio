@@ -220,7 +220,7 @@ struct SearchResultsView: View {
                 ForEach(items) { item in
                     HomeCard(
                         imageURL: item.resolvedImageURL,
-                        title: item.name,
+                        title: item.displayTitle,
                         subtitle: item.artist,
                         isCircular: circular,
                         onTap: { handleItemTap(item, sid: sid) }
@@ -315,7 +315,7 @@ struct SearchResultsView: View {
         guard let source = searchVM.musicSource(for: effectiveSID) else { return }
         searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex)
         if let cid = item.cid {
-            browseVM.navigateToContainer(source: source, containerName: item.name, cid: cid, imageURL: item.imageURL)
+            browseVM.navigateToContainer(source: source, containerName: item.displayTitle, cid: cid, imageURL: item.imageURL)
         } else {
             browseVM.selectSource(source)
         }

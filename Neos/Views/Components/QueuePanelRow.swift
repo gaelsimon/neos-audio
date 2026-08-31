@@ -8,7 +8,8 @@ struct QueuePanelRow: View {
     let isStation: Bool
     let isNowPlaying: Bool
     let showRemoveButton: Bool
-    let onTap: () -> Void
+    /// Nil on display-only rows, such as the standalone now-playing entry.
+    var onTap: (() -> Void)?
     var onRemove: (() -> Void)?
 
     @State private var isHovered = false
@@ -26,17 +27,21 @@ struct QueuePanelRow: View {
         .frame(height: 54)
         .background(rowBackground, in: RoundedRectangle(cornerRadius: DS.Radius.small))
         .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
+        .onTapGesture { onTap?() }
         .onHover { isHovered = $0 }
-        .contextMenu { menuItems }
+        .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
     }
 
     // MARK: - Context Menu
 
+    private var hasActions: Bool { onTap != nil || onRemove != nil }
+
     @ViewBuilder
     private var menuItems: some View {
-        Button { onTap() } label: {
-            Label("Play", systemImage: DS.Icons.playing)
+        if let onTap {
+            Button { onTap() } label: {
+                Label("Play", systemImage: DS.Icons.playing)
+            }
         }
         if let onRemove {
             Button(role: .destructive) { onRemove() } label: {

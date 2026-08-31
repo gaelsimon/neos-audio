@@ -19,6 +19,8 @@ public actor HEOSConnection {
     private var pendingCommands: [UInt64: PendingCommand] = [:]
     private var receiveTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
+    /// Chains socket writes so they reach the device in the order commands were registered.
+    private var writeChain: Task<Void, Never>?
 
     public init(transport: any TransportProtocol) {
         self.transport = transport
@@ -64,10 +66,8 @@ public actor HEOSConnection {
         nextCommandID &+= 1
 
         let data = Data(commandString.utf8)
-        try await transport.send(data)
 
-        HEOSLogger.connection.debug("Sent command #\(id): \(commandString.trimmingCharacters(in: .whitespacesAndNewlines))")
-
+        // Registered before sending: an instant reply during `transport.send` would go unmatched.
         return try await withCheckedThrowingContinuation { continuation in
             let timeoutTask = Task {
                 try? await Task.sleep(for: timeout)
@@ -79,6 +79,19 @@ public actor HEOSConnection {
             }
             let pending = PendingCommand(id: id, commandKey: commandKey, continuation: continuation, timeoutTask: timeoutTask, timeoutDuration: timeout)
             pendingCommands[id] = pending
+
+            let previousWrite = writeChain
+            writeChain = Task {
+                await previousWrite?.value
+                do {
+                    try await transport.send(data)
+                    HEOSLogger.connection.debug("Sent command #\(id): \(commandString.trimmingCharacters(in: .whitespacesAndNewlines))")
+                } catch {
+                    guard let failed = pendingCommands.removeValue(forKey: id) else { return }
+                    failed.timeoutTask.cancel()
+                    failed.continuation.resume(throwing: error)
+                }
+            }
         }
     }
 
