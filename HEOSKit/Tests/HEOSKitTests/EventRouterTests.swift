@@ -222,6 +222,53 @@ struct EventRouterTests {
         #expect(state.nonFatalReports[0].source == "event.system_error")
     }
 
+    // MARK: - Timeout Retry
+
+    @Test @MainActor func nowPlayingChangedRetriesAfterTimeout() async throws {
+        let transport = MockTCPTransport(autoRespond: false)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        let playerService = PlayerService(connection: connection)
+        let state = MockStateUpdater()
+        state.selectedPlayerID = 42
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: playerService,
+            groupService: nil,
+            browseService: nil,
+            serviceTimeout: .milliseconds(300)
+        )
+        // Responses yielded before the receive stream is live would be dropped.
+        await waitUntil { await transport.isReceiving }
+        let mediaJSON = """
+        {"heos":{"command":"player/get_now_playing_media","result":"success","message":"pid=42"},\
+        "payload":{"type":"song","song":"Recovered Song","album":"Test Album","artist":"Test Artist",\
+        "image_url":"","mid":"m1","qid":"1","sid":"5","album_id":""}}
+        """
+        let errorJSON = """
+        {"heos":{"command":"player/get_now_playing_media","result":"fail","message":"eid=2&text=timeout"}}
+        """
+        let event = makeEvent("player_now_playing_changed", message: ["pid": "42"])
+
+        let handleTask = Task { await router.handle(event) }
+
+        // First fetch: held past the router timeout, then failed so the abandoned command frees its slot.
+        await waitUntil { await transport.sentData.count == 1 }
+        try? await Task.sleep(for: .milliseconds(500))
+        await transport.enqueueResponse(errorJSON)
+        await transport.deliverNextResponse()
+
+        // Retry fetch: answered the moment it is sent, leaving no window to time out again.
+        await transport.enqueueResponse(mediaJSON)
+        await transport.setAutoRespond(true)
+
+        await handleTask.value
+
+        #expect(await transport.sentData.count == 2)
+        #expect(state.nowPlaying?.song == "Recovered Song")
+        await connection.disconnect()
+    }
+
     // MARK: - Unknown Event
 
     @Test @MainActor func unknownEventDoesNothing() async {
@@ -253,5 +300,17 @@ struct EventRouterTests {
         await router.handle(event)
 
         #expect(state.playState == nil)
+    }
+}
+
+/// Polls until `condition` holds or the timeout elapses, keeping timing-sensitive tests CI-safe.
+private func waitUntil(
+    timeout: Duration = .seconds(10),
+    _ condition: @Sendable () async -> Bool
+) async {
+    let deadline = ContinuousClock.now + timeout
+    while ContinuousClock.now < deadline {
+        if await condition() { return }
+        try? await Task.sleep(for: .milliseconds(5))
     }
 }

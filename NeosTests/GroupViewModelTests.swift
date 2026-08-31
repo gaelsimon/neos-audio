@@ -147,6 +147,23 @@ final class GroupViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testConcurrentMemberVolumesBothSent() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+
+        // Two sliders moving at once must not cancel each other's debounce.
+        vm.setMemberVolume(pid: 5003, level: 30)
+        vm.setMemberVolume(pid: 5004, level: 60)
+
+        for _ in 0..<100 where !(mock.calls.contains("setVolume:5003:30") && mock.calls.contains("setVolume:5004:60")) {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertTrue(mock.calls.contains("setVolume:5003:30"))
+        XCTAssertTrue(mock.calls.contains("setVolume:5004:60"))
+    }
+
+    @MainActor
     func testSetAdjustingMemberVolumeTogglesState() {
         let state = AppState()
         let vm = GroupViewModel(service: MockAudioService(), state: state)

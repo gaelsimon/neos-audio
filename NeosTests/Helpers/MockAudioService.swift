@@ -106,8 +106,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         if let error = setVolumeError { throw error }
     }
 
+    var toggleMuteError: Error?
+
     func toggleMute(pid: Int) async throws {
         calls.append("toggleMute:\(pid)")
+        if let error = toggleMuteError { throw error }
     }
 
     func setPlayMode(pid: Int, repeat repeatMode: RepeatMode, shuffle: ShuffleMode) async throws {

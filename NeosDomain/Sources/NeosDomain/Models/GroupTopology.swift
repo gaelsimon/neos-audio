@@ -1,7 +1,6 @@
 import Foundation
 
-// Stereo/surround bonds (members carry LEFT/RIGHT/… channels) collapse to one leader row;
-// plain multi-room groups (all NORMAL) stay expanded. Missing channel info → collapse (safe).
+// Stereo bonds collapse to one row; plain multi-room stays expanded; unknown channels collapse.
 
 public let normalAudioChannel = "NORMAL"
 

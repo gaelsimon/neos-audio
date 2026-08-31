@@ -5,25 +5,26 @@ import Foundation
 @Suite("Throttle Tests")
 struct ThrottleTests {
 
-    // MARK: - Basic Execution
+    // MARK: - Leading Edge
 
-    @Test func submitExecutesActionAfterInterval() async {
+    @Test func firstSubmitExecutesImmediately() async {
         let tracker = ValueTracker<Int>()
-        let throttle = Throttle<Int>(interval: .milliseconds(50)) { value in
+        let throttle = Throttle<Int>(interval: .seconds(3)) { value in
             await tracker.record(value)
         }
 
         await throttle.submit(42)
 
-        await waitUntil { await tracker.values == [42] }
+        // Emission must not wait for the interval; the generous window only absorbs CI load.
+        await waitUntil(timeout: .seconds(2)) { await tracker.values == [42] }
         #expect(await tracker.values == [42])
     }
 
-    // MARK: - Debounce Behavior
+    // MARK: - Throttle Behavior
 
-    @Test func rapidSubmitsOnlyExecuteLatestValue() async {
+    @Test func rapidSubmitsEmitFirstThenLatestValue() async {
         let tracker = ValueTracker<Int>()
-        let throttle = Throttle<Int>(interval: .milliseconds(50)) { value in
+        let throttle = Throttle<Int>(interval: .milliseconds(200)) { value in
             await tracker.record(value)
         }
 
@@ -31,8 +32,8 @@ struct ThrottleTests {
         await throttle.submit(2)
         await throttle.submit(3)
 
-        await waitUntil { await tracker.values == [3] }
-        #expect(await tracker.values == [3])
+        await waitUntil { await tracker.values == [1, 3] }
+        #expect(await tracker.values == [1, 3])
     }
 
     @Test func submitsSpacedApartAllExecute() async {
@@ -49,21 +50,41 @@ struct ThrottleTests {
         #expect(await tracker.values == [1, 2])
     }
 
-    // MARK: - Cancellation
-
-    @Test func cancelPreventsExecution() async {
+    @Test func continuousSubmitsEmitIntermediateAndFinalValues() async {
         let tracker = ValueTracker<Int>()
-        let throttle = Throttle<Int>(interval: .milliseconds(50)) { value in
+        let throttle = Throttle<Int>(interval: .milliseconds(100)) { value in
             await tracker.record(value)
         }
 
+        for value in 1...30 {
+            await throttle.submit(value)
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
+        await waitUntil { await tracker.values.last == 30 }
+        let values = await tracker.values
+        #expect(values.first == 1)
+        #expect(values.last == 30)
+        #expect(values.count >= 3)
+        #expect(values.count < 30)
+    }
+
+    // MARK: - Cancellation
+
+    @Test func cancelPreventsTrailingExecution() async {
+        let tracker = ValueTracker<Int>()
+        let throttle = Throttle<Int>(interval: .milliseconds(300)) { value in
+            await tracker.record(value)
+        }
+
+        await throttle.submit(1)
+        await waitUntil { await tracker.values == [1] }
         await throttle.submit(99)
         await throttle.cancel()
-        // Negative assertion: wait well past the interval, then confirm nothing fired.
-        try? await Task.sleep(for: .milliseconds(250))
+        // Negative assertion: wait well past the interval, then confirm the trailing value never fired.
+        try? await Task.sleep(for: .milliseconds(700))
 
-        let values = await tracker.values
-        #expect(values.isEmpty)
+        #expect(await tracker.values == [1])
     }
 
     @Test func submitAfterCancelWorks() async {
@@ -76,8 +97,8 @@ struct ThrottleTests {
         await throttle.cancel()
         await throttle.submit(2)
 
-        await waitUntil { await tracker.values == [2] }
-        #expect(await tracker.values == [2])
+        await waitUntil { await tracker.values.last == 2 }
+        #expect(await tracker.values.last == 2)
     }
 
     // MARK: - Error Handling
@@ -114,8 +135,7 @@ struct ThrottleTests {
 
 // MARK: - Helpers
 
-/// Polls until `condition` holds or the timeout elapses — a deterministic replacement for the
-/// fixed sleeps that flaked under CI load. A genuine failure still surfaces after the timeout.
+/// Polls until `condition` holds; a deterministic replacement for sleeps that flaked under CI load.
 private func waitUntil(
     timeout: Duration = .seconds(5),
     _ condition: @Sendable () async -> Bool

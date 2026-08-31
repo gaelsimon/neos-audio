@@ -163,20 +163,21 @@ final class PlayerViewModel {
         }
     }
 
-    private var preMuteVolume: Int?
-
     func toggleMute() {
-        guard state.selectedPlayerID != nil else { return }
-        if state.volume == 0 {
-            // Unmute: restore previous volume (default to 20 if unknown)
-            let restore = preMuteVolume ?? 20
-            preMuteVolume = nil
-            setVolume(restore)
-        } else {
-            // Mute: save current volume, set to 0
-            preMuteVolume = state.volume
-            setVolume(0)
-        }
+        guard let pid = state.selectedPlayerID else { return }
+        let wasMuted = state.isMuted
+        // Optimistic; the device confirms through player_volume_changed
+        state.setMuted(!wasMuted)
+        muteTask.replace(with: Task {
+            do {
+                try await service.toggleMute(pid: pid)
+            } catch {
+                guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
+                // Revert
+                state.setMuted(wasMuted)
+                state.error = .playbackFailed(error.localizedDescription)
+            }
+        })
     }
 
     func cycleRepeatMode() {

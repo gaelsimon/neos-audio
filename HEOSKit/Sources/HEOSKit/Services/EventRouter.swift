@@ -9,18 +9,20 @@ actor EventRouter {
     private let playerService: PlayerService?
     private let groupService: GroupService?
     private let browseService: BrowseService?
-    private static let serviceTimeout: Duration = .seconds(5)
+    private let serviceTimeout: Duration
 
     init(
         stateUpdater: StateUpdater,
         playerService: PlayerService?,
         groupService: GroupService?,
-        browseService: BrowseService?
+        browseService: BrowseService?,
+        serviceTimeout: Duration = .seconds(5)
     ) {
         self.stateUpdater = stateUpdater
         self.playerService = playerService
         self.groupService = groupService
         self.browseService = browseService
+        self.serviceTimeout = serviceTimeout
     }
 
     func handle(_ event: HEOSEvent) async {
@@ -50,14 +52,15 @@ actor EventRouter {
     /// Throws `TransportError` on connection failures (caller should bail).
     private func withTimeout<T: Sendable>(
         _ label: String,
-        timeout: Duration = EventRouter.serviceTimeout,
+        timeout: Duration? = nil,
         operation: @Sendable @escaping () async throws -> T
     ) async throws -> T? {
+        let interval = timeout ?? serviceTimeout
         do {
             return try await withThrowingTaskGroup(of: T.self) { group in
                 group.addTask { try await operation() }
                 group.addTask {
-                    try await Task.sleep(for: timeout)
+                    try await Task.sleep(for: interval)
                     throw TransportError.timeout
                 }
                 guard let result = try await group.next() else {
@@ -67,6 +70,7 @@ actor EventRouter {
                 return result
             }
         } catch let transportError as TransportError {
+            if case .timeout = transportError { return nil }
             // Connection-level failure; retrying won't help
             HEOSLogger.service.debug("EventRouter: \(label) skipped (transport unavailable)")
             throw transportError

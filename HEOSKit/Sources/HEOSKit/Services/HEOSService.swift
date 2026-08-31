@@ -22,8 +22,8 @@ public actor HEOSService {
     let connectionCoordinator: ConnectionCoordinator
     var isWakingUp = false
 
-    var volumeThrottle: Throttle<(pid: Int, level: Int)>?
-    var groupVolumeThrottle: Throttle<(gid: Int, level: Int)>?
+    var volumeThrottles: [Int: Throttle<Int>] = [:]
+    var groupVolumeThrottles: [Int: Throttle<Int>] = [:]
 
     let stateUpdater: StateUpdater
 
@@ -63,7 +63,7 @@ public actor HEOSService {
             browseService: self.browseService
         )
 
-        setupVolumeThrottles()
+        await resetVolumeThrottles()
         await stateUpdater.setConnectionState(.connected)
 
         // Register for events first so we don't miss state changes during initial load
@@ -92,8 +92,7 @@ public actor HEOSService {
         avrEventTask = nil
         await connectionCoordinator.cancelReconnection()
         await stopContinuousDiscovery()
-        await volumeThrottle?.cancel()
-        await groupVolumeThrottle?.cancel()
+        await resetVolumeThrottles()
         await avrClient?.disconnect()
         avrClient = nil
         volumeLimitTask?.cancel()
@@ -227,7 +226,7 @@ public actor HEOSService {
 
     public func setVolume(pid: Int, level: Int) async throws {
         try await ensureConnected()
-        await volumeThrottle?.submit((pid: pid, level: level))
+        await volumeThrottle(for: pid).submit(level)
     }
 
     public func toggleMute(pid: Int) async throws {
@@ -289,7 +288,7 @@ public actor HEOSService {
 
     public func setGroupVolume(gid: Int, level: Int) async throws {
         try await ensureConnected()
-        await groupVolumeThrottle?.submit((gid: gid, level: level))
+        await groupVolumeThrottle(for: gid).submit(level)
     }
 
     public func toggleGroupMute(gid: Int) async throws {

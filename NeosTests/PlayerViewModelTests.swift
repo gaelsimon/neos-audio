@@ -179,7 +179,7 @@ final class PlayerViewModelTests: XCTestCase {
     // MARK: - toggleMute
 
     @MainActor
-    func testToggleMuteSavesAndRestoresVolume() {
+    func testToggleMuteCallsServiceAndKeepsVolume() async {
         let state = AppState()
         state.selectedPlayerID = 1
         state.setVolume(40)
@@ -187,27 +187,55 @@ final class PlayerViewModelTests: XCTestCase {
         let mock = MockAudioService()
         let vm = PlayerViewModel(service: mock, state: state)
 
-        // Mute
         vm.toggleMute()
-        XCTAssertEqual(state.volume, 0)
 
-        // Unmute - restores to 40
-        vm.toggleMute()
+        await yieldForTask()
+        XCTAssertTrue(mock.calls.contains("toggleMute:1"))
+        XCTAssertTrue(state.isMuted)
         XCTAssertEqual(state.volume, 40)
     }
 
     @MainActor
-    func testToggleMuteDefaultsTo20WhenNoSavedVolume() {
+    func testToggleMuteUnmutesWhenMuted() async {
         let state = AppState()
         state.selectedPlayerID = 1
-        state.setVolume(0)
-        state.setMaxVolume(100)
+        state.setMuted(true)
         let mock = MockAudioService()
         let vm = PlayerViewModel(service: mock, state: state)
 
-        // Unmute with no saved volume
         vm.toggleMute()
-        XCTAssertEqual(state.volume, 20)
+
+        await yieldForTask()
+        XCTAssertTrue(mock.calls.contains("toggleMute:1"))
+        XCTAssertFalse(state.isMuted)
+    }
+
+    @MainActor
+    func testToggleMuteRevertsOnFailure() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        mock.toggleMuteError = NSError(domain: "test", code: 1)
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.toggleMute()
+
+        await yieldForTask()
+        XCTAssertFalse(state.isMuted)
+        XCTAssertNotNil(state.error)
+    }
+
+    @MainActor
+    func testToggleMuteWithoutSelectedPlayerDoesNothing() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.toggleMute()
+
+        await yieldForTask()
+        XCTAssertFalse(mock.calls.contains(where: { $0.hasPrefix("toggleMute") }))
+        XCTAssertFalse(state.isMuted)
     }
 
     // MARK: - cycleRepeatMode

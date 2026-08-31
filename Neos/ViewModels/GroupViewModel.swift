@@ -7,7 +7,7 @@ final class GroupViewModel {
     private let service: any AudioService
     private let state: AppState
     private let groupVolumeTask = CancellableTaskHandle()
-    private let memberVolumeTask = CancellableTaskHandle()
+    @ObservationIgnored private var memberVolumeTasks: [Int: CancellableTaskHandle] = [:]
     private let memberVolumesLoadTask = CancellableTaskHandle()
     private let loadGroupsTask = CancellableTaskHandle()
     private let createGroupTask = CancellableTaskHandle()
@@ -88,9 +88,11 @@ final class GroupViewModel {
         })
     }
 
-    /// Sets one speaker's volume, debounced.
+    /// Sets one speaker's volume, debounced per speaker so sliders never cancel each other.
     func setMemberVolume(pid: Int, level: Int) {
-        memberVolumeTask.replace(with: Task {
+        let handle = memberVolumeTasks[pid] ?? CancellableTaskHandle()
+        memberVolumeTasks[pid] = handle
+        handle.replace(with: Task {
             try? await Task.sleep(for: .milliseconds(100))
             guard !Task.isCancelled else { return }
             do {

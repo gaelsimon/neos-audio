@@ -175,19 +175,37 @@ extension HEOSService {
         }
     }
 
-    func setupVolumeThrottles() {
-        volumeThrottle = Throttle(interval: .milliseconds(100), action: { [weak self] args in
-            try await self?.playerService?.setVolume(pid: args.pid, level: args.level)
+    /// Returns the throttle for one player, creating it lazily so each pid debounces independently.
+    func volumeThrottle(for pid: Int) -> Throttle<Int> {
+        if let throttle = volumeThrottles[pid] { return throttle }
+        let throttle = Throttle<Int>(interval: .milliseconds(100), action: { [weak self] level in
+            try await self?.playerService?.setVolume(pid: pid, level: level)
         }, onError: { [weak self] error in
             guard let self else { return }
             await self.stateUpdater.reportNonFatal(source: "volumeThrottle", message: error.localizedDescription)
         })
-        groupVolumeThrottle = Throttle(interval: .milliseconds(100), action: { [weak self] args in
-            try await self?.groupService?.setGroupVolume(gid: args.gid, level: args.level)
+        volumeThrottles[pid] = throttle
+        return throttle
+    }
+
+    /// Returns the throttle for one group, creating it lazily so each gid debounces independently.
+    func groupVolumeThrottle(for gid: Int) -> Throttle<Int> {
+        if let throttle = groupVolumeThrottles[gid] { return throttle }
+        let throttle = Throttle<Int>(interval: .milliseconds(100), action: { [weak self] level in
+            try await self?.groupService?.setGroupVolume(gid: gid, level: level)
         }, onError: { [weak self] error in
             guard let self else { return }
             await self.stateUpdater.reportNonFatal(source: "groupVolumeThrottle", message: error.localizedDescription)
         })
+        groupVolumeThrottles[gid] = throttle
+        return throttle
+    }
+
+    func resetVolumeThrottles() async {
+        for throttle in volumeThrottles.values { await throttle.cancel() }
+        for throttle in groupVolumeThrottles.values { await throttle.cancel() }
+        volumeThrottles.removeAll()
+        groupVolumeThrottles.removeAll()
     }
 
     func loadInitialState(cachedPlayerID: Int? = nil) async {
