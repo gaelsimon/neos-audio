@@ -119,6 +119,25 @@ struct ThrottleTests {
         #expect(await errorTracker.values.count == 1)
     }
 
+    @Test func failingBurstReportsOneErrorNotOnePerValue() async {
+        let errorTracker = ValueTracker<String>()
+        // Every value lands in the same window even on a loaded runner; a reopened one would log twice.
+        let throttle = Throttle<Int>(
+            interval: .milliseconds(200),
+            action: { _ in throw TestError.intentional },
+            onError: { error in await errorTracker.record(error.localizedDescription) }
+        )
+
+        // A drag against a dead connection used to log one failure per emission.
+        for value in 1...10 {
+            await throttle.submit(value)
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        try? await Task.sleep(for: .milliseconds(800))
+
+        #expect(await errorTracker.values.count == 1)
+    }
+
     @Test func actionErrorWithoutOnErrorDoesNotCrash() async {
         let ran = ValueTracker<Bool>()
         let throttle = Throttle<Int>(interval: .milliseconds(30)) { _ in

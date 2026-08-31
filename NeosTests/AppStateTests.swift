@@ -80,6 +80,27 @@ final class AppStateTests: XCTestCase {
         XCTAssertFalse(state.isLoadingTrack)
     }
 
+    @MainActor
+    func testPlaybackStartingKeepsLoadingUntilTrackArrives() {
+        let state = AppState()
+        state.isLoadingTrack = true
+
+        // A waking amp reports play long before it can describe the track.
+        state.setPlayState(.play)
+
+        XCTAssertTrue(state.isLoadingTrack)
+    }
+
+    @MainActor
+    func testTrackArrivingClearsLoadingFlag() {
+        let state = AppState()
+        state.isLoadingTrack = true
+
+        state.setNowPlaying(NowPlayingMedia(song: "Song", mid: "m1"))
+
+        XCTAssertFalse(state.isLoadingTrack)
+    }
+
     // MARK: - setNowPlaying
 
     @MainActor
@@ -585,6 +606,37 @@ final class AppStateTests: XCTestCase {
         ]
 
         XCTAssertEqual(state.visibleDiscoveredDevices.map(\.friendlyName), ["Kitchen Left"])
+    }
+
+    @MainActor
+    func testDemoDataNeverTouchesTheRealCaches() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.persistsDiscoveryCaches = false
+
+        state.setMultiRoomGroups([])
+
+        XCTAssertTrue(state.knownFollowerNames.isEmpty)
+        XCTAssertTrue(FollowerCache.loadFollowerNames().isEmpty)
+        XCTAssertTrue(FollowerCache.loadPairNames().isEmpty)
+    }
+
+    @MainActor
+    func testUngroupingClearsTheHidingCaches() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setMultiRoomGroups([])
+        XCTAssertFalse(state.knownFollowerNames.isEmpty)
+
+        // The pair was taken apart, so the follower must become selectable again.
+        state.setGroups([])
+        state.setMultiRoomGroups([])
+
+        XCTAssertTrue(state.knownFollowerNames.isEmpty)
+        XCTAssertTrue(state.knownPairNames.isEmpty)
+        XCTAssertTrue(FollowerCache.loadFollowerNames().isEmpty)
     }
 
     @MainActor

@@ -175,10 +175,13 @@ extension HEOSService {
         }
     }
 
+    /// One command per target per interval: the speaker firmware is not built for a 10 Hz stream.
+    static let volumeThrottleInterval: Duration = .milliseconds(300)
+
     /// Returns the throttle for one player, creating it lazily so each pid debounces independently.
     func volumeThrottle(for pid: Int) -> Throttle<Int> {
         if let throttle = volumeThrottles[pid] { return throttle }
-        let throttle = Throttle<Int>(interval: .milliseconds(100), action: { [weak self] level in
+        let throttle = Throttle<Int>(interval: Self.volumeThrottleInterval, action: { [weak self] level in
             try await self?.playerService?.setVolume(pid: pid, level: level)
         }, onError: { [weak self] error in
             guard let self else { return }
@@ -191,7 +194,7 @@ extension HEOSService {
     /// Returns the throttle for one group, creating it lazily so each gid debounces independently.
     func groupVolumeThrottle(for gid: Int) -> Throttle<Int> {
         if let throttle = groupVolumeThrottles[gid] { return throttle }
-        let throttle = Throttle<Int>(interval: .milliseconds(100), action: { [weak self] level in
+        let throttle = Throttle<Int>(interval: Self.volumeThrottleInterval, action: { [weak self] level in
             try await self?.groupService?.setGroupVolume(gid: gid, level: level)
         }, onError: { [weak self] error in
             guard let self else { return }

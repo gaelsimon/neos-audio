@@ -47,6 +47,8 @@ enum DemoDataProvider {
     // MARK: - Public Entry Point
 
     static func populate(_ state: AppState) {
+        // Demo topology is fictional; keep it out of the persisted discovery caches.
+        state.persistsDiscoveryCaches = false
         state.setConnectionState(.connected)
 
         state.connectedDevice = DiscoveredDevice(

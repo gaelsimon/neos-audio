@@ -42,6 +42,16 @@ enum PlaybackRouter {
             throw error
         }
         state.showToast("Now playing", icon: DS.Icons.playing, style: .success)
+        clearLoadingIfDeviceStaysSilent(state)
+    }
+
+    /// A device that never reports the new track must not leave the spinner up for good.
+    @MainActor
+    private static func clearLoadingIfDeviceStaysSilent(_ state: AppState) {
+        Task {
+            try? await Task.sleep(for: .seconds(30))
+            state.isLoadingTrack = false
+        }
     }
 
     // MARK: - TuneIn Custom URL Resolution

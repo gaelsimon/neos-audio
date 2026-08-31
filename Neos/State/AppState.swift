@@ -29,6 +29,8 @@ final class AppState: StateUpdater {
     var knownFollowerSerials: Set<String> = FollowerCache.load()
     /// Follower names, used for discovery entries without a serial (Bonjour reports none).
     var knownFollowerNames: Set<String> = FollowerCache.loadFollowerNames()
+    /// Demo data must never reach the real caches; a demo name would hide a real speaker.
+    var persistsDiscoveryCaches = true
     /// Leader serial and leader name → pair room name, for naming a pair before connecting.
     var knownPairNames: [String: String] = FollowerCache.loadPairNames()
 
@@ -198,8 +200,16 @@ final class AppState: StateUpdater {
 
     func setMultiRoomGroups(_ gids: Set<Int>) {
         self.multiRoomGroupIDs = gids
+        guard persistsDiscoveryCaches else { return }
+        // No groups means no pair: clear the caches so an ungrouped speaker reappears in discovery.
+        guard !groups.isEmpty else {
+            knownFollowerSerials = []
+            knownFollowerNames = []
+            knownPairNames = [:]
+            FollowerCache.clear()
+            return
+        }
         // Remember this system's stereo/surround followers so the next launch hides them pre-connect.
-        guard !groups.isEmpty else { return }
         let followers = groups.collapsedFollowerSerials(players: players, expanded: gids)
         knownFollowerSerials = followers
         FollowerCache.save(followers)
@@ -226,10 +236,14 @@ final class AppState: StateUpdater {
             playback.lastProgressUpdate = Date()
         }
         playback.playState = state
-        isLoadingTrack = false
+        // Playback starting is not the end of the load; a waking amp needs ~20 s to describe the track.
+        if state != .play {
+            isLoadingTrack = false
+        }
     }
 
     func setNowPlaying(_ media: NowPlayingMedia) {
+        isLoadingTrack = false
         var enrichedMedia = media
 
         // Enrich generic "Url Stream" metadata with context captured at play-time

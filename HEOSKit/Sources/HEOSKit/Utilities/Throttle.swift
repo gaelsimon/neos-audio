@@ -35,16 +35,22 @@ actor Throttle<Value: Sendable> {
     /// Emits the first value, then keeps the window open one interval at a time until no new value arrives.
     private func drain(first: Value) async {
         var next: Value? = first
+        var didReportError = false
         while !Task.isCancelled, let value = next {
             do {
                 try await action(value)
             } catch {
-                await onError?(error)
+                // Reported once per burst: one error per emission would evict the diagnostics that explain it.
+                if !didReportError {
+                    didReportError = true
+                    await onError?(error)
+                }
             }
             try? await Task.sleep(for: interval)
             next = latestValue
             latestValue = nil
         }
+        latestValue = nil
         if !Task.isCancelled { windowTask = nil }
     }
 }

@@ -10,28 +10,39 @@ actor EventRouter {
     private let groupService: GroupService?
     private let browseService: BrowseService?
     private let serviceTimeout: Duration
+    /// Backstop above the command's own budget, so a device answering "command under process" is never re-asked.
+    private let fetchTimeout: Duration
+    private var nowPlayingTask: Task<Void, Never>?
+    private var queueTask: Task<Void, Never>?
 
     init(
         stateUpdater: StateUpdater,
         playerService: PlayerService?,
         groupService: GroupService?,
         browseService: BrowseService?,
-        serviceTimeout: Duration = .seconds(5)
+        serviceTimeout: Duration = .seconds(5),
+        fetchTimeout: Duration = .seconds(20)
     ) {
         self.stateUpdater = stateUpdater
         self.playerService = playerService
         self.groupService = groupService
         self.browseService = browseService
         self.serviceTimeout = serviceTimeout
+        self.fetchTimeout = fetchTimeout
     }
 
+    /// Device fetches run on their own task: a waking amp takes 20 s, and a newer event replaces the fetch.
     func handle(_ event: HEOSEvent) async {
         switch event.eventName {
         case "player_state_changed":        await handlePlayerStateChanged(event)
-        case "player_now_playing_changed":  await handleNowPlayingChanged(event)
+        case "player_now_playing_changed":
+            nowPlayingTask?.cancel()
+            nowPlayingTask = Task { await handleNowPlayingChanged(event) }
         case "player_now_playing_progress": await handleNowPlayingProgress(event)
         case "player_volume_changed":       await handlePlayerVolumeChanged(event)
-        case "player_queue_changed":        await handlePlayerQueueChanged(event)
+        case "player_queue_changed":
+            queueTask?.cancel()
+            queueTask = Task { await handlePlayerQueueChanged(event) }
         case "player_playback_error":       await handlePlaybackError(event)
         case "repeat_mode_changed":         await handleRepeatModeChanged(event)
         case "shuffle_mode_changed":        await handleShuffleModeChanged(event)
@@ -102,15 +113,16 @@ actor EventRouter {
         guard await isSelectedPlayer(event) else { return }
         guard let pidStr = event.message["pid"], let pid = Int(pidStr) else { return }
         for attempt in 0..<3 {
+            // A newer event replaced this fetch; its own task carries the fresher state.
+            guard !Task.isCancelled else { return }
             do {
-                if let result = try await withTimeout("now_playing_changed", operation: { [playerService] in
+                let fetched = try await withTimeout("now_playing_changed", timeout: fetchTimeout, operation: { [playerService] in
                     try await playerService?.getNowPlayingMedia(pid: pid)
-                }) {
-                    if let (media, options) = result {
-                        await stateUpdater.setNowPlaying(media)
-                        await stateUpdater.setNowPlayingOptions(options)
-                        return
-                    }
+                })
+                if let mediaAndOptions = fetched, let (media, options) = mediaAndOptions {
+                    await stateUpdater.setNowPlaying(media)
+                    await stateUpdater.setNowPlayingOptions(options)
+                    return
                 }
             } catch {
                 return // Transport error; connection is dead, stop retrying
@@ -119,6 +131,7 @@ actor EventRouter {
                 try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
             }
         }
+        guard !Task.isCancelled else { return }
         await stateUpdater.reportNonFatal(source: "event.now_playing_changed", message: "Failed after 3 attempts")
     }
 
@@ -153,8 +166,10 @@ actor EventRouter {
         // Queue fetches can be slow when the device is processing browse commands.
         // Retry up to 3 times with increasing back-off so the UI eventually updates.
         for attempt in 0..<3 {
+            guard !Task.isCancelled else { return }
             do {
-                if let queue = try await withTimeout("queue_changed", timeout: .seconds(15), operation: { [playerService] in
+                // The queue command carries a 20 s budget of its own, so allow a little more.
+                if let queue = try await withTimeout("queue_changed", timeout: fetchTimeout + .seconds(5), operation: { [playerService] in
                     try await playerService?.getQueue(pid: pid)
                 }) {
                     await stateUpdater.setQueue(queue ?? [])
@@ -167,6 +182,7 @@ actor EventRouter {
                 try? await Task.sleep(for: .milliseconds(500 * (attempt + 1)))
             }
         }
+        guard !Task.isCancelled else { return }
         await stateUpdater.reportNonFatal(source: "event.queue_changed", message: "Timed out fetching queue after 3 attempts")
     }
 

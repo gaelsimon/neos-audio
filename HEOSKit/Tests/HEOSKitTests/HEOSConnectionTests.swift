@@ -235,31 +235,28 @@ struct HEOSConnectionTests {
         await connection.disconnect()
     }
 
-    @Test func concurrentSendsReachTheDeviceInOrder() async throws {
+    @Test func cancelledSendGivesUpWithoutWaitingForTheTimeout() async throws {
         let transport = MockTCPTransport(autoRespond: false)
         let connection = HEOSConnection(transport: transport)
         try await connectAndWait(connection, transport: transport)
 
-        // FIFO response matching assumes writes leave in the order commands were registered.
-        async let first = connection.send(.browseSource(sid: 1), timeout: .seconds(5))
-        async let second = connection.send(.browseSource(sid: 2), timeout: .seconds(5))
-
-        var sent: [String] = []
-        let deadline = ContinuousClock.now + .seconds(5)
-        while ContinuousClock.now < deadline {
-            sent = await transport.sentData.compactMap { String(data: $0, encoding: .utf8) }
-            if sent.count == 2 { break }
-            try? await Task.sleep(for: .milliseconds(5))
+        // An event handler that gives up must not stay parked on an unanswered command.
+        let task = Task {
+            try await connection.send(.getPlayers, timeout: .seconds(30))
         }
+        try await Task.sleep(for: .milliseconds(50))
+        let started = ContinuousClock.now
+        task.cancel()
 
-        #expect(sent.count == 2)
-        #expect(sent.first?.contains("sid=1") == true)
-        #expect(sent.last?.contains("sid=2") == true)
+        await #expect(throws: Error.self) { try await task.value }
+        #expect(ContinuousClock.now - started < .seconds(5))
 
-        await transport.simulateEvent(makeResponse(command: "browse/browse", message: "sid=1"))
-        await transport.simulateEvent(makeResponse(command: "browse/browse", message: "sid=2"))
-        _ = try await first
-        _ = try await second
+        // The slot is free again, so the next command matches the next response.
+        let followUp = Task { try await connection.send(.getPlayers, timeout: .seconds(5)) }
+        try await Task.sleep(for: .milliseconds(50))
+        await transport.simulateEvent(makeResponse(command: "player/get_players"))
+        #expect(try await followUp.value.command == "player/get_players")
+
         await connection.disconnect()
     }
 

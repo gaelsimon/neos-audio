@@ -236,7 +236,7 @@ struct EventRouterTests {
             playerService: playerService,
             groupService: nil,
             browseService: nil,
-            serviceTimeout: .milliseconds(300)
+            fetchTimeout: .milliseconds(300)
         )
         // Responses yielded before the receive stream is live would be dropped.
         await waitUntil { await transport.isReceiving }
@@ -250,7 +250,8 @@ struct EventRouterTests {
         """
         let event = makeEvent("player_now_playing_changed", message: ["pid": "42"])
 
-        let handleTask = Task { await router.handle(event) }
+        // The handler now runs off the event loop, so poll for its effect instead of awaiting it.
+        await router.handle(event)
 
         // First fetch: held past the router timeout, then failed so the abandoned command frees its slot.
         await waitUntil { await transport.sentData.count == 1 }
@@ -262,10 +263,66 @@ struct EventRouterTests {
         await transport.enqueueResponse(mediaJSON)
         await transport.setAutoRespond(true)
 
-        await handleTask.value
+        await waitUntil { await MainActor.run { state.nowPlaying?.song == "Recovered Song" } }
 
         #expect(await transport.sentData.count == 2)
         #expect(state.nowPlaying?.song == "Recovered Song")
+        await connection.disconnect()
+    }
+
+    // MARK: - Slow Fetches Do Not Block Cheap Events
+
+    @Test @MainActor func slowNowPlayingFetchDoesNotDelayPlayState() async throws {
+        let transport = MockTCPTransport(autoRespond: false)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        let playerService = PlayerService(connection: connection)
+        let state = MockStateUpdater()
+        state.selectedPlayerID = 42
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: playerService,
+            groupService: nil,
+            browseService: nil
+        )
+        await waitUntil { await transport.isReceiving }
+
+        // Mirrors the listener loop: a fetch left outstanding must not hold up the play-state event.
+        let started = ContinuousClock.now
+        await router.handle(makeEvent("player_now_playing_changed", message: ["pid": "42"]))
+        await router.handle(makeEvent("player_state_changed", message: ["pid": "42", "state": "play"]))
+        let elapsed = ContinuousClock.now - started
+
+        #expect(state.playState == .play)
+        #expect(elapsed < .seconds(2))
+        // The fetch runs on its own task, so let it reach the transport before asserting.
+        await waitUntil { await transport.sentData.count == 1 }
+        #expect(await transport.sentData.count == 1)
+        await connection.disconnect()
+    }
+
+    @Test @MainActor func replacedFetchDoesNotReportAFailure() async throws {
+        let transport = MockTCPTransport(autoRespond: false)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        let playerService = PlayerService(connection: connection)
+        let state = MockStateUpdater()
+        state.selectedPlayerID = 42
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: playerService,
+            groupService: nil,
+            browseService: nil
+        )
+        await waitUntil { await transport.isReceiving }
+
+        // Each event replaces the previous fetch, and a replaced fetch is not a failure.
+        for _ in 0..<4 {
+            await router.handle(makeEvent("player_now_playing_changed", message: ["pid": "42"]))
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+
+        #expect(state.nonFatalReports.filter { $0.source == "event.now_playing_changed" }.isEmpty)
         await connection.disconnect()
     }
 
