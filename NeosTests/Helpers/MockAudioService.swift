@@ -213,8 +213,18 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         calls.append("playInput:\(pid):\(input)")
     }
 
+    /// Per-mid outcomes, so a test can let one play fail while another is still in flight.
+    var addToQueueFailingMIDs: Set<String> = []
+    var addToQueueSlowMIDs: Set<String> = []
+
     func addToQueue(pid: Int, sid: Int, cid: String, mid: String?, criteria: AddCriteria) async throws {
         calls.append("addToQueue:\(pid)")
+        if let mid, addToQueueSlowMIDs.contains(mid) {
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        if let mid, addToQueueFailingMIDs.contains(mid) {
+            throw NSError(domain: "mock", code: 2, userInfo: [NSLocalizedDescriptionKey: "addToQueue failed"])
+        }
     }
 
     func getHistory(range: ClosedRange<Int>?) async throws -> BrowseResult {

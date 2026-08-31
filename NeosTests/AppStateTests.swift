@@ -123,6 +123,28 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(state.isLoadingTrack)
     }
 
+    @MainActor
+    func testASupersededPlayCannotRollBackTheLoadThatReplacedIt() {
+        let state = AppState()
+        let first = state.beginTrackLoad()
+        // The user clicked another track before the first one answered.
+        let second = state.beginTrackLoad()
+        state.pendingStreamContext = .init(
+            pid: 1, stationName: "Second", browseMID: "mid-2", imageURL: "", streamURL: "http://s/2"
+        )
+
+        // The first play now reports its failure; it owns neither the spinner nor the context.
+        state.failTrackLoad(generation: first)
+
+        XCTAssertTrue(state.isLoadingTrack)
+        XCTAssertNotNil(state.pendingStreamContext)
+
+        state.failTrackLoad(generation: second)
+
+        XCTAssertFalse(state.isLoadingTrack)
+        XCTAssertNil(state.pendingStreamContext)
+    }
+
     // MARK: - setNowPlaying
 
     @MainActor

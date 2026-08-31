@@ -71,6 +71,8 @@ final class BrowseViewModel {
     var pagination = PaginationState(pageSize: 50)
     let browseTask = CancellableTaskHandle()
     let browseTracker = RequestTracker()
+    let playTask = CancellableTaskHandle()
+    let playTracker = RequestTracker()
 
     var resolvingArtistName: String?
     var isResolvingArtist: Bool { resolvingArtistName != nil }

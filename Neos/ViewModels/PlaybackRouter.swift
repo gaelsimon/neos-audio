@@ -18,7 +18,7 @@ enum PlaybackRouter {
         if item.mid == nil {
             playbackLogger.warning("Playing item with nil mid; using container-based playback: \(item.name)")
         }
-        state.beginTrackLoad()
+        let loadGeneration = state.beginTrackLoad()
         do {
             if item.type == .station, let mid = item.mid, mid.hasPrefix("http://") || mid.hasPrefix("https://") {
                 state.pendingStreamContext = .init(
@@ -37,8 +37,7 @@ enum PlaybackRouter {
                 try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: item.mid, criteria: .playNow)
             }
         } catch {
-            state.endTrackLoad()
-            state.pendingStreamContext = nil
+            state.failTrackLoad(generation: loadGeneration)
             throw error
         }
         state.showToast("Now playing", icon: DS.Icons.playing, style: .success)

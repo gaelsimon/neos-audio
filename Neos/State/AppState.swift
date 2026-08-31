@@ -96,6 +96,7 @@ final class AppState: StateUpdater {
     // MARK: - UI State (owned by view models / views, not from StateUpdater)
 
     private(set) var isLoadingTrack: Bool = false
+    private var trackLoadGeneration: UInt64 = 0
     var isAdjustingVolume: Bool = false
     var error: AppError?
     var discoveryError: String?
@@ -249,7 +250,10 @@ final class AppState: StateUpdater {
     // MARK: - Track Loading
 
     /// Arms the spinner and its watchdog: a device that never reports the track must not strand it.
-    func beginTrackLoad(timeout: Duration = .seconds(30)) {
+    /// Returns the load's generation; hand it to `failTrackLoad` so a superseded play cannot roll it back.
+    @discardableResult
+    func beginTrackLoad(timeout: Duration = .seconds(30)) -> UInt64 {
+        trackLoadGeneration += 1
         isLoadingTrack = true
         trackLoadWatchdog?.cancel()
         trackLoadWatchdog = Task {
@@ -257,6 +261,7 @@ final class AppState: StateUpdater {
             guard !Task.isCancelled else { return }
             isLoadingTrack = false
         }
+        return trackLoadGeneration
     }
 
     /// Clears the spinner and disarms the watchdog, so an older load cannot clear a newer one.
@@ -264,6 +269,14 @@ final class AppState: StateUpdater {
         trackLoadWatchdog?.cancel()
         trackLoadWatchdog = nil
         isLoadingTrack = false
+    }
+
+    /// Rolls back a failed play. A superseded generation is ignored: its error must not take down
+    /// the spinner and stream context of the play the user is actually waiting for.
+    func failTrackLoad(generation: UInt64) {
+        guard generation == trackLoadGeneration else { return }
+        endTrackLoad()
+        pendingStreamContext = nil
     }
 
     // MARK: - Playback

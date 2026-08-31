@@ -115,15 +115,20 @@ extension BrowseViewModel {
     func playItem(_ item: BrowseItem) {
         let sid = item.sid ?? browseStack.last?.sid ?? 0
         let cid = item.cid ?? browseStack.last?.cid ?? ""
+        // Tracked like every other request here: a second click supersedes the first, whose failure
+        // must not clear the new row's spinner nor report an error about the item already dropped.
+        let requestID = playTracker.next()
         playingItemID = item.id
-        Task {
+        playTask.replace(with: Task {
             do {
                 try await PlaybackRouter.play(item, sid: sid, cid: cid, service: service, state: state)
             } catch {
+                guard playTracker.isCurrent(requestID) else { return }
                 state.showToast(error.localizedDescription, icon: DS.Icons.warning, style: .error)
             }
+            guard playTracker.isCurrent(requestID) else { return }
             playingItemID = nil
-        }
+        })
     }
 
     func addToQueue(_ item: BrowseItem, criteria: AddCriteria = .addToEnd) {
