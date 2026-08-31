@@ -44,7 +44,7 @@ public extension StateUpdater {
 
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities) {}
     func setNowPlayingOptions(_ options: [ServiceOption]) {}
-    func setMultiRoomGroups(_ gids: Set<Int>, unconfirmed: Set<Int>) {}
+    func setMultiRoomGroups(_: Set<Int>, unconfirmed _: Set<Int>) {}
 
     /// Every group classified: the caller could read all member channels.
     func setMultiRoomGroups(_ gids: Set<Int>) {

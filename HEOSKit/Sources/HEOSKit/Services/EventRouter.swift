@@ -24,7 +24,9 @@ actor EventRouter {
         playerService: PlayerService?,
         groupService: GroupService?,
         browseService: BrowseService?,
-        refreshTopology: @escaping @Sendable ([SpeakerGroup]) async -> Void = { _ in },
+        refreshTopology: @escaping @Sendable ([SpeakerGroup]) async -> Void = { _ in
+            // Only the owning session can reclassify; tests that ignore topology need not supply one.
+        },
         serviceTimeout: Duration = .seconds(5),
         fetchTimeout: Duration = .seconds(20)
     ) {
