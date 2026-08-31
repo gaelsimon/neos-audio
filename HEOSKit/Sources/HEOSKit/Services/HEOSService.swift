@@ -86,23 +86,9 @@ public actor HEOSService {
     }
 
     public func disconnect() async {
-        eventTask?.cancel()
-        eventTask = nil
-        avrEventTask?.cancel()
-        avrEventTask = nil
-        await connectionCoordinator.cancelReconnection()
+        await tearDownSession()
+        await connectionCoordinator.clearTarget()
         await stopContinuousDiscovery()
-        await resetVolumeThrottles()
-        await avrClient?.disconnect()
-        avrClient = nil
-        volumeLimitTask?.cancel()
-        volumeLimitTask = nil
-        if let old = upnpACT { Task { await old.invalidateSession() } }
-        upnpACT = nil
-        if let old = upnpTransport { Task { await old.invalidateSession() } }
-        upnpTransport = nil
-        await connection?.disconnect()
-        connection = nil
         await stateUpdater.setMaxVolume(nil)
         await stateUpdater.setConnectionState(.disconnected)
         HEOSLogger.service.info("Disconnected")

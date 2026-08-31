@@ -39,6 +39,11 @@ final class ViewModelContainer {
         self.groupVM = GroupViewModel(service: service, state: state)
 
         playerVM.startTrackMetadataObserver()
+
+        let speakers = speakerVM
+        state.onDeviceDiscovered = { [weak speakers] device in
+            speakers?.autoConnectIfCached(device)
+        }
     }
 
     // MARK: - Navigation Commands

@@ -453,6 +453,30 @@ final class AppStateTests: XCTestCase {
         XCTAssertNil(state.pendingStreamContext)
     }
 
+    @MainActor
+    func testReconnectingKeepsTheSessionAndItsPlaybackState() {
+        let state = AppState()
+        state.setConnectionState(.connected)
+        state.playback.playState = .play
+        state.playback.nowPlaying = NowPlayingMedia(song: "Test", mid: "m1")
+
+        state.setConnectionState(.reconnecting)
+
+        XCTAssertTrue(state.hasEstablishedSession)
+        XCTAssertEqual(state.playState, .play)
+        XCTAssertEqual(state.nowPlaying.song, "Test")
+    }
+
+    @MainActor
+    func testDisconnectEndsTheSession() {
+        let state = AppState()
+        state.setConnectionState(.connected)
+
+        state.setConnectionState(.disconnected)
+
+        XCTAssertFalse(state.hasEstablishedSession)
+    }
+
     // MARK: - Group collapse / expand
 
     @MainActor

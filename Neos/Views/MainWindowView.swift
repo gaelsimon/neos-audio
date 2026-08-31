@@ -17,17 +17,19 @@ struct MainWindowView: View {
     private var settingsVM: SettingsViewModel { container.settingsVM }
     private var groupVM: GroupViewModel { container.groupVM }
 
-    /// Whether the splash overlay is showing (connecting or brief "connected" hold).
-    private var showSplash: Bool {
-        showConnectedSplash ||
-        state.connectionState == .connecting ||
-        state.connectionState == .reconnecting
+    /// Splash, content, banner or discovery: an established session reconnects in place.
+    private var presentation: ConnectionPresentation {
+        ConnectionPresentation(
+            connectionState: state.connectionState,
+            hasEstablishedSession: state.hasEstablishedSession,
+            isHoldingConnectedSplash: showConnectedSplash
+        )
     }
 
     var body: some View {
         ZStack {
             // Main content always in tree underneath
-            if state.isConnected {
+            if presentation.showsContent {
                 HStack(spacing: 0) {
                     SidebarView(
                         state: state,
@@ -40,7 +42,7 @@ struct MainWindowView: View {
                     connectedContent
                         .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
                 }
-            } else if !showSplash {
+            } else if presentation.showsDiscovery {
                 DiscoveryView(state: state, speakerVM: speakerVM)
                     .overlay(alignment: .bottom) {
                         toastOverlay
@@ -49,12 +51,19 @@ struct MainWindowView: View {
             }
 
             // Single splash overlay; covers everything while visible
-            if showSplash {
+            if presentation.showsSplash {
                 connectionSplash
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(DS.Colors.background)
             }
         }
+        .overlay(alignment: .top) {
+            if presentation.showsReconnectingBanner {
+                ReconnectingBanner(deviceName: reconnectingDeviceName)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: DS.Animation.standard), value: presentation.showsReconnectingBanner)
         .overlay {
             if state.isNowPlayingCanvasOpen {
                 NowPlayingCanvasView(state: state)
@@ -63,8 +72,11 @@ struct MainWindowView: View {
         }
         .animation(.easeInOut(duration: 0.35), value: state.isNowPlayingCanvasOpen)
         .safeAreaInset(edge: .bottom) {
-            if state.isConnected && !showConnectedSplash {
+            if presentation.showsContent && !showConnectedSplash {
+                // Transport is dead while reconnecting; dim it rather than let commands time out.
                 NowPlayingToolbar(state: state, playerVM: playerVM, browseVM: browseVM, searchVM: searchVM)
+                    .disabled(!state.isConnected)
+                    .opacity(state.isConnected ? 1 : 0.5)
             }
         }
         // Single queue panel; adapts layout to canvas vs normal mode
@@ -93,6 +105,8 @@ struct MainWindowView: View {
                 }
             } else {
                 showConnectedSplash = false
+                // A reconnection keeps panels open; only a real disconnect closes them.
+                guard state.connectionState == .disconnected else { return }
                 state.isQueuePanelOpen = false
                 state.isNowPlayingCanvasOpen = false
             }
@@ -113,6 +127,12 @@ struct MainWindowView: View {
                 speakerVM.startContinuousDiscovery()
             }
         }
+    }
+
+    private var reconnectingDeviceName: String {
+        state.selectedPlayerDisplayName
+            ?? state.connectedDevice.map { state.displayName(for: $0) }
+            ?? "Speaker"
     }
 
     // MARK: - Connection Splash

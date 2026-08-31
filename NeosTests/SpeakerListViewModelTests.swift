@@ -206,4 +206,107 @@ final class SpeakerListViewModelTests: XCTestCase {
         XCTAssertTrue(state.isPoweredOn)
         XCTAssertNotNil(state.error)
     }
+
+    // MARK: - connectToCachedDevice
+
+    @MainActor
+    func testCachedConnectRetriesAfterATransientFailure() async {
+        let device = DiscoveredDevice(host: "192.168.1.10", friendlyName: "Living Room")
+        DeviceCache.save(device: device, selectedPlayerID: 7)
+        defer { DeviceCache.clear() }
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.failingConnectAttempts = 1
+        let vm = SpeakerListViewModel(service: mock, state: state)
+
+        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelay: .milliseconds(10))
+
+        try? await Task.sleep(for: .milliseconds(120))
+        XCTAssertEqual(mock.calls.filter { $0 == "connect" }.count, 2)
+        XCTAssertNotNil(DeviceCache.load())
+    }
+
+    @MainActor
+    func testCachedConnectKeepsTheDeviceWhenEveryAttemptFails() async {
+        let device = DiscoveredDevice(host: "192.168.1.10", friendlyName: "Living Room")
+        DeviceCache.save(device: device, selectedPlayerID: 7)
+        defer { DeviceCache.clear() }
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.connectError = NSError(domain: "test", code: 1)
+        let vm = SpeakerListViewModel(service: mock, state: state)
+
+        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelay: .milliseconds(10))
+
+        try? await Task.sleep(for: .milliseconds(150))
+        XCTAssertEqual(mock.calls.filter { $0 == "connect" }.count, 3)
+        XCTAssertEqual(state.connectionState, .disconnected)
+        XCTAssertNotNil(DeviceCache.load())
+    }
+
+    // MARK: - autoConnectIfCached
+
+    @MainActor
+    func testRediscoveredSpeakerReconnectsOnItsOwnAndUpdatesTheAddress() async {
+        let cached = DiscoveredDevice(host: "192.168.1.10", friendlyName: "Living Room", serialNumber: "S1")
+        DeviceCache.save(device: cached, selectedPlayerID: 7)
+        defer { DeviceCache.clear() }
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = SpeakerListViewModel(service: mock, state: state)
+
+        vm.autoConnectIfCached(DiscoveredDevice(host: "192.168.1.42", friendlyName: "Living Room", serialNumber: "S1"))
+
+        await yieldForTask()
+        XCTAssertTrue(mock.calls.contains("connect"))
+        XCTAssertEqual(DeviceCache.load()?.device.host, "192.168.1.42")
+    }
+
+    @MainActor
+    func testAnUnknownSpeakerIsNotConnectedTo() async {
+        DeviceCache.save(device: DiscoveredDevice(host: "192.168.1.10", serialNumber: "S1"), selectedPlayerID: nil)
+        defer { DeviceCache.clear() }
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = SpeakerListViewModel(service: mock, state: state)
+
+        vm.autoConnectIfCached(DiscoveredDevice(host: "192.168.1.99", serialNumber: "S2"))
+
+        await yieldForTask()
+        XCTAssertFalse(mock.calls.contains("connect"))
+    }
+
+    @MainActor
+    func testALiveConnectionIsNotInterrupted() async {
+        let cached = DiscoveredDevice(host: "192.168.1.10", serialNumber: "S1")
+        DeviceCache.save(device: cached, selectedPlayerID: nil)
+        defer { DeviceCache.clear() }
+        let state = AppState()
+        state.connectionState = .connected
+        let mock = MockAudioService()
+        let vm = SpeakerListViewModel(service: mock, state: state)
+
+        vm.autoConnectIfCached(cached)
+
+        await yieldForTask()
+        XCTAssertFalse(mock.calls.contains("connect"))
+    }
+
+    // MARK: - startContinuousDiscovery
+
+    @MainActor
+    func testContinuousDiscoveryKeepsSayingItIsSearchingUntilItGivesUp() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = SpeakerListViewModel(service: mock, state: state)
+
+        vm.startContinuousDiscovery(giveUpAfter: .milliseconds(200))
+
+        XCTAssertTrue(state.isDiscovering)
+        try? await Task.sleep(for: .milliseconds(80))
+        XCTAssertTrue(state.isDiscovering)
+
+        try? await Task.sleep(for: .milliseconds(250))
+        XCTAssertFalse(state.isDiscovering)
+    }
 }

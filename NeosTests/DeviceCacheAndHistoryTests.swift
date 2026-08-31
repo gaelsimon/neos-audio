@@ -21,6 +21,40 @@ final class DeviceCacheTests: XCTestCase {
         XCTAssertEqual(loaded?.selectedPlayerID, 42)
     }
 
+    func testMatchesBySerialAcrossAnAddressChange() {
+        let cached = CachedDevice(
+            device: DiscoveredDevice(host: "192.168.1.10", serialNumber: "S1"),
+            selectedPlayerID: 1
+        )
+
+        XCTAssertTrue(cached.matches(DiscoveredDevice(host: "192.168.1.42", serialNumber: "S1")))
+    }
+
+    func testDoesNotMatchADifferentSerial() {
+        let cached = CachedDevice(
+            device: DiscoveredDevice(host: "192.168.1.10", serialNumber: "S1"),
+            selectedPlayerID: 1
+        )
+
+        XCTAssertFalse(cached.matches(DiscoveredDevice(host: "192.168.1.10", serialNumber: "S2")))
+    }
+
+    func testMatchesByDeviceIDWhenBonjourReportsNoSerial() {
+        let cached = CachedDevice(
+            device: DiscoveredDevice(host: "192.168.1.10", serialNumber: "S1", deviceID: "D1"),
+            selectedPlayerID: 1
+        )
+
+        XCTAssertTrue(cached.matches(DiscoveredDevice(host: "192.168.1.42", deviceID: "D1")))
+    }
+
+    func testFallsBackToTheHostWithoutAnyIdentifier() {
+        let cached = CachedDevice(device: DiscoveredDevice(host: "192.168.1.10"), selectedPlayerID: 1)
+
+        XCTAssertTrue(cached.matches(DiscoveredDevice(host: "192.168.1.10")))
+        XCTAssertFalse(cached.matches(DiscoveredDevice(host: "192.168.1.42")))
+    }
+
     func testLoadReturnsNilWhenEmpty() {
         DeviceCache.clear()
 

@@ -2,9 +2,34 @@ import Foundation
 import Network
 import os
 
+/// Thread-safe accumulator for a one-shot browse.
+final class DeviceCollector: Sendable {
+    private let devices = OSAllocatedUnfairLock(initialState: [DiscoveredDevice]())
+
+    var all: [DiscoveredDevice] { devices.withLock { $0 } }
+
+    func append(_ device: DiscoveredDevice) {
+        devices.withLock { $0.append(device) }
+        HEOSLogger.discovery.info("Bonjour resolved: \(device.friendlyName) at \(device.host)")
+    }
+}
+
+/// Per-browse dedup set plus a kill switch, so retries stop when the browser is cancelled.
+final class BonjourResolveSession: Sendable {
+    let seenHosts = OSAllocatedUnfairLock(initialState: Set<String>())
+    private let active = OSAllocatedUnfairLock(initialState: true)
+
+    var isActive: Bool { active.withLock { $0 } }
+
+    func end() {
+        active.withLock { $0 = false }
+    }
+}
+
 public actor BonjourDiscovery {
     private var browser: NWBrowser?
     private var continuousContinuation: AsyncStream<DiscoveredDevice>.Continuation?
+    private var continuousSession: BonjourResolveSession?
     private static let serviceType = "_heos-audio._tcp"
 
     public init() {}
@@ -21,43 +46,29 @@ public actor BonjourDiscovery {
     // MARK: - One-shot discovery
 
     public func discover(timeout: TimeInterval = 3.0) async -> [DiscoveredDevice] {
-        await withCheckedContinuation { continuation in
-            let devices = OSAllocatedUnfairLock(initialState: [DiscoveredDevice]())
-            let seenHosts = OSAllocatedUnfairLock(initialState: Set<String>())
+        let collector = DeviceCollector()
+        let session = BonjourResolveSession()
 
-            let params = NWParameters()
-            params.includePeerToPeer = true
-            let browser = NWBrowser(for: .bonjour(type: Self.serviceType, domain: nil), using: params)
+        let params = NWParameters()
+        params.includePeerToPeer = true
+        let browser = NWBrowser(for: .bonjour(type: Self.serviceType, domain: nil), using: params)
 
-            // Single serial queue for all callbacks to avoid data races
-            let resolveQueue = DispatchQueue(label: "com.galela.neos.bonjour-resolve")
+        // Single serial queue for all callbacks to avoid data races
+        let resolveQueue = DispatchQueue(label: "com.galela.neos.bonjour-resolve")
 
-            browser.browseResultsChangedHandler = { results, _ in
-                for result in results {
-                    Self.resolveEndpoint(result: result, seenHosts: seenHosts, resolveQueue: resolveQueue) { device in
-                        devices.withLock { $0.append(device) }
-                        HEOSLogger.discovery.info("Bonjour resolved: \(device.friendlyName) at \(device.host)")
-                    }
-                }
-            }
-
-            browser.stateUpdateHandler = { state in
-                if case .failed(let error) = state {
-                    HEOSLogger.discovery.warning("Bonjour browser failed: \(error.localizedDescription)")
-                }
-            }
-
-            browser.start(queue: resolveQueue)
-
-            Task {
-                try? await Task.sleep(for: .seconds(timeout))
-                browser.cancel()
-                resolveQueue.async {
-                    let finalDevices = devices.withLock { $0 }
-                    continuation.resume(returning: finalDevices)
-                }
-            }
+        browser.browseResultsChangedHandler = Self.makeResultsHandler(
+            session: session,
+            resolveQueue: resolveQueue
+        ) { device in
+            collector.append(device)
         }
+        browser.stateUpdateHandler = Self.logBrowserFailures
+        browser.start(queue: resolveQueue)
+
+        try? await Task.sleep(for: .seconds(timeout))
+        session.end()
+        browser.cancel()
+        return collector.all
     }
 
     // MARK: - Continuous discovery
@@ -67,7 +78,8 @@ public actor BonjourDiscovery {
 
         let (stream, continuation) = AsyncStream<DiscoveredDevice>.makeStream()
         self.continuousContinuation = continuation
-        let seenHosts = OSAllocatedUnfairLock(initialState: Set<String>())
+        let session = BonjourResolveSession()
+        self.continuousSession = session
 
         let params = NWParameters()
         params.includePeerToPeer = true
@@ -76,13 +88,12 @@ public actor BonjourDiscovery {
 
         let resolveQueue = DispatchQueue(label: "com.galela.neos.bonjour-continuous")
 
-        browser.browseResultsChangedHandler = { results, _ in
-            for result in results {
-                Self.resolveEndpoint(result: result, seenHosts: seenHosts, resolveQueue: resolveQueue) { device in
-                    continuation.yield(device)
-                    HEOSLogger.discovery.info("Bonjour continuous: \(device.friendlyName) at \(device.host)")
-                }
-            }
+        browser.browseResultsChangedHandler = Self.makeResultsHandler(
+            session: session,
+            resolveQueue: resolveQueue
+        ) { device in
+            continuation.yield(device)
+            HEOSLogger.discovery.info("Bonjour continuous: \(device.friendlyName) at \(device.host)")
         }
 
         browser.stateUpdateHandler = { state in
@@ -100,69 +111,145 @@ public actor BonjourDiscovery {
 
     // MARK: - Endpoint Resolution
 
-    /// Resolve a Bonjour browse result to a DiscoveredDevice via a lightweight UDP connection.
-    /// Deduplicates by IPv4 host using the shared `seenHosts` lock. Calls `onDevice` on success.
-    private static func resolveEndpoint(
-        result: NWBrowser.Result,
-        seenHosts: OSAllocatedUnfairLock<Set<String>>,
+    private static let logBrowserFailures: @Sendable (NWBrowser.State) -> Void = { state in
+        if case .failed(let error) = state {
+            HEOSLogger.discovery.warning("Bonjour browser failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Resolves every result of a browse update through `resolveEndpoint`.
+    private static func makeResultsHandler(
+        session: BonjourResolveSession,
         resolveQueue: DispatchQueue,
         onDevice: @escaping @Sendable (DiscoveredDevice) -> Void
-    ) {
-        let serviceName: String?
-        if case .service(let name, let type, let domain, _) = result.endpoint {
-            serviceName = name
-            HEOSLogger.discovery.debug("Bonjour found: \(name) (\(type).\(domain))")
-        } else {
-            serviceName = nil
+    ) -> @Sendable (Set<NWBrowser.Result>, Set<NWBrowser.Result.Change>) -> Void {
+        { results, _ in
+            for result in results {
+                resolveEndpoint(result: result, session: session, resolveQueue: resolveQueue, onDevice: onDevice)
+            }
         }
+    }
 
-        guard case .service = result.endpoint else { return }
+    /// 1s, 2s, 4s, then give up: one lost probe must not silence the only reliable channel.
+    static func retryDelay(forAttempt attempt: Int) -> TimeInterval? {
+        guard attempt < 3 else { return nil }
+        return pow(2.0, Double(attempt))
+    }
+
+    /// Resolves a browse result to a device over UDP, deduplicated by IPv4 host, retried on failure.
+    private static func resolveEndpoint(
+        result: NWBrowser.Result,
+        session: BonjourResolveSession,
+        resolveQueue: DispatchQueue,
+        attempt: Int = 0,
+        onDevice: @escaping @Sendable (DiscoveredDevice) -> Void
+    ) {
+        guard case .service(let serviceName, let type, let domain, _) = result.endpoint else { return }
+        HEOSLogger.discovery.debug("Bonjour found: \(serviceName) (\(type).\(domain))")
 
         // Use UDP to resolve the service endpoint; no TCP handshake,
         // no packets sent to the device, avoids RST storms on ports
         // the device doesn't listen on.
         let connection = NWConnection(to: result.endpoint, using: ipv4UDPParams)
+        let finish = makeFinishHandler(
+            connection: connection,
+            result: result,
+            session: session,
+            resolveQueue: resolveQueue,
+            attempt: attempt,
+            onDevice: onDevice
+        )
+
         connection.stateUpdateHandler = { connState in
-            if case .ready = connState {
-                if let endpoint = connection.currentPath?.remoteEndpoint,
-                   case .hostPort(let host, _) = endpoint {
-                    let hostStr = "\(host)"
-                        .replacingOccurrences(of: "%.*", with: "", options: .regularExpression)
-
-                    // Skip IPv6 (link-local fe80:: etc.); HEOS CLI needs IPv4
-                    guard !hostStr.contains(":") else {
-                        connection.cancel()
-                        return
-                    }
-
-                    let alreadySeen = seenHosts.withLock { $0.contains(hostStr) }
-                    guard !alreadySeen else {
-                        connection.cancel()
-                        return
-                    }
-                    seenHosts.withLock { _ = $0.insert(hostStr) }
-
-                    let metadata = extractTXTMetadata(from: result.metadata)
-                    let device = DiscoveredDevice(
-                        host: hostStr,
-                        port: 1255,
-                        friendlyName: metadata.name ?? serviceName ?? hostStr,
-                        modelName: metadata.model ?? "",
-                        firmwareVersion: metadata.version ?? "",
-                        deviceID: metadata.deviceID ?? "",
-                        networkID: metadata.networkID ?? ""
-                    )
+            switch connState {
+            case .ready:
+                if let device = resolvedDevice(
+                    connection: connection,
+                    result: result,
+                    serviceName: serviceName,
+                    session: session
+                ) {
                     onDevice(device)
                 }
-                connection.cancel()
-            } else if case .failed = connState {
-                connection.cancel()
+                finish(true)
+            case .failed, .waiting:
+                finish(false)
+            default:
+                break
             }
         }
         connection.start(queue: resolveQueue)
     }
 
+    /// Settles one probe once, scheduling the next attempt when it failed and the browse is live.
+    private static func makeFinishHandler(
+        connection: NWConnection,
+        result: NWBrowser.Result,
+        session: BonjourResolveSession,
+        resolveQueue: DispatchQueue,
+        attempt: Int,
+        onDevice: @escaping @Sendable (DiscoveredDevice) -> Void
+    ) -> @Sendable (Bool) -> Void {
+        let settled = OSAllocatedUnfairLock(initialState: false)
+
+        return { succeeded in
+            let isFirst = settled.withLock { done -> Bool in
+                guard !done else { return false }
+                done = true
+                return true
+            }
+            guard isFirst else { return }
+            connection.cancel()
+
+            guard !succeeded, session.isActive, let delay = retryDelay(forAttempt: attempt) else { return }
+            HEOSLogger.discovery.debug("Bonjour resolve failed; retrying in \(delay)s")
+            resolveQueue.asyncAfter(deadline: .now() + delay) {
+                guard session.isActive else { return }
+                resolveEndpoint(
+                    result: result,
+                    session: session,
+                    resolveQueue: resolveQueue,
+                    attempt: attempt + 1,
+                    onDevice: onDevice
+                )
+            }
+        }
+    }
+
+    /// The device behind a ready connection, or nil when the endpoint is IPv6 or already known.
+    private static func resolvedDevice(
+        connection: NWConnection,
+        result: NWBrowser.Result,
+        serviceName: String,
+        session: BonjourResolveSession
+    ) -> DiscoveredDevice? {
+        guard let endpoint = connection.currentPath?.remoteEndpoint,
+              case .hostPort(let host, _) = endpoint else { return nil }
+
+        let hostStr = "\(host)".replacingOccurrences(of: "%.*", with: "", options: .regularExpression)
+
+        // Skip IPv6 (link-local fe80:: etc.); HEOS CLI needs IPv4
+        guard !hostStr.contains(":") else { return nil }
+
+        let alreadySeen = session.seenHosts.withLock { $0.contains(hostStr) }
+        guard !alreadySeen else { return nil }
+        session.seenHosts.withLock { _ = $0.insert(hostStr) }
+
+        let metadata = extractTXTMetadata(from: result.metadata)
+        return DiscoveredDevice(
+            host: hostStr,
+            port: 1255,
+            friendlyName: metadata.name ?? serviceName,
+            modelName: metadata.model ?? "",
+            firmwareVersion: metadata.version ?? "",
+            deviceID: metadata.deviceID ?? "",
+            networkID: metadata.networkID ?? ""
+        )
+    }
+
     public func stop() {
+        continuousSession?.end()
+        continuousSession = nil
         browser?.cancel()
         browser = nil
         continuousContinuation?.finish()

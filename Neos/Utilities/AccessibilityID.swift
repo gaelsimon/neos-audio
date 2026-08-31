@@ -121,6 +121,12 @@ enum AccessibilityID {
         static let statusIndicator = "disconnected.statusIndicator"
     }
 
+    // MARK: - Connection
+
+    enum Connection {
+        static let reconnectingBanner = "connection.reconnectingBanner"
+    }
+
     // MARK: - Discovery
 
     enum Discovery {

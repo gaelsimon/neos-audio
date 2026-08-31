@@ -98,6 +98,24 @@ struct ConnectionCoordinatorTests {
         await coordinator.cancelReconnection()
     }
 
+    @Test @MainActor func startReconnectionWithoutDelayAttemptsImmediately() async {
+        let state = MockStateUpdater()
+        let coordinator = ConnectionCoordinator(stateUpdater: state)
+        await coordinator.recordConnection(host: "10.0.0.1", port: 1255, playerID: nil)
+
+        let tracker = CallTracker()
+        await coordinator.startReconnection(initialDelay: 0) { _, _, _ in
+            await tracker.record()
+        }
+
+        // Well inside the 1s the default backoff would have waited
+        try? await Task.sleep(for: .milliseconds(200))
+
+        let wasCalled = await tracker.wasCalled
+        #expect(wasCalled == true)
+        await coordinator.cancelReconnection()
+    }
+
     // MARK: - cancelReconnection
 
     @Test @MainActor func cancelReconnectionStopsAttempts() async {

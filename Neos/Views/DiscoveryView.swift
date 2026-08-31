@@ -46,6 +46,10 @@ struct DiscoveryView: View {
                 .typography(.secondary)
                 .foregroundStyle(DS.Colors.textSecondary)
 
+            // Secondary while the search runs: the scan is already happening.
+            scanButton
+                .foregroundStyle(DS.Colors.textTertiary)
+
             manualConnectToggle
         }
     }
@@ -110,21 +114,27 @@ struct DiscoveryView: View {
                 .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.medium))
             }
 
-            Button(action: { speakerVM.discover() }) {
-                HStack(spacing: DS.Spacing.xs) {
-                    Image(systemName: DS.Icons.refresh)
-                        .typography(.badge)
-                    Text("Scan for players")
-                        .typography(.secondary)
-                }
+            scanButton
                 .foregroundStyle(DS.Colors.textSecondary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier(AccessibilityID.Sidebar.scanButton)
 
             manualConnectToggle
         }
         .frame(maxWidth: 500)
+    }
+
+    // MARK: - Scan
+
+    private var scanButton: some View {
+        Button(action: { speakerVM.discover() }) {
+            HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: DS.Icons.refresh)
+                    .typography(.badge)
+                Text("Scan for players")
+                    .typography(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(AccessibilityID.Sidebar.scanButton)
     }
 
     // MARK: - Branding Header

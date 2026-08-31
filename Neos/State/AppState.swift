@@ -108,6 +108,8 @@ final class AppState: StateUpdater {
     var canvasDominantColors: [Color] = DominantColorExtractor.defaultColors
     var diagnostics: [DiagnosticEvent] = []
     private var toastDismissTask: Task<Void, Never>?
+    /// Called for every device discovery reports, so a remembered speaker can reconnect on its own.
+    @ObservationIgnored var onDeviceDiscovered: ((DiscoveredDevice) -> Void)?
 
     // MARK: - Sub-States
 
@@ -169,14 +171,23 @@ final class AppState: StateUpdater {
         connectionState == .connected
     }
 
+    /// True from the first connection until the user disconnects; a drop in between is a reconnection.
+    private(set) var hasEstablishedSession = false
+
     // MARK: - StateUpdater
 
     func setConnectionState(_ state: ConnectionState) {
         connectionState = state
-        if state == .disconnected {
+        switch state {
+        case .connected:
+            hasEstablishedSession = true
+        case .disconnected:
+            hasEstablishedSession = false
             resetPlaybackState()
             serviceCapabilities = [:]
             searchCriteria = [:]
+        case .connecting, .reconnecting:
+            break
         }
     }
 
@@ -387,6 +398,8 @@ final class AppState: StateUpdater {
         } else {
             discoveredDevices.append(device)
         }
+
+        onDeviceDiscovered?(device)
     }
 
     // MARK: - Toast

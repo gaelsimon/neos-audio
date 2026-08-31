@@ -32,6 +32,51 @@ func preferredPlayer(from players: [Player], groups: [SpeakerGroup], cachedPID: 
 
 extension HEOSService {
 
+    /// Drops the socket but keeps the target and the discovery, so `resume()` brings the session back.
+    public func suspend() async {
+        guard await connectionCoordinator.lastHost != nil else { return }
+        await tearDownSession()
+        await stateUpdater.setConnectionState(.reconnecting)
+        HEOSLogger.service.info("Suspended")
+    }
+
+    /// A dropped connection keeps its dead `HEOSConnection`, so reconnecting must not read as healthy.
+    static func shouldResume(hasTarget: Bool, hasConnection: Bool, isReconnecting: Bool) -> Bool {
+        hasTarget && (!hasConnection || isReconnecting)
+    }
+
+    /// Wake or a restored network: retry the suspended target now instead of waiting out the backoff.
+    public func resume() async {
+        let hasTarget = await connectionCoordinator.lastHost != nil
+        let isReconnecting = await connectionCoordinator.isReconnecting
+        guard Self.shouldResume(hasTarget: hasTarget, hasConnection: connection != nil, isReconnecting: isReconnecting)
+        else { return }
+        HEOSLogger.service.info("Resuming")
+        await connectionCoordinator.startReconnection(initialDelay: 0) { [weak self] host, port, cachedPlayerID in
+            try await self?.connect(host: host, port: port, cachedPlayerID: cachedPlayerID)
+        }
+    }
+
+    /// Closes the socket and everything hanging off it, leaving discovery and the target alone.
+    func tearDownSession() async {
+        eventTask?.cancel()
+        eventTask = nil
+        avrEventTask?.cancel()
+        avrEventTask = nil
+        await connectionCoordinator.cancelReconnection()
+        await resetVolumeThrottles()
+        await avrClient?.disconnect()
+        avrClient = nil
+        volumeLimitTask?.cancel()
+        volumeLimitTask = nil
+        if let old = upnpACT { Task { await old.invalidateSession() } }
+        upnpACT = nil
+        if let old = upnpTransport { Task { await old.invalidateSession() } }
+        upnpTransport = nil
+        await connection?.disconnect()
+        connection = nil
+    }
+
     func connectUPnP(host: String) {
         // Clean up any existing UPnP sessions (prevents in-flight request leaks on reconnect)
         volumeLimitTask?.cancel()
@@ -401,7 +446,8 @@ extension HEOSService {
 
     func handleConnectionLost() async {
         HEOSLogger.service.warning("Connection lost")
-        await stateUpdater.setConnectionState(.disconnected)
+        // Reconnecting, not disconnected: the UI keeps the session on screen while we retry.
+        await stateUpdater.setConnectionState(.reconnecting)
         await connectionCoordinator.startReconnection { [weak self] host, port, cachedPlayerID in
             try await self?.connect(host: host, port: port, cachedPlayerID: cachedPlayerID)
         }

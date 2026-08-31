@@ -27,10 +27,16 @@ public actor TCPTransport: TransportProtocol {
 
         // Clear the state handler after connection is established
         connection?.stateUpdateHandler = { [weak self] state in
-            guard let self else { return }
-            if case .failed = state {
-                Task { await self.handleDisconnection() }
-            }
+            guard let self, Self.isDisconnection(state) else { return }
+            Task { await self.handleDisconnection() }
+        }
+    }
+
+    /// Once connected, `.waiting` means the path is gone: NWConnection would retry while commands time out.
+    static func isDisconnection(_ state: NWConnection.State) -> Bool {
+        switch state {
+        case .failed, .waiting: true
+        default: false
         }
     }
 

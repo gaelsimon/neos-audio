@@ -29,17 +29,27 @@ actor ConnectionCoordinator {
         lastPlayerID = pid
     }
 
-    func startReconnection(using connect: @escaping ConnectAction) {
+    /// Forgets the target, so a later wake-up cannot resurrect a session the user ended.
+    func clearTarget() {
+        lastHost = nil
+        lastPort = nil
+        lastPlayerID = nil
+    }
+
+    /// `initialDelay` is 0 when a wake-up or a network change makes an immediate attempt worthwhile.
+    func startReconnection(initialDelay: TimeInterval = 1.0, using connect: @escaping ConnectAction) {
         isReconnecting = true
         reconnectTask?.cancel()
         reconnectTask = Task {
-            var delay: TimeInterval = 1.0
+            var delay = initialDelay
             let maxDelay: TimeInterval = 60.0
 
             while !Task.isCancelled {
                 await stateUpdater.setConnectionState(.reconnecting)
                 HEOSLogger.service.info("Reconnecting in \(delay)s...")
-                try? await Task.sleep(for: .seconds(delay))
+                if delay > 0 {
+                    try? await Task.sleep(for: .seconds(delay))
+                }
 
                 guard !Task.isCancelled,
                       let host = lastHost,
@@ -51,7 +61,7 @@ actor ConnectionCoordinator {
                     return
                 } catch {
                     HEOSLogger.service.warning("Reconnection failed: \(error.localizedDescription)")
-                    delay = min(delay * 2, maxDelay)
+                    delay = min(max(delay * 2, 1.0), maxDelay)
                 }
             }
         }

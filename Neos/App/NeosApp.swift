@@ -7,6 +7,7 @@ struct NeosApp: App {
     @State private var appState = AppState()
     @State private var service: HEOSService?
     @State private var container: ViewModelContainer?
+    @State private var lifecycleMonitor: LifecycleMonitor?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -135,31 +136,20 @@ struct NeosApp: App {
         let vms = ViewModelContainer(service: svc, state: appState)
         self.container = vms
 
+        let monitor = LifecycleMonitor(service: svc, state: appState)
+        monitor.start()
+        self.lifecycleMonitor = monitor
+
         // Skip network operations when running UI tests without a speaker
         if skipDiscovery {
             return
         }
 
-        // Try cached device first, fall back to discovery
+        // Discovery runs alongside the cached connection, so a speaker on a new IP is still found
+        vms.speakerVM.startContinuousDiscovery()
+
         if let cached = DeviceCache.load() {
-            appState.connectionState = .connecting
-            appState.connectedDevice = cached.device
-            Task {
-                do {
-                    try await svc.connect(
-                        host: cached.device.host,
-                        port: cached.device.port,
-                        cachedPlayerID: cached.selectedPlayerID
-                    )
-                    DeviceCache.save(device: cached.device, selectedPlayerID: appState.selectedPlayerID)
-                } catch {
-                    DeviceCache.clear()
-                    appState.connectionState = .disconnected
-                    vms.speakerVM.startContinuousDiscovery()
-                }
-            }
-        } else {
-            vms.speakerVM.startContinuousDiscovery()
+            vms.speakerVM.connectToCachedDevice(cached)
         }
     }
 }
