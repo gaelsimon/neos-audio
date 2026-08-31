@@ -168,6 +168,9 @@ struct NowPlayingToolbar: View {
 
     // MARK: - Background
 
+    private static let scrimTop: Double = 0.18
+    private static let scrimBottom: Double = 0.28
+
     @ViewBuilder private var toolbarBackground: some View {
         if state.isNowPlayingCanvasOpen {
             ZStack {
@@ -179,30 +182,19 @@ struct NowPlayingToolbar: View {
             .shadow(color: .black.opacity(0.3), radius: 12, y: 4)
         } else {
             ZStack(alignment: .top) {
-                // Backdrop blur
-                Rectangle().fill(.ultraThinMaterial)
+                // `popover` smears the colour over 164pt against `ultraThinMaterial`'s 233pt, so it stays legible.
+                BackdropBlur(material: .popover)
 
-                // Pseudo-element: transparent → black for depth
+                // Black scales every channel, so hues stay intact; grey would flatten the bar into fog.
                 LinearGradient(
-                    colors: [.clear, Color.black.opacity(0.15)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-
-                // Main: subtle grey gradient
-                LinearGradient(
-                    stops: [
-                        .init(color: Color(white: 0.235, opacity: 0.35), location: 0),
-                        .init(color: Color(white: 0.247, opacity: 0.35), location: 0.53),
-                        .init(color: Color(white: 0.275, opacity: 0.35), location: 1.0),
-                    ],
+                    colors: [Color.black.opacity(Self.scrimTop), Color.black.opacity(Self.scrimBottom)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
 
                 // Top border
                 Rectangle()
-                    .fill(Color.white.opacity(0.1))
+                    .fill(Color.white.opacity(0.07))
                     .frame(height: 0.5)
             }
         }
@@ -331,5 +323,24 @@ private struct NowPlayingCrossLink: View {
             }
             .onTapGesture(perform: onTap)
             .accessibilityAddTraits(.isLink)
+    }
+}
+
+// MARK: - Backdrop
+
+/// AppKit backdrop, so the blur radius can be chosen: the SwiftUI materials expose no such knob.
+private struct BackdropBlur: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+
+    func makeNSView(context _: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = .withinWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context _: Context) {
+        view.material = material
     }
 }
