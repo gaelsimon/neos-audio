@@ -97,6 +97,8 @@ final class AppState: StateUpdater {
     var toast: ToastMessage?
     var isQueuePanelOpen: Bool = false
     var isNowPlayingCanvasOpen: Bool = false
+    /// Drives the search field's focus; shared so the menu bar can focus it too.
+    var isSearchFieldFocused: Bool = false
     var canvasDominantColors: [Color] = DominantColorExtractor.defaultColors
     var diagnostics: [DiagnosticEvent] = []
     private var toastDismissTask: Task<Void, Never>?

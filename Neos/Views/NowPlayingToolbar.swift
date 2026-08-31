@@ -119,12 +119,12 @@ struct NowPlayingToolbar: View {
 
     @ViewBuilder private var trackInfoSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-            Text(state.nowPlaying.song.isEmpty ? "Not Playing" : state.nowPlaying.song)
+            Text(state.nowPlaying.song.isEmpty ? "Not Playing" : state.nowPlaying.song.displayTitle)
                 .typography(.bodyMedium)
                 .lineLimit(1)
                 .accessibilityIdentifier(AccessibilityID.Player.songTitle)
             if let station = state.nowPlaying.station, !station.isEmpty {
-                Text(station)
+                Text(station.displayTitle)
                     .typography(.secondary)
                     .lineLimit(1)
                     .accessibilityIdentifier(AccessibilityID.Player.artistName)

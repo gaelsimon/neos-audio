@@ -36,9 +36,10 @@ struct NeosApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 700, height: 500)
+        .commands { playbackCommands }
 
         // Menu bar quick controls
-        MenuBarExtra("Neos", systemImage: menuBarIcon) {
+        MenuBarExtra {
             if let container {
                 MenuBarView(
                     state: appState,
@@ -54,23 +55,59 @@ struct NeosApp: App {
                 .frame(width: 280, height: 100)
                 .background(DS.Colors.background)
                 .preferredColorScheme(.dark)
+                .onAppear { initializeServices() }
             }
+        } label: {
+            // The status item renders at launch, so this boots the app even with no window.
+            Image(systemName: menuBarIcon)
+                .onAppear { initializeServices() }
         }
         .menuBarExtraStyle(.window)
     }
 
-    private var menuBarIcon: String {
-        switch appState.connectionState {
-        case .connected:
-            DS.Icons.speakerFill
-        case .connecting, .reconnecting:
-            DS.Icons.speaker
-        case .disconnected:
-            DS.Icons.speaker
+    // MARK: - Menu Commands
+
+    /// Space stays disabled while the search field has focus so the key reaches the text field.
+    @CommandsBuilder
+    private var playbackCommands: some Commands {
+        CommandMenu("Playback") {
+            Button(appState.isPlaying ? "Pause" : "Play") {
+                container?.playerVM.togglePlayPause()
+            }
+            .keyboardShortcut(.space, modifiers: [])
+            .disabled(container == nil || !appState.isConnected || appState.isSearchFieldFocused)
+
+            Divider()
+
+            Button("Back") { container?.goBack() }
+                .keyboardShortcut("[", modifiers: .command)
+                .disabled(container?.canGoBack != true)
+
+            Button("Forward") { container?.goForward() }
+                .keyboardShortcut("]", modifiers: .command)
+                .disabled(container?.canGoForward != true)
+
+            Divider()
+
+            Button("Search") { appState.isSearchFieldFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(container == nil || !appState.isConnected)
+
+            Button(appState.isNowPlayingCanvasOpen ? "Exit Full Screen Player" : "Full Screen Player") {
+                appState.isNowPlayingCanvasOpen.toggle()
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+            .disabled(container == nil || !appState.isConnected)
         }
     }
 
+    private var menuBarIcon: String {
+        menuBarIconName(connectionState: appState.connectionState, isPlaying: appState.isPlaying)
+    }
+
+    /// Idempotent: whichever scene appears first boots the services.
     private func initializeServices() {
+        guard container == nil else { return }
         let isDemoMode = CommandLine.arguments.contains("--demo-mode")
 
         // Demo mode takes priority; always initialize even when hosted by XCTest

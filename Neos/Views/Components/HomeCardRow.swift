@@ -12,7 +12,7 @@ struct HomeCardRow: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HomeCard(
                         imageURL: item.resolvedImageURL,
-                        title: item.name,
+                        title: item.displayTitle,
                         subtitle: item.artist
                     ) {
                         onTap(item, item.sid ?? sid)

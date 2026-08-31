@@ -4,7 +4,6 @@ import NeosDomain
 struct MainWindowView: View {
     let state: AppState
     let container: ViewModelContainer
-    @State private var isSearchFocused = false
     @State private var showConnectedSplash = false
 
     private var playerVM: PlayerViewModel { container.playerVM }
@@ -99,14 +98,14 @@ struct MainWindowView: View {
             }
         }
         .onChange(of: browseVM.currentDestination) {
-            isSearchFocused = false
+            state.isSearchFieldFocused = false
         }
         .onChange(of: browseVM.navigationTapCount) {
             if searchVM.isOverlayVisible {
                 // Push already happened; origin is one before current
                 searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex - 1)
             }
-            isSearchFocused = false
+            state.isSearchFieldFocused = false
         }
         .task {
             guard !CommandLine.arguments.contains("--skip-discovery") else { return }
@@ -204,16 +203,16 @@ struct MainWindowView: View {
             HStack(spacing: DS.Spacing.xs) {
                 navArrowButton(
                     icon: DS.Icons.back,
-                    enabled: canGoBack,
+                    enabled: container.canGoBack,
                     accessibilityID: AccessibilityID.TopBar.backButton,
-                    action: { handleBack() }
+                    action: { container.goBack() }
                 )
 
                 navArrowButton(
                     icon: DS.Icons.forward,
-                    enabled: browseVM.canGoForward,
+                    enabled: container.canGoForward,
                     accessibilityID: AccessibilityID.TopBar.forwardButton,
-                    action: { handleForward() }
+                    action: { container.goForward() }
                 )
             }
 
@@ -246,7 +245,10 @@ struct MainWindowView: View {
                     get: { searchVM.query },
                     set: { searchVM.onQueryChanged($0) }
                 ),
-                isFocused: $isSearchFocused,
+                isFocused: Binding(
+                    get: { state.isSearchFieldFocused },
+                    set: { state.isSearchFieldFocused = $0 }
+                ),
                 accessibilityID: AccessibilityID.TopBar.searchField
             )
             .accessibilityIdentifier(AccessibilityID.TopBar.searchField)
@@ -265,21 +267,21 @@ struct MainWindowView: View {
         .background(DS.Colors.surfaceElevated, in: Capsule())
         .overlay(
             Capsule()
-                .strokeBorder(Color.white.opacity(isSearchFocused ? 0.6 : 0), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(state.isSearchFieldFocused ? 0.6 : 0), lineWidth: 1)
                 .allowsHitTesting(false)
         )
-        .animation(.easeInOut(duration: DS.Animation.quick), value: isSearchFocused)
-        .onChange(of: isSearchFocused) { _, focused in
+        .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
+        .onChange(of: state.isSearchFieldFocused) { _, focused in
             if focused && !searchVM.query.isEmpty && !searchVM.serviceResults.isEmpty {
                 searchVM.activateOverlay()
             }
         }
         .overlay(alignment: .topLeading) {
-            if isSearchFocused && searchVM.query.isEmpty && !searchVM.recentQueries.isEmpty {
+            if state.isSearchFieldFocused && searchVM.query.isEmpty && !searchVM.recentQueries.isEmpty {
                 SearchHistoryOverlay(
                     queries: searchVM.recentQueries,
                     onSelect: { query in
-                        isSearchFocused = false
+                        state.isSearchFieldFocused = false
                         searchVM.onQueryChanged(query)
                     },
                     onClear: {
@@ -290,7 +292,7 @@ struct MainWindowView: View {
                 .offset(y: 48)
                 .zIndex(10)
                 .transition(.opacity.combined(with: .move(edge: .top)))
-                .animation(.easeInOut(duration: DS.Animation.quick), value: isSearchFocused)
+                .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
             }
         }
     }
@@ -374,26 +376,6 @@ struct MainWindowView: View {
     }
 
     // MARK: - Navigation
-
-    private var canGoBack: Bool {
-        searchVM.isOverlayVisible || searchVM.hasSuspendedSearch || browseVM.canGoBack
-    }
-
-    private func handleBack() {
-        if searchVM.isOverlayVisible {
-            searchVM.dismissOverlay()
-            return
-        }
-        browseVM.goBack()
-        searchVM.tryRestore(atHistoryIndex: browseVM.currentHistoryIndex)
-    }
-
-    private func handleForward() {
-        if searchVM.isOverlayVisible {
-            searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex)
-        }
-        browseVM.goForward()
-    }
 
     // MARK: - Toast
 

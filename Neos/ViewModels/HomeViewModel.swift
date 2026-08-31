@@ -32,10 +32,7 @@ final class HomeViewModel {
     var loadingServiceSIDs: Set<Int> = []
     var hiddenSIDs: Set<Int> = HomePreferences.hiddenSIDs()
 
-    /// Single sequential task for all service probes.
-    /// HEOS connection matches browse responses by command path only ("browse/browse"),
-    /// so concurrent browse commands from different services get responses swapped.
-    /// Serializing ensures only one service is probed at a time.
+    /// Single sequential task: the speaker firmware only handles one browse at a time.
     private let serviceProbeTask = CancellableTaskHandle()
     private let serviceTracker = RequestTracker()
 
@@ -106,12 +103,24 @@ final class HomeViewModel {
         let newSources = visibleStreamingSources.filter { !loadedSIDs.contains($0.sid) }
         guard !newSources.isEmpty else { return }
 
+        let cacheIsFresh = !HomeCacheStore.isStale()
+        var needsProbe: [MusicSource] = []
+
         for source in newSources {
             restoreCachedServiceContent(for: source.sid)
             loadedSIDs.insert(source.sid)
+            // Probing costs 15-40 serialized browses; skip it while the cache still holds this service.
+            if !cacheIsFresh || !hasCachedCategories(for: source.sid) {
+                needsProbe.append(source)
+            }
         }
 
-        startSequentialProbe(for: newSources)
+        guard !needsProbe.isEmpty else { return }
+        startSequentialProbe(for: needsProbe)
+    }
+
+    private func hasCachedCategories(for sid: Int) -> Bool {
+        serviceCategories[ServiceCategoryKey(sid: sid, categoryIndex: 0)] != nil
     }
 
     // MARK: - Source Observation
@@ -204,11 +213,7 @@ final class HomeViewModel {
         startSequentialProbe(for: sources)
     }
 
-    /// Probes services SEQUENTIALLY in a single task.
-    ///
-    /// HEOS connection matches browse responses by command path ("browse/browse") only,
-    /// not by SID. Concurrent browse commands from different services get responses
-    /// matched to the wrong pending command. Serializing avoids this.
+    /// Probes services one at a time; the firmware serves a single browse at a time (BrowseService gates it).
     private func startSequentialProbe(for sources: [MusicSource]) {
         let requestID = serviceTracker.next()
 

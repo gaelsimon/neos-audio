@@ -23,7 +23,7 @@ struct BrowseItemRow: View {
             artworkThumbnail
 
             VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                Text(item.name)
+                Text(item.displayTitle)
                     .typography(.bodyPrimary)
                     .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
                     .lineLimit(1)
@@ -74,6 +74,7 @@ struct BrowseItemRow: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         .onHover { isHovered = $0 }
+        .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
     }
 
     // MARK: - Action Menu
@@ -87,6 +88,23 @@ struct BrowseItemRow: View {
     @ViewBuilder
     private var actionMenu: some View {
         Menu {
+            menuItems
+        } label: {
+            Image(systemName: "ellipsis")
+                .typography(.secondary)
+                .foregroundStyle(DS.Colors.textSecondary)
+                .frame(minWidth: 36, minHeight: 36)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+
+    /// Shared by the hover "…" button and the right-click context menu.
+    @ViewBuilder
+    private var menuItems: some View {
+        Group {
             if let onPlayNext {
                 Button { onPlayNext() } label: {
                     Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
@@ -137,16 +155,7 @@ struct BrowseItemRow: View {
                     Label("Remove Custom Artwork", systemImage: "photo.badge.x")
                 }
             }
-        } label: {
-            Image(systemName: "ellipsis")
-                .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
-                .frame(minWidth: 36, minHeight: 36)
-                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
     }
 
     private var effectiveImageURL: String {

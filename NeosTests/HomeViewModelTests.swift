@@ -194,4 +194,83 @@ final class HomeViewModelTests: XCTestCase {
         // Cleanup
         HomeCacheStore.clearAll()
     }
+
+    // MARK: - Probe TTL
+
+    @MainActor
+    private func makeProbeVM(cacheIsFresh: Bool) -> (HomeViewModel, MockAudioService, AppState) {
+        HomeCacheStore.clearAll()
+        HomePreferences.setHiddenSIDs([])
+        HomeCacheStore.saveServiceCategory(
+            sid: 5,
+            categoryIndex: 0,
+            name: "Playlists",
+            items: [BrowseItem(name: "Cached Playlist", cid: "c1", browsable: true)]
+        )
+        if cacheIsFresh { HomeCacheStore.markUpdated() }
+
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = HomeViewModel(service: mock, state: state)
+        state.musicSources = [MusicSource(sid: 5, name: "Spotify", type: "music_service")]
+        return (vm, mock, state)
+    }
+
+    @MainActor
+    func testFreshCacheSkipsProbing() async {
+        let (vm, mock, _) = makeProbeVM(cacheIsFresh: true)
+
+        vm.loadHome()
+
+        await yieldForTask()
+        XCTAssertFalse(mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }))
+        XCTAssertEqual(vm.serviceCategories[ServiceCategoryKey(sid: 5, categoryIndex: 0)]?.count, 1)
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
+    func testStaleCacheProbesAgain() async {
+        let (vm, mock, _) = makeProbeVM(cacheIsFresh: false)
+
+        vm.loadHome()
+
+        for _ in 0..<100 where !mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }) {
+            await yieldForTask()
+        }
+        XCTAssertTrue(mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }))
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
+    func testRefreshProbesEvenWithFreshCache() async {
+        let (vm, mock, _) = makeProbeVM(cacheIsFresh: true)
+        vm.loadHome()
+        await yieldForTask()
+
+        vm.refresh()
+
+        for _ in 0..<100 where !mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }) {
+            await yieldForTask()
+        }
+        XCTAssertTrue(mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }))
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
+    func testFreshCacheStillProbesServiceWithoutCachedCategories() async {
+        let (vm, mock, state) = makeProbeVM(cacheIsFresh: true)
+        state.musicSources = [
+            MusicSource(sid: 5, name: "Spotify", type: "music_service"),
+            MusicSource(sid: 9, name: "Tidal", type: "music_service"),
+        ]
+
+        vm.loadHome()
+
+        for _ in 0..<100 where !mock.calls.contains(where: { $0.hasPrefix("browseSource:9") }) {
+            await yieldForTask()
+        }
+        XCTAssertTrue(mock.calls.contains(where: { $0.hasPrefix("browseSource:9") }))
+        XCTAssertFalse(mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }))
+        HomeCacheStore.clearAll()
+    }
 }

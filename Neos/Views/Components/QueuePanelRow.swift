@@ -28,6 +28,21 @@ struct QueuePanelRow: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         .onHover { isHovered = $0 }
+        .contextMenu { menuItems }
+    }
+
+    // MARK: - Context Menu
+
+    @ViewBuilder
+    private var menuItems: some View {
+        Button { onTap() } label: {
+            Label("Play", systemImage: DS.Icons.playing)
+        }
+        if let onRemove {
+            Button(role: .destructive) { onRemove() } label: {
+                Label("Remove from Queue", systemImage: DS.Icons.close)
+            }
+        }
     }
 
     // MARK: - Artwork
@@ -67,7 +82,7 @@ struct QueuePanelRow: View {
 
     private var textContent: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-            Text(name)
+            Text(name.displayTitle)
                 .typography(.bodyPrimary)
                 .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
                 .lineLimit(1)

@@ -6,6 +6,7 @@ import NeosDomain
 @MainActor
 final class SettingsViewModel {
     private let state: AppState
+    private let loginItem: LoginItemService
 
     // MARK: - Volume Limit
 
@@ -65,6 +66,31 @@ final class SettingsViewModel {
         ImageCache.shared.clearAll()
     }
 
+    // MARK: - Launch at Login
+
+    /// Mirrors the system login-item status; refreshed after every toggle.
+    private(set) var launchAtLoginEnabled: Bool = false
+    /// True when macOS registered the item but the user still has to approve it.
+    private(set) var launchAtLoginNeedsApproval: Bool = false
+
+    func refreshLaunchAtLogin() {
+        launchAtLoginEnabled = loginItem.isEnabled
+        launchAtLoginNeedsApproval = loginItem.requiresApproval
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try loginItem.register()
+            } else {
+                try loginItem.unregister()
+            }
+        } catch {
+            state.showToast("Could not update Open at Login", icon: DS.Icons.warning, style: .error)
+        }
+        refreshLaunchAtLogin()
+    }
+
     // MARK: - Diagnostics
 
     func copyDiagnostics() {
@@ -80,8 +106,9 @@ final class SettingsViewModel {
 
     // MARK: - Init
 
-    init(state: AppState) {
+    init(state: AppState, loginItem: LoginItemService = SystemLoginItemService()) {
         self.state = state
+        self.loginItem = loginItem
         self.volumeLimitEnabled = UserDefaults.standard.bool(forKey: "settings.volumeLimitEnabled")
         let savedValue = UserDefaults.standard.integer(forKey: "settings.volumeLimitValue")
         self.volumeLimitValue = savedValue > 0 ? savedValue : 80
@@ -90,5 +117,6 @@ final class SettingsViewModel {
         if volumeLimitEnabled {
             state.playback.maxVolume = volumeLimitValue
         }
+        refreshLaunchAtLogin()
     }
 }
