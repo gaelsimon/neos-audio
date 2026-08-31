@@ -7,6 +7,17 @@ private let cacheLogger = Logger(subsystem: "com.galela.neos", category: "cache"
 struct CachedDevice: Codable {
     let device: DiscoveredDevice
     let selectedPlayerID: Int?
+
+    /// Serial and device ID are stable; the host is a fallback, because a DHCP lease can move it.
+    func matches(_ candidate: DiscoveredDevice) -> Bool {
+        if !candidate.serialNumber.isEmpty, !device.serialNumber.isEmpty {
+            return candidate.serialNumber == device.serialNumber
+        }
+        if !candidate.deviceID.isEmpty, !device.deviceID.isEmpty {
+            return candidate.deviceID == device.deviceID
+        }
+        return candidate.host == device.host
+    }
 }
 
 enum DeviceCache {

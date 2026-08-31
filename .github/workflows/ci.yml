@@ -66,6 +66,20 @@ jobs:
             DEVELOPMENT_TEAM= \
             | xcbeautify
 
+      - name: App tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Neos.xcodeproj \
+            -scheme Neos \
+            -destination 'platform=macOS' \
+            -only-testing:NeosTests \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM= \
+            | xcbeautify
+
       - name: Generate coverage report
         run: ./scripts/sonar-coverage.sh
 

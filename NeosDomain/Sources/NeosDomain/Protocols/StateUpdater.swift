@@ -30,7 +30,7 @@ public protocol StateUpdater: AnyObject, Sendable {
     func applyPlayerSnapshot(_ snapshot: PlayerSnapshot)
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities)
     func setNowPlayingOptions(_ options: [ServiceOption])
-    func setMultiRoomGroups(_ gids: Set<Int>)
+    func setMultiRoomGroups(_ gids: Set<Int>, unconfirmed: Set<Int>)
 }
 
 public extension StateUpdater {
@@ -44,7 +44,13 @@ public extension StateUpdater {
 
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities) {}
     func setNowPlayingOptions(_ options: [ServiceOption]) {}
-    func setMultiRoomGroups(_ gids: Set<Int>) {}
+    func setMultiRoomGroups(_: Set<Int>, unconfirmed _: Set<Int>) {}
+
+    /// Every group classified: the caller could read all member channels.
+    func setMultiRoomGroups(_ gids: Set<Int>) {
+        setMultiRoomGroups(gids, unconfirmed: [])
+    }
+
     func setPlayerVolume(pid _: Int, level _: Int) {
         // Optional; only conformers that track per-speaker volume implement this.
     }

@@ -52,6 +52,13 @@ actor MockTCPTransport: TransportProtocol {
 
     // MARK: - Test Helpers
 
+    /// True once `receive()` installed its continuation; responses yielded before that are dropped.
+    var isReceiving: Bool { responseContinuation != nil }
+
+    func setAutoRespond(_ enabled: Bool) {
+        autoRespond = enabled
+    }
+
     func enqueueResponse(_ json: String) {
         responses.append(Data(json.utf8))
     }

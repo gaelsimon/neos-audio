@@ -32,6 +32,52 @@ func preferredPlayer(from players: [Player], groups: [SpeakerGroup], cachedPID: 
 
 extension HEOSService {
 
+    /// Drops the socket but keeps the target and the discovery, so `resume()` brings the session back.
+    public func suspend() async {
+        guard await connectionCoordinator.lastHost != nil else { return }
+        await tearDownSession()
+        await stateUpdater.setConnectionState(.reconnecting)
+        HEOSLogger.service.info("Suspended")
+    }
+
+    /// A dropped connection keeps its dead `HEOSConnection`, so reconnecting must not read as healthy.
+    static func shouldResume(hasTarget: Bool, hasConnection: Bool, isReconnecting: Bool) -> Bool {
+        hasTarget && (!hasConnection || isReconnecting)
+    }
+
+    /// Wake or a restored network: retry the suspended target now instead of waiting out the backoff.
+    public func resume() async {
+        let hasTarget = await connectionCoordinator.lastHost != nil
+        let isReconnecting = await connectionCoordinator.isReconnecting
+        guard Self.shouldResume(hasTarget: hasTarget, hasConnection: connection != nil, isReconnecting: isReconnecting)
+        else { return }
+        HEOSLogger.service.info("Resuming")
+        await connectionCoordinator.retryNow { [weak self] host, port, cachedPlayerID in
+            try await self?.connect(host: host, port: port, cachedPlayerID: cachedPlayerID)
+        }
+    }
+
+    /// Closes the socket and everything hanging off it, leaving discovery and the target alone.
+    func tearDownSession() async {
+        eventTask?.cancel()
+        eventTask = nil
+        await eventRouter?.cancelPendingFetches()
+        avrEventTask?.cancel()
+        avrEventTask = nil
+        await connectionCoordinator.cancelReconnection()
+        await resetVolumeThrottles()
+        await avrClient?.disconnect()
+        avrClient = nil
+        volumeLimitTask?.cancel()
+        volumeLimitTask = nil
+        if let old = upnpACT { Task { await old.invalidateSession() } }
+        upnpACT = nil
+        if let old = upnpTransport { Task { await old.invalidateSession() } }
+        upnpTransport = nil
+        await connection?.disconnect()
+        connection = nil
+    }
+
     func connectUPnP(host: String) {
         // Clean up any existing UPnP sessions (prevents in-flight request leaks on reconnect)
         volumeLimitTask?.cancel()
@@ -175,19 +221,40 @@ extension HEOSService {
         }
     }
 
-    func setupVolumeThrottles() {
-        volumeThrottle = Throttle(interval: .milliseconds(100), action: { [weak self] args in
-            try await self?.playerService?.setVolume(pid: args.pid, level: args.level)
+    /// One command per target per interval: the speaker firmware is not built for a 10 Hz stream.
+    static let volumeThrottleInterval: Duration = .milliseconds(300)
+
+    /// Returns the throttle for one player, creating it lazily so each pid debounces independently.
+    func volumeThrottle(for pid: Int) -> Throttle<Int> {
+        if let throttle = volumeThrottles[pid] { return throttle }
+        let throttle = Throttle<Int>(interval: Self.volumeThrottleInterval, action: { [weak self] level in
+            try await self?.playerService?.setVolume(pid: pid, level: level)
         }, onError: { [weak self] error in
             guard let self else { return }
             await self.stateUpdater.reportNonFatal(source: "volumeThrottle", message: error.localizedDescription)
         })
-        groupVolumeThrottle = Throttle(interval: .milliseconds(100), action: { [weak self] args in
-            try await self?.groupService?.setGroupVolume(gid: args.gid, level: args.level)
+        volumeThrottles[pid] = throttle
+        return throttle
+    }
+
+    /// Returns the throttle for one group, creating it lazily so each gid debounces independently.
+    func groupVolumeThrottle(for gid: Int) -> Throttle<Int> {
+        if let throttle = groupVolumeThrottles[gid] { return throttle }
+        let throttle = Throttle<Int>(interval: Self.volumeThrottleInterval, action: { [weak self] level in
+            try await self?.groupService?.setGroupVolume(gid: gid, level: level)
         }, onError: { [weak self] error in
             guard let self else { return }
             await self.stateUpdater.reportNonFatal(source: "groupVolumeThrottle", message: error.localizedDescription)
         })
+        groupVolumeThrottles[gid] = throttle
+        return throttle
+    }
+
+    func resetVolumeThrottles() async {
+        for throttle in volumeThrottles.values { await throttle.cancel() }
+        for throttle in groupVolumeThrottles.values { await throttle.cancel() }
+        volumeThrottles.removeAll()
+        groupVolumeThrottles.removeAll()
     }
 
     func loadInitialState(cachedPlayerID: Int? = nil) async {
@@ -216,22 +283,24 @@ extension HEOSService {
         // Phase 1: UI-critical state; apply as soon as available so the sidebar
         // renders sources without waiting for slower queries (account, queue).
         let players = await playersResult ?? []
-        let groups = await groupsResult ?? []
+        // Left optional: a failed fetch must not read as "no groups", which would drop every group
+        // from the sidebar and un-collapse a stereo pair until the next groups_changed.
+        let fetchedGroups = await groupsResult
         let sources = await sourcesResult ?? []
 
         await stateUpdater.setPlayers(players)
-        await stateUpdater.setGroups(groups)
+        if let fetchedGroups { await stateUpdater.setGroups(fetchedGroups) }
         await stateUpdater.setMusicSources(sources)
 
         // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
-        Task { await self.refreshGroupTopology(groups: groups, players: players) }
+        Task { await self.refreshGroupTopology(groups: fetchedGroups, players: players) }
 
         // Phase 2: remaining global state (account check may hit cloud servers)
         let signedInUser = await accountResult
         await stateUpdater.setSignedInUser(signedInUser)
 
         // Determine the correct PID; prefer cached if it still exists, then standalone speakers
-        guard let preferred = preferredPlayer(from: players, groups: groups, cachedPID: cachedPID) else {
+        guard let preferred = preferredPlayer(from: players, groups: fetchedGroups ?? [], cachedPID: cachedPID) else {
             HEOSLogger.service.warning("getPlayers returned empty during parallel load; skipping player state")
             return
         }
@@ -282,20 +351,22 @@ extension HEOSService {
 
         // Apply UI-critical state first without waiting for account check
         let players = await playersResult ?? []
-        let groups = await groupsResult ?? []
+        // Left optional: a failed fetch must not read as "no groups", which would drop every group
+        // from the sidebar and un-collapse a stereo pair until the next groups_changed.
+        let fetchedGroups = await groupsResult
         let sources = await sourcesResult ?? []
 
         await stateUpdater.setPlayers(players)
-        await stateUpdater.setGroups(groups)
+        if let fetchedGroups { await stateUpdater.setGroups(fetchedGroups) }
         await stateUpdater.setMusicSources(sources)
 
         // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
-        Task { await self.refreshGroupTopology(groups: groups, players: players) }
+        Task { await self.refreshGroupTopology(groups: fetchedGroups, players: players) }
 
         let signedInUser = await accountResult
         await stateUpdater.setSignedInUser(signedInUser)
 
-        if let player = preferredPlayer(from: players, groups: groups, cachedPID: nil) {
+        if let player = preferredPlayer(from: players, groups: fetchedGroups ?? [], cachedPID: nil) {
             await connectionCoordinator.updateLastPlayerID(player.pid)
             await stateUpdater.setSelectedPlayerID(player.pid)
             await loadPlayerState(pid: player.pid)
@@ -343,10 +414,26 @@ extension HEOSService {
         await stateUpdater.applyPlayerSnapshot(snapshot)
     }
 
+    /// Reclassifies after a groups_changed, on freshly read players: a speaker that just left a
+    /// group may have changed address, and an empty list needs no fetch at all.
+    func refreshGroupTopology(groups: [SpeakerGroup]) async {
+        guard !groups.isEmpty else {
+            await stateUpdater.setMultiRoomGroups([])
+            return
+        }
+        let players = (try? await playerService?.getPlayers()) ?? []
+        await refreshGroupTopology(groups: groups, players: players)
+    }
+
     /// Reads each member's UPnP channel to find which groups are plain multi-room, and publishes
     /// those GIDs. Best-effort: a failed query leaves the group collapsed.
-    func refreshGroupTopology(groups: [SpeakerGroup], players: [Player]) async {
-        guard !groups.isEmpty else { return }
+    /// `groups` is nil when the fetch failed; an empty list is authoritative and clears the pair caches.
+    func refreshGroupTopology(groups: [SpeakerGroup]?, players: [Player]) async {
+        guard let groups else { return }
+        guard !groups.isEmpty else {
+            await stateUpdater.setMultiRoomGroups([])
+            return
+        }
         let ipByPID = Dictionary(players.map { ($0.pid, $0.ip) }, uniquingKeysWith: { first, _ in first })
         var channels: [Int: String] = [:]
         for group in groups {
@@ -356,7 +443,10 @@ extension HEOSService {
                 channels[member.pid] = channel
             }
         }
-        await stateUpdater.setMultiRoomGroups(groups.multiRoomGroupIDs(channelsByPID: channels))
+        await stateUpdater.setMultiRoomGroups(
+            groups.multiRoomGroupIDs(channelsByPID: channels),
+            unconfirmed: groups.unclassifiedGroupIDs(channelsByPID: channels)
+        )
     }
 
     private func memberAudioChannel(host: String) async throws -> String {
@@ -380,7 +470,8 @@ extension HEOSService {
 
     func handleConnectionLost() async {
         HEOSLogger.service.warning("Connection lost")
-        await stateUpdater.setConnectionState(.disconnected)
+        // Reconnecting, not disconnected: the UI keeps the session on screen while we retry.
+        await stateUpdater.setConnectionState(.reconnecting)
         await connectionCoordinator.startReconnection { [weak self] host, port, cachedPlayerID in
             try await self?.connect(host: host, port: port, cachedPlayerID: cachedPlayerID)
         }

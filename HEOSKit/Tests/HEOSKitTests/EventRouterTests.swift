@@ -222,6 +222,110 @@ struct EventRouterTests {
         #expect(state.nonFatalReports[0].source == "event.system_error")
     }
 
+    // MARK: - Timeout Retry
+
+    @Test @MainActor func nowPlayingChangedRetriesAfterTimeout() async throws {
+        let transport = MockTCPTransport(autoRespond: false)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        let playerService = PlayerService(connection: connection)
+        let state = MockStateUpdater()
+        state.selectedPlayerID = 42
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: playerService,
+            groupService: nil,
+            browseService: nil,
+            fetchTimeout: .milliseconds(300)
+        )
+        // Responses yielded before the receive stream is live would be dropped.
+        await waitUntil { await transport.isReceiving }
+        let mediaJSON = """
+        {"heos":{"command":"player/get_now_playing_media","result":"success","message":"pid=42"},\
+        "payload":{"type":"song","song":"Recovered Song","album":"Test Album","artist":"Test Artist",\
+        "image_url":"","mid":"m1","qid":"1","sid":"5","album_id":""}}
+        """
+        let errorJSON = """
+        {"heos":{"command":"player/get_now_playing_media","result":"fail","message":"eid=2&text=timeout"}}
+        """
+        let event = makeEvent("player_now_playing_changed", message: ["pid": "42"])
+
+        // The handler now runs off the event loop, so poll for its effect instead of awaiting it.
+        await router.handle(event)
+
+        // First fetch: held past the router timeout, then failed so the abandoned command frees its slot.
+        await waitUntil { await transport.sentData.count == 1 }
+        try? await Task.sleep(for: .milliseconds(500))
+        await transport.enqueueResponse(errorJSON)
+        await transport.deliverNextResponse()
+
+        // Retry fetch: answered the moment it is sent, leaving no window to time out again.
+        await transport.enqueueResponse(mediaJSON)
+        await transport.setAutoRespond(true)
+
+        await waitUntil { await MainActor.run { state.nowPlaying?.song == "Recovered Song" } }
+
+        #expect(await transport.sentData.count == 2)
+        #expect(state.nowPlaying?.song == "Recovered Song")
+        await connection.disconnect()
+    }
+
+    // MARK: - Slow Fetches Do Not Block Cheap Events
+
+    @Test @MainActor func slowNowPlayingFetchDoesNotDelayPlayState() async throws {
+        let transport = MockTCPTransport(autoRespond: false)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        let playerService = PlayerService(connection: connection)
+        let state = MockStateUpdater()
+        state.selectedPlayerID = 42
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: playerService,
+            groupService: nil,
+            browseService: nil
+        )
+        await waitUntil { await transport.isReceiving }
+
+        // Mirrors the listener loop: a fetch left outstanding must not hold up the play-state event.
+        let started = ContinuousClock.now
+        await router.handle(makeEvent("player_now_playing_changed", message: ["pid": "42"]))
+        await router.handle(makeEvent("player_state_changed", message: ["pid": "42", "state": "play"]))
+        let elapsed = ContinuousClock.now - started
+
+        #expect(state.playState == .play)
+        #expect(elapsed < .seconds(2))
+        // The fetch runs on its own task, so let it reach the transport before asserting.
+        await waitUntil { await transport.sentData.count == 1 }
+        #expect(await transport.sentData.count == 1)
+        await connection.disconnect()
+    }
+
+    @Test @MainActor func replacedFetchDoesNotReportAFailure() async throws {
+        let transport = MockTCPTransport(autoRespond: false)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        let playerService = PlayerService(connection: connection)
+        let state = MockStateUpdater()
+        state.selectedPlayerID = 42
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: playerService,
+            groupService: nil,
+            browseService: nil
+        )
+        await waitUntil { await transport.isReceiving }
+
+        // Each event replaces the previous fetch, and a replaced fetch is not a failure.
+        for _ in 0..<4 {
+            await router.handle(makeEvent("player_now_playing_changed", message: ["pid": "42"]))
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+
+        #expect(state.nonFatalReports.filter { $0.source == "event.now_playing_changed" }.isEmpty)
+        await connection.disconnect()
+    }
+
     // MARK: - Unknown Event
 
     @Test @MainActor func unknownEventDoesNothing() async {
@@ -253,5 +357,131 @@ struct EventRouterTests {
         await router.handle(event)
 
         #expect(state.playState == nil)
+    }
+
+    // MARK: - Groups Changed
+
+    /// Captures the groups handed to the topology refresh, which owns the pair-cache update.
+    private actor TopologyRecorder {
+        private(set) var calls: [[Int]] = []
+
+        func record(_ groups: [SpeakerGroup]) {
+            calls.append(groups.map(\.gid))
+        }
+    }
+
+    @MainActor
+    private func makeRouterWithGroups() async throws
+        -> (EventRouter, MockStateUpdater, MockTCPTransport, TopologyRecorder) {
+        let transport = MockTCPTransport(autoRespond: true)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        try await Task.sleep(for: .milliseconds(50))
+        let state = MockStateUpdater()
+        state.selectedPlayerID = 42
+        let recorder = TopologyRecorder()
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: nil,
+            groupService: GroupService(connection: connection),
+            browseService: nil,
+            refreshTopology: { groups in await recorder.record(groups) }
+        )
+        return (router, state, transport, recorder)
+    }
+
+    /// Breaking up a pair is the moment the follower must become selectable again.
+    @Test @MainActor func groupsChangedWithNoGroupsReclassifiesTheTopology() async throws {
+        let (router, state, transport, recorder) = try await makeRouterWithGroups()
+        await transport.enqueueResponse(
+            """
+            {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[]}
+            """
+        )
+
+        await router.handle(makeEvent("groups_changed"))
+
+        #expect(state.groups.isEmpty)
+        await waitUntil { await recorder.calls == [[]] }
+        #expect(await recorder.calls == [[]])
+    }
+
+    /// A surviving group is no reason to skip the probe: the pair that was broken up may be
+    /// one of several, and its ex-follower must still leave the caches.
+    @Test @MainActor func groupsChangedWithGroupsStillReclassifiesTheTopology() async throws {
+        let (router, state, transport, recorder) = try await makeRouterWithGroups()
+        await transport.enqueueResponse(
+            """
+            {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[{"name":"Kitchen Left","gid":1,"players":[{"name":"Kitchen Left","pid":1,"role":"leader"},{"name":"Kitchen Right","pid":2,"role":"member"}]}]}
+            """
+        )
+
+        await router.handle(makeEvent("groups_changed"))
+
+        #expect(state.groups.count == 1)
+        await waitUntil { await recorder.calls == [[1]] }
+        #expect(await recorder.calls == [[1]])
+    }
+
+    /// The classification reads getPlayers plus one UPnP channel per member, and `handle` is awaited
+    /// serially by the event loop: awaiting it here would freeze transport and volume events with it.
+    @Test @MainActor func groupsChangedDoesNotHoldTheEventStreamForTheClassification() async throws {
+        let transport = MockTCPTransport(autoRespond: true)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        try await Task.sleep(for: .milliseconds(50))
+        let state = MockStateUpdater()
+        let recorder = TopologyRecorder()
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: nil,
+            groupService: GroupService(connection: connection),
+            browseService: nil,
+            refreshTopology: { groups in
+                await recorder.record(groups)
+                try? await Task.sleep(for: .seconds(2))
+            }
+        )
+        await transport.enqueueResponse(
+            """
+            {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[]}
+            """
+        )
+
+        let elapsed = await ContinuousClock().measure {
+            await router.handle(makeEvent("groups_changed"))
+        }
+
+        #expect(elapsed < .milliseconds(500))
+        await waitUntil { await recorder.calls == [[]] }
+        #expect(await recorder.calls == [[]])
+    }
+
+    /// A torn-down session must stop the classification too, or it keeps asking a dead connection.
+    @Test @MainActor func cancelPendingFetchesDropsTheClassification() async throws {
+        let (router, _, transport, recorder) = try await makeRouterWithGroups()
+        await transport.enqueueResponse(
+            """
+            {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[]}
+            """
+        )
+
+        await router.handle(makeEvent("groups_changed"))
+        await waitUntil { await recorder.calls == [[]] }
+        await router.cancelPendingFetches()
+
+        #expect(await recorder.calls == [[]])
+    }
+}
+
+/// Polls until `condition` holds or the timeout elapses, keeping timing-sensitive tests CI-safe.
+private func waitUntil(
+    timeout: Duration = .seconds(10),
+    _ condition: @Sendable () async -> Bool
+) async {
+    let deadline = ContinuousClock.now + timeout
+    while ContinuousClock.now < deadline {
+        if await condition() { return }
+        try? await Task.sleep(for: .milliseconds(5))
     }
 }

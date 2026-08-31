@@ -810,6 +810,38 @@ final class BrowseViewModelTests: XCTestCase {
         XCTAssertNil(vm.playingItemID)
     }
 
+    /// Clicking a second track before the first answers: the first play is superseded, so its failure
+    /// must not report an error about the item already dropped nor clear the new row's spinner.
+    @MainActor
+    func testASupersededPlayReportsNothingAndLeavesTheNewRowSpinning() async throws {
+        let state = AppState()
+        state.selectedPlayerID = 123
+        let mock = MockAudioService()
+        mock.addToQueueFailingMIDs = ["mid-first"]
+        mock.addToQueueSlowMIDs = ["mid-second"]
+        let vm = BrowseViewModel(
+            service: mock,
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, _, _ in BrowseResult(items: []) }
+        )
+
+        let first = BrowseItem(name: "First", mid: "mid-first", playable: true)
+        let second = BrowseItem(name: "Second", mid: "mid-second", playable: true)
+        vm.playItem(first)
+        vm.playItem(second)
+
+        // The failing play has resolved by now; the slow one is still in flight.
+        try await Task.sleep(for: .milliseconds(60))
+
+        XCTAssertNil(state.toast)
+        XCTAssertEqual(vm.playingItemID, second.id)
+
+        // Drain the slow play: a task still in flight competes with the next test's yields.
+        try await Task.sleep(for: .milliseconds(250))
+        XCTAssertNil(vm.playingItemID)
+    }
+
     @MainActor
     func testAddToQueueCallsService() async {
         let state = AppState()

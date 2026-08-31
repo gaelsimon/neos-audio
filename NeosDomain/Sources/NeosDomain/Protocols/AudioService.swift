@@ -6,6 +6,10 @@ import Foundation
 public protocol ConnectionService: Sendable {
     func connect(host: String, port: Int, cachedPlayerID: Int?) async throws
     func disconnect() async
+    /// Drops the socket without forgetting the target, for a sleeping Mac or a dead network.
+    func suspend() async
+    /// Reconnects to the suspended target straight away, skipping the backoff wait.
+    func resume() async
 }
 
 /// Network discovery of speakers/devices.
@@ -110,6 +114,14 @@ public protocol AudioService:
 public extension ConnectionService {
     func connect(host: String, port: Int = 1255, cachedPlayerID: Int? = nil) async throws {
         try await connect(host: host, port: port, cachedPlayerID: cachedPlayerID)
+    }
+
+    func suspend() async {
+        // Services without a persistent socket (demo, mocks) have nothing to drop.
+    }
+
+    func resume() async {
+        // Nothing to bring back when there was no socket to begin with.
     }
 }
 

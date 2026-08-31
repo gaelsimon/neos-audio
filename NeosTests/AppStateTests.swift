@@ -73,11 +73,76 @@ final class AppStateTests: XCTestCase {
     @MainActor
     func testSetPlayStateClearsLoadingFlag() {
         let state = AppState()
-        state.isLoadingTrack = true
+        state.beginTrackLoad()
 
         state.setPlayState(.pause)
 
         XCTAssertFalse(state.isLoadingTrack)
+    }
+
+    @MainActor
+    func testPlaybackStartingKeepsLoadingUntilTrackArrives() {
+        let state = AppState()
+        state.beginTrackLoad()
+
+        // A waking amp reports play long before it can describe the track.
+        state.setPlayState(.play)
+
+        XCTAssertTrue(state.isLoadingTrack)
+    }
+
+    @MainActor
+    func testTrackArrivingClearsLoadingFlag() {
+        let state = AppState()
+        state.beginTrackLoad()
+
+        state.setNowPlaying(NowPlayingMedia(song: "Song", mid: "m1"))
+
+        XCTAssertFalse(state.isLoadingTrack)
+    }
+
+    @MainActor
+    func testWatchdogClearsLoadingWhenTheDeviceStaysSilent() async throws {
+        let state = AppState()
+        state.beginTrackLoad(timeout: .milliseconds(50))
+
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertFalse(state.isLoadingTrack)
+    }
+
+    @MainActor
+    func testANewLoadDisarmsTheOlderWatchdog() async throws {
+        let state = AppState()
+        // The first load's watchdog must not clear the spinner of the load that replaced it.
+        state.beginTrackLoad(timeout: .milliseconds(50))
+        state.beginTrackLoad(timeout: .seconds(30))
+
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertTrue(state.isLoadingTrack)
+    }
+
+    @MainActor
+    func testASupersededPlayCannotRollBackTheLoadThatReplacedIt() {
+        let state = AppState()
+        let first = state.beginTrackLoad()
+        // The user clicked another track before the first one answered.
+        let second = state.beginTrackLoad()
+        state.pendingStreamContext = .init(
+            pid: 1, stationName: "Second", browseMID: "mid-2", imageURL: "", streamURL: "http://s/2"
+        )
+
+        // The first play now reports its failure; it owns neither the spinner nor the context.
+        state.failTrackLoad(generation: first)
+
+        XCTAssertTrue(state.isLoadingTrack)
+        XCTAssertNotNil(state.pendingStreamContext)
+
+        state.failTrackLoad(generation: second)
+
+        XCTAssertFalse(state.isLoadingTrack)
+        XCTAssertNil(state.pendingStreamContext)
     }
 
     // MARK: - setNowPlaying
@@ -432,6 +497,30 @@ final class AppStateTests: XCTestCase {
         XCTAssertNil(state.pendingStreamContext)
     }
 
+    @MainActor
+    func testReconnectingKeepsTheSessionAndItsPlaybackState() {
+        let state = AppState()
+        state.setConnectionState(.connected)
+        state.playback.playState = .play
+        state.playback.nowPlaying = NowPlayingMedia(song: "Test", mid: "m1")
+
+        state.setConnectionState(.reconnecting)
+
+        XCTAssertTrue(state.hasEstablishedSession)
+        XCTAssertEqual(state.playState, .play)
+        XCTAssertEqual(state.nowPlaying.song, "Test")
+    }
+
+    @MainActor
+    func testDisconnectEndsTheSession() {
+        let state = AppState()
+        state.setConnectionState(.connected)
+
+        state.setConnectionState(.disconnected)
+
+        XCTAssertFalse(state.hasEstablishedSession)
+    }
+
     // MARK: - Group collapse / expand
 
     @MainActor
@@ -501,6 +590,199 @@ final class AppStateTests: XCTestCase {
         state.setMultiRoomGroups([1])
         XCTAssertTrue(state.knownFollowerSerials.isEmpty)
         XCTAssertEqual(state.visibleDiscoveredDevices.count, 2)
+    }
+
+    // MARK: - Stereo pair naming
+
+    @MainActor
+    private func makePairState() -> AppState {
+        let state = AppState()
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left", serialNumber: "SN-L"),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right", serialNumber: "SN-R")
+        ]
+        state.players = [
+            Player(pid: 1, name: "Kitchen Left", serial: "SN-L"),
+            Player(pid: 2, name: "Kitchen Right", serial: "SN-R")
+        ]
+        // HEOS reports the leader's name as the group name for a configured pair.
+        state.setGroups([SpeakerGroup(gid: 1, name: "Kitchen Left", players: [
+            GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+        ])])
+        return state
+    }
+
+    @MainActor
+    func testPairLeaderShowsRoomNameNotLeaderName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([])
+
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen")
+    }
+
+    @MainActor
+    func testPairNameIsPersistedForPreConnectDiscovery() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([])
+
+        // Keyed by serial and by leader name; discovery may report either.
+        let expected = ["SN-L": "Kitchen", "Kitchen Left": "Kitchen"]
+        XCTAssertEqual(state.knownPairNames, expected)
+        XCTAssertEqual(FollowerCache.loadPairNames(), expected)
+    }
+
+    @MainActor
+    func testDiscoveredPairLeaderUsesCachedRoomName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setMultiRoomGroups([])
+
+        let leader = state.visibleDiscoveredDevices[0]
+        XCTAssertEqual(state.displayName(for: leader), "Kitchen")
+    }
+
+    @MainActor
+    func testBonjourPairLeaderWithoutSerialStillShowsRoomName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setMultiRoomGroups([])
+
+        // Bonjour reports no serial, so only the leader name can carry the mapping.
+        let bonjourLeader = DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left")
+        XCTAssertEqual(state.displayName(for: bonjourLeader), "Kitchen")
+    }
+
+    @MainActor
+    func testBonjourFollowerWithoutSerialIsHidden() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setMultiRoomGroups([])
+
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left"),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right")
+        ]
+
+        XCTAssertEqual(state.visibleDiscoveredDevices.map(\.friendlyName), ["Kitchen Left"])
+    }
+
+    /// A group whose UPnP channels could not be read only collapses by fallback: caching its
+    /// members by name would hide a plain multi-room speaker from discovery for good.
+    @MainActor
+    func testUnclassifiedGroupDoesNotHideItsMembersFromDiscovery() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([], unconfirmed: [1])
+
+        XCTAssertTrue(state.knownFollowerNames.isEmpty)
+        XCTAssertTrue(FollowerCache.loadFollowerNames().isEmpty)
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left"),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right")
+        ]
+        XCTAssertEqual(
+            state.visibleDiscoveredDevices.map(\.friendlyName),
+            ["Kitchen Left", "Kitchen Right"]
+        )
+    }
+
+    /// Same fallback, reached by serial: a Bonjour result that does carry one must not be
+    /// hidden either, or a multi-room speaker vanishes until the channels read cleanly again.
+    @MainActor
+    func testUnclassifiedGroupDoesNotCacheItsMembersBySerial() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([], unconfirmed: [1])
+
+        XCTAssertTrue(state.knownFollowerSerials.isEmpty)
+        XCTAssertTrue(FollowerCache.load().isEmpty)
+        XCTAssertEqual(
+            state.visibleDiscoveredDevices.map(\.friendlyName),
+            ["Kitchen Left", "Kitchen Right"]
+        )
+    }
+
+    /// A name learned from an unread group would survive as a pair label it was never proven to be.
+    @MainActor
+    func testUnclassifiedGroupDoesNotCacheAPairName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([], unconfirmed: [1])
+
+        XCTAssertTrue(state.knownPairNames.isEmpty)
+        XCTAssertTrue(FollowerCache.loadPairNames().isEmpty)
+    }
+
+    @MainActor
+    func testDemoDataNeverTouchesTheRealCaches() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.persistsDiscoveryCaches = false
+
+        state.setMultiRoomGroups([])
+
+        XCTAssertTrue(state.knownFollowerNames.isEmpty)
+        XCTAssertTrue(FollowerCache.loadFollowerNames().isEmpty)
+        XCTAssertTrue(FollowerCache.loadPairNames().isEmpty)
+    }
+
+    @MainActor
+    func testUngroupingClearsTheHidingCaches() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setMultiRoomGroups([])
+        XCTAssertFalse(state.knownFollowerNames.isEmpty)
+
+        // The pair was taken apart, so the follower must become selectable again.
+        state.setGroups([])
+        state.setMultiRoomGroups([])
+
+        XCTAssertTrue(state.knownFollowerNames.isEmpty)
+        XCTAssertTrue(state.knownPairNames.isEmpty)
+        XCTAssertTrue(FollowerCache.loadFollowerNames().isEmpty)
+    }
+
+    @MainActor
+    func testUnknownDeviceKeepsItsFriendlyName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = AppState()
+        let device = DiscoveredDevice(host: "10.0.0.9", friendlyName: "Office", serialNumber: "SN-X")
+
+        XCTAssertEqual(state.displayName(for: device), "Office")
+    }
+
+    @MainActor
+    func testCorrectGroupNameIsLeftAlone() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+        state.setGroups([SpeakerGroup(gid: 1, name: "Kitchen", players: [
+            GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+        ])])
+
+        state.setMultiRoomGroups([])
+
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen")
     }
 
     // MARK: - Per-speaker volume

@@ -4,8 +4,9 @@ import NeosDomain
 struct MainWindowView: View {
     let state: AppState
     let container: ViewModelContainer
-    @State private var isSearchFocused = false
     @State private var showConnectedSplash = false
+    /// Armed once per session, so only the first connect gets the splash.
+    @State private var hasShownConnectedSplash = false
 
     private var playerVM: PlayerViewModel { container.playerVM }
     private var speakerVM: SpeakerListViewModel { container.speakerVM }
@@ -18,17 +19,19 @@ struct MainWindowView: View {
     private var settingsVM: SettingsViewModel { container.settingsVM }
     private var groupVM: GroupViewModel { container.groupVM }
 
-    /// Whether the splash overlay is showing (connecting or brief "connected" hold).
-    private var showSplash: Bool {
-        showConnectedSplash ||
-        state.connectionState == .connecting ||
-        state.connectionState == .reconnecting
+    /// Splash, content, banner or discovery: an established session reconnects in place.
+    private var presentation: ConnectionPresentation {
+        ConnectionPresentation(
+            connectionState: state.connectionState,
+            hasEstablishedSession: state.hasEstablishedSession,
+            isHoldingConnectedSplash: showConnectedSplash
+        )
     }
 
     var body: some View {
         ZStack {
             // Main content always in tree underneath
-            if state.isConnected {
+            if presentation.showsContent {
                 HStack(spacing: 0) {
                     SidebarView(
                         state: state,
@@ -41,7 +44,7 @@ struct MainWindowView: View {
                     connectedContent
                         .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
                 }
-            } else if !showSplash {
+            } else if presentation.showsDiscovery {
                 DiscoveryView(state: state, speakerVM: speakerVM)
                     .overlay(alignment: .bottom) {
                         toastOverlay
@@ -50,12 +53,22 @@ struct MainWindowView: View {
             }
 
             // Single splash overlay; covers everything while visible
-            if showSplash {
+            if presentation.showsSplash {
                 connectionSplash
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(DS.Colors.background)
             }
         }
+        .overlay(alignment: .top) {
+            if presentation.showsReconnectingBanner {
+                ReconnectingBanner(
+                    deviceName: reconnectingDeviceName,
+                    onChooseAnother: { speakerVM.disconnect() }
+                )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: DS.Animation.standard), value: presentation.showsReconnectingBanner)
         .overlay {
             if state.isNowPlayingCanvasOpen {
                 NowPlayingCanvasView(state: state)
@@ -64,8 +77,11 @@ struct MainWindowView: View {
         }
         .animation(.easeInOut(duration: 0.35), value: state.isNowPlayingCanvasOpen)
         .safeAreaInset(edge: .bottom) {
-            if state.isConnected && !showConnectedSplash {
+            if presentation.showsContent && !showConnectedSplash {
+                // Transport is dead while reconnecting; dim it rather than let commands time out.
                 NowPlayingToolbar(state: state, playerVM: playerVM, browseVM: browseVM, searchVM: searchVM)
+                    .disabled(!state.isConnected)
+                    .opacity(state.isConnected ? 1 : 0.5)
             }
         }
         // Single queue panel; adapts layout to canvas vs normal mode
@@ -86,27 +102,37 @@ struct MainWindowView: View {
         .preferredColorScheme(.dark)
         .background(WindowAccessor())
         .onChange(of: state.isConnected) { _, isConnected in
-            if isConnected {
-                showConnectedSplash = true
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(1.5))
-                    showConnectedSplash = false
-                }
-            } else {
+            guard isConnected else {
                 showConnectedSplash = false
-                state.isQueuePanelOpen = false
-                state.isNowPlayingCanvasOpen = false
+                return
+            }
+            // The splash belongs to the first connect only: a reconnection is announced by the
+            // banner, and covering the session for 1.5 s would undo the point of keeping it up.
+            guard !hasShownConnectedSplash else { return }
+            hasShownConnectedSplash = true
+            showConnectedSplash = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.5))
+                showConnectedSplash = false
             }
         }
+        // A reconnection keeps panels open; only a real disconnect closes them, and that
+        // transition is reconnecting -> disconnected, which never moves `isConnected`.
+        .onChange(of: state.connectionState) { _, connectionState in
+            guard connectionState == .disconnected else { return }
+            hasShownConnectedSplash = false
+            state.isQueuePanelOpen = false
+            state.isNowPlayingCanvasOpen = false
+        }
         .onChange(of: browseVM.currentDestination) {
-            isSearchFocused = false
+            state.isSearchFieldFocused = false
         }
         .onChange(of: browseVM.navigationTapCount) {
             if searchVM.isOverlayVisible {
                 // Push already happened; origin is one before current
                 searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex - 1)
             }
-            isSearchFocused = false
+            state.isSearchFieldFocused = false
         }
         .task {
             guard !CommandLine.arguments.contains("--skip-discovery") else { return }
@@ -114,6 +140,12 @@ struct MainWindowView: View {
                 speakerVM.startContinuousDiscovery()
             }
         }
+    }
+
+    private var reconnectingDeviceName: String {
+        state.selectedPlayerDisplayName
+            ?? state.connectedDevice.map { state.displayName(for: $0) }
+            ?? "Speaker"
     }
 
     // MARK: - Connection Splash
@@ -204,16 +236,16 @@ struct MainWindowView: View {
             HStack(spacing: DS.Spacing.xs) {
                 navArrowButton(
                     icon: DS.Icons.back,
-                    enabled: canGoBack,
+                    enabled: container.canGoBack,
                     accessibilityID: AccessibilityID.TopBar.backButton,
-                    action: { handleBack() }
+                    action: { container.goBack() }
                 )
 
                 navArrowButton(
                     icon: DS.Icons.forward,
-                    enabled: browseVM.canGoForward,
+                    enabled: container.canGoForward,
                     accessibilityID: AccessibilityID.TopBar.forwardButton,
-                    action: { handleForward() }
+                    action: { container.goForward() }
                 )
             }
 
@@ -246,7 +278,10 @@ struct MainWindowView: View {
                     get: { searchVM.query },
                     set: { searchVM.onQueryChanged($0) }
                 ),
-                isFocused: $isSearchFocused,
+                isFocused: Binding(
+                    get: { state.isSearchFieldFocused },
+                    set: { state.isSearchFieldFocused = $0 }
+                ),
                 accessibilityID: AccessibilityID.TopBar.searchField
             )
             .accessibilityIdentifier(AccessibilityID.TopBar.searchField)
@@ -265,21 +300,21 @@ struct MainWindowView: View {
         .background(DS.Colors.surfaceElevated, in: Capsule())
         .overlay(
             Capsule()
-                .strokeBorder(Color.white.opacity(isSearchFocused ? 0.6 : 0), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(state.isSearchFieldFocused ? 0.6 : 0), lineWidth: 1)
                 .allowsHitTesting(false)
         )
-        .animation(.easeInOut(duration: DS.Animation.quick), value: isSearchFocused)
-        .onChange(of: isSearchFocused) { _, focused in
+        .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
+        .onChange(of: state.isSearchFieldFocused) { _, focused in
             if focused && !searchVM.query.isEmpty && !searchVM.serviceResults.isEmpty {
                 searchVM.activateOverlay()
             }
         }
         .overlay(alignment: .topLeading) {
-            if isSearchFocused && searchVM.query.isEmpty && !searchVM.recentQueries.isEmpty {
+            if state.isSearchFieldFocused && searchVM.query.isEmpty && !searchVM.recentQueries.isEmpty {
                 SearchHistoryOverlay(
                     queries: searchVM.recentQueries,
                     onSelect: { query in
-                        isSearchFocused = false
+                        state.isSearchFieldFocused = false
                         searchVM.onQueryChanged(query)
                     },
                     onClear: {
@@ -290,7 +325,7 @@ struct MainWindowView: View {
                 .offset(y: 48)
                 .zIndex(10)
                 .transition(.opacity.combined(with: .move(edge: .top)))
-                .animation(.easeInOut(duration: DS.Animation.quick), value: isSearchFocused)
+                .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
             }
         }
     }
@@ -374,26 +409,6 @@ struct MainWindowView: View {
     }
 
     // MARK: - Navigation
-
-    private var canGoBack: Bool {
-        searchVM.isOverlayVisible || searchVM.hasSuspendedSearch || browseVM.canGoBack
-    }
-
-    private func handleBack() {
-        if searchVM.isOverlayVisible {
-            searchVM.dismissOverlay()
-            return
-        }
-        browseVM.goBack()
-        searchVM.tryRestore(atHistoryIndex: browseVM.currentHistoryIndex)
-    }
-
-    private func handleForward() {
-        if searchVM.isOverlayVisible {
-            searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex)
-        }
-        browseVM.goForward()
-    }
 
     // MARK: - Toast
 

@@ -27,5 +27,11 @@
         <key>NSAllowsLocalNetworking</key>
         <true/>
     </dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Neos discovers and controls your HEOS speakers on the local network.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_heos-audio._tcp</string>
+    </array>
 </dict>
 </plist>

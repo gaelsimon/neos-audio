@@ -39,5 +39,35 @@ final class ViewModelContainer {
         self.groupVM = GroupViewModel(service: service, state: state)
 
         playerVM.startTrackMetadataObserver()
+
+        let speakers = speakerVM
+        state.onDeviceDiscovered = { [weak speakers] device in
+            speakers?.autoConnectIfCached(device)
+        }
+    }
+
+    // MARK: - Navigation Commands
+
+    /// Shared by the top bar arrows and the menu bar shortcuts.
+    var canGoBack: Bool {
+        searchVM.isOverlayVisible || searchVM.hasSuspendedSearch || browseVM.canGoBack
+    }
+
+    var canGoForward: Bool { browseVM.canGoForward }
+
+    func goBack() {
+        if searchVM.isOverlayVisible {
+            searchVM.dismissOverlay()
+            return
+        }
+        browseVM.goBack()
+        searchVM.tryRestore(atHistoryIndex: browseVM.currentHistoryIndex)
+    }
+
+    func goForward() {
+        if searchVM.isOverlayVisible {
+            searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex)
+        }
+        browseVM.goForward()
     }
 }

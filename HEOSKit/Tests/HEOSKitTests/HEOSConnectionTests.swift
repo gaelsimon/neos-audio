@@ -220,4 +220,100 @@ struct HEOSConnectionTests {
 
         await connection.disconnect()
     }
+
+    // MARK: - Instant Responses
+
+    @Test func responseArrivingDuringSendIsMatched() async throws {
+        let transport = EagerRespondingTransport(response: makeResponse(command: "system/heart_beat"))
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        await waitUntilReceiving(transport)
+
+        let response = try await connection.send(.heartBeat, timeout: .seconds(2))
+
+        #expect(response.command == "system/heart_beat")
+        await connection.disconnect()
+    }
+
+    @Test func cancelledSendGivesUpWithoutWaitingForTheTimeout() async throws {
+        let transport = MockTCPTransport(autoRespond: false)
+        let connection = HEOSConnection(transport: transport)
+        try await connectAndWait(connection, transport: transport)
+
+        // An event handler that gives up must not stay parked on an unanswered command.
+        let task = Task {
+            try await connection.send(.getPlayers, timeout: .seconds(30))
+        }
+        try await Task.sleep(for: .milliseconds(50))
+        let started = ContinuousClock.now
+        task.cancel()
+
+        await #expect(throws: Error.self) { try await task.value }
+        #expect(ContinuousClock.now - started < .seconds(5))
+
+        // The slot is free again, so the next command matches the next response.
+        let followUp = Task { try await connection.send(.getPlayers, timeout: .seconds(5)) }
+        try await Task.sleep(for: .milliseconds(50))
+        await transport.simulateEvent(makeResponse(command: "player/get_players"))
+        #expect(try await followUp.value.command == "player/get_players")
+
+        await connection.disconnect()
+    }
+
+    @Test func sendFailurePropagatesToCaller() async throws {
+        let transport = MockTCPTransport(autoRespond: false)
+        let connection = HEOSConnection(transport: transport)
+        // Never connected, so the transport rejects the write.
+        await #expect(throws: TransportError.self) {
+            try await connection.send(.heartBeat, timeout: .seconds(2))
+        }
+    }
+
+    private func waitUntilReceiving(_ transport: EagerRespondingTransport) async {
+        let deadline = ContinuousClock.now + .seconds(5)
+        while ContinuousClock.now < deadline {
+            if await transport.isReceiving { return }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+    }
+}
+
+/// Answers while `send` is still suspended, like a device replying instantly on the wire.
+private actor EagerRespondingTransport: TransportProtocol {
+    var isConnected = false
+    private let response: String
+    private var continuation: AsyncThrowingStream<Data, Error>.Continuation?
+
+    init(response: String) {
+        self.response = response
+    }
+
+    var isReceiving: Bool { continuation != nil }
+
+    func connect(host: String, port: Int) async throws {
+        isConnected = true
+    }
+
+    func disconnect() async {
+        isConnected = false
+        continuation?.finish()
+        continuation = nil
+    }
+
+    func send(_ data: Data) async throws {
+        guard isConnected else { throw TransportError.notConnected }
+        continuation?.yield(Data(response.utf8))
+        // Let the receive loop consume the reply before this send returns.
+        for _ in 0..<20 { await Task.yield() }
+    }
+
+    nonisolated func receive() -> AsyncThrowingStream<Data, Error> {
+        AsyncThrowingStream { continuation in
+            Task { await self.setContinuation(continuation) }
+        }
+    }
+
+    private func setContinuation(_ continuation: AsyncThrowingStream<Data, Error>.Continuation) {
+        self.continuation = continuation
+    }
 }

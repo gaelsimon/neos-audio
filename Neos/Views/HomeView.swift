@@ -203,7 +203,7 @@ struct HomeView: View {
     private func handleServiceCardTap(_ item: BrowseItem, sid: Int) {
         if item.browsable, let cid = item.cid,
            let source = state.musicSources.first(where: { $0.sid == sid }) {
-            browseVM.navigateToContainer(source: source, containerName: item.name, cid: cid, imageURL: item.imageURL)
+            browseVM.navigateToContainer(source: source, containerName: item.displayTitle, cid: cid, imageURL: item.imageURL)
         } else {
             homeVM.playItem(item, sid: sid)
         }

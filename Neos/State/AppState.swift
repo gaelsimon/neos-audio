@@ -27,6 +27,12 @@ final class AppState: StateUpdater {
     var connectedDevice: DiscoveredDevice?
     /// Serials of known stereo/surround followers, hidden from the pre-connect discovery list.
     var knownFollowerSerials: Set<String> = FollowerCache.load()
+    /// Follower names, used for discovery entries without a serial (Bonjour reports none).
+    var knownFollowerNames: Set<String> = FollowerCache.loadFollowerNames()
+    /// Demo data must never reach the real caches; a demo name would hide a real speaker.
+    var persistsDiscoveryCaches = true
+    /// Leader serial and leader name → pair room name, for naming a pair before connecting.
+    var knownPairNames: [String: String] = FollowerCache.loadPairNames()
 
     // Power
     var isPoweredOn: Bool = true
@@ -89,7 +95,8 @@ final class AppState: StateUpdater {
 
     // MARK: - UI State (owned by view models / views, not from StateUpdater)
 
-    var isLoadingTrack: Bool = false
+    private(set) var isLoadingTrack: Bool = false
+    private var trackLoadGeneration: UInt64 = 0
     var isAdjustingVolume: Bool = false
     var error: AppError?
     var discoveryError: String?
@@ -97,9 +104,14 @@ final class AppState: StateUpdater {
     var toast: ToastMessage?
     var isQueuePanelOpen: Bool = false
     var isNowPlayingCanvasOpen: Bool = false
+    /// Drives the search field's focus; shared so the menu bar can focus it too.
+    var isSearchFieldFocused: Bool = false
     var canvasDominantColors: [Color] = DominantColorExtractor.defaultColors
     var diagnostics: [DiagnosticEvent] = []
     private var toastDismissTask: Task<Void, Never>?
+    private var trackLoadWatchdog: Task<Void, Never>?
+    /// Called for every device discovery reports, so a remembered speaker can reconnect on its own.
+    @ObservationIgnored var onDeviceDiscovered: ((DiscoveredDevice) -> Void)?
 
     // MARK: - Sub-States
 
@@ -122,15 +134,23 @@ final class AppState: StateUpdater {
 
     /// Discovery list with known stereo/surround followers hidden, so a pair shows as one card.
     var visibleDiscoveredDevices: [DiscoveredDevice] {
-        discoveredDevices.hidingKnownFollowers(knownFollowerSerials)
+        discoveredDevices.hidingKnownFollowers(knownFollowerSerials, names: knownFollowerNames)
     }
 
     /// Group name when the player leads a *collapsed* group, else its own name.
     func displayName(for player: Player) -> String {
         if let group = groups.group(ledBy: player.pid), !multiRoomGroupIDs.contains(group.gid) {
-            return group.name
+            return group.collapsedDisplayName
         }
         return player.name
+    }
+
+    /// Pre-connect name for a discovered device; a known pair leader shows its room name.
+    func displayName(for device: DiscoveredDevice) -> String {
+        if !device.serialNumber.isEmpty, let paired = knownPairNames[device.serialNumber] {
+            return paired
+        }
+        return knownPairNames[device.friendlyName] ?? device.friendlyName
     }
 
     /// Display name for the current selection (group name for a collapsed leader).
@@ -153,14 +173,23 @@ final class AppState: StateUpdater {
         connectionState == .connected
     }
 
+    /// True from the first connection until the user disconnects; a drop in between is a reconnection.
+    private(set) var hasEstablishedSession = false
+
     // MARK: - StateUpdater
 
     func setConnectionState(_ state: ConnectionState) {
         connectionState = state
-        if state == .disconnected {
+        switch state {
+        case .connected:
+            hasEstablishedSession = true
+        case .disconnected:
+            hasEstablishedSession = false
             resetPlaybackState()
             serviceCapabilities = [:]
             searchCriteria = [:]
+        case .connecting, .reconnecting:
+            break
         }
     }
 
@@ -182,13 +211,31 @@ final class AppState: StateUpdater {
         self.groups = groups
     }
 
-    func setMultiRoomGroups(_ gids: Set<Int>) {
+    func setMultiRoomGroups(_ gids: Set<Int>, unconfirmed: Set<Int>) {
         self.multiRoomGroupIDs = gids
+        guard persistsDiscoveryCaches else { return }
+        // No groups means no pair: clear the caches so an ungrouped speaker reappears in discovery.
+        guard !groups.isEmpty else {
+            knownFollowerSerials = []
+            knownFollowerNames = []
+            knownPairNames = [:]
+            FollowerCache.clear()
+            return
+        }
+        // A wrong entry hides a real speaker from discovery, so only groups whose channels we
+        // actually read may feed the caches. `gids` alone still drives the collapse on screen:
+        // an unconfirmed group stays collapsed there, it just never gets remembered as a pair.
+        let evidenced = gids.union(unconfirmed)
         // Remember this system's stereo/surround followers so the next launch hides them pre-connect.
-        guard !groups.isEmpty else { return }
-        let followers = groups.collapsedFollowerSerials(players: players, expanded: gids)
+        let followers = groups.collapsedFollowerSerials(players: players, expanded: evidenced)
         knownFollowerSerials = followers
         FollowerCache.save(followers)
+        let followerNames = groups.collapsedFollowerNames(expanded: evidenced)
+        knownFollowerNames = followerNames
+        FollowerCache.saveFollowerNames(followerNames)
+        let pairNames = groups.collapsedPairNames(players: players, expanded: evidenced)
+        knownPairNames = pairNames
+        FollowerCache.savePairNames(pairNames)
     }
 
     func setMusicSources(_ sources: [MusicSource]) {
@@ -200,16 +247,54 @@ final class AppState: StateUpdater {
         self.selectedPlayerID = groups.leaderPID(for: pid, expanded: multiRoomGroupIDs)
     }
 
+    // MARK: - Track Loading
+
+    /// Arms the spinner and its watchdog: a device that never reports the track must not strand it.
+    /// Returns the load's generation; hand it to `failTrackLoad` so a superseded play cannot roll it back.
+    @discardableResult
+    func beginTrackLoad(timeout: Duration = .seconds(30)) -> UInt64 {
+        trackLoadGeneration += 1
+        isLoadingTrack = true
+        trackLoadWatchdog?.cancel()
+        trackLoadWatchdog = Task {
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            isLoadingTrack = false
+        }
+        return trackLoadGeneration
+    }
+
+    /// Clears the spinner and disarms the watchdog, so an older load cannot clear a newer one.
+    func endTrackLoad() {
+        trackLoadWatchdog?.cancel()
+        trackLoadWatchdog = nil
+        isLoadingTrack = false
+    }
+
+    /// Rolls back a failed play. A superseded generation is ignored: its error must not take down
+    /// the spinner and stream context of the play the user is actually waiting for.
+    func failTrackLoad(generation: UInt64) {
+        guard generation == trackLoadGeneration else { return }
+        endTrackLoad()
+        pendingStreamContext = nil
+    }
+
+    // MARK: - Playback
+
     func setPlayState(_ state: PlayState) {
         // Reset interpolation anchor on resume so elapsed time doesn't include pause duration
         if state == .play && playback.playState != .play {
             playback.lastProgressUpdate = Date()
         }
         playback.playState = state
-        isLoadingTrack = false
+        // Playback starting is not the end of the load; a waking amp needs ~20 s to describe the track.
+        if state != .play {
+            endTrackLoad()
+        }
     }
 
     func setNowPlaying(_ media: NowPlayingMedia) {
+        endTrackLoad()
         var enrichedMedia = media
 
         // Enrich generic "Url Stream" metadata with context captured at play-time
@@ -353,6 +438,8 @@ final class AppState: StateUpdater {
         } else {
             discoveredDevices.append(device)
         }
+
+        onDeviceDiscovered?(device)
     }
 
     // MARK: - Toast

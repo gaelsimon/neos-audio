@@ -41,7 +41,7 @@ struct BrowseGridTile: View {
                 .aspectRatio(1, contentMode: .fit)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
+                    Text(item.displayTitle)
                         .typography(.secondaryEmphasis)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)

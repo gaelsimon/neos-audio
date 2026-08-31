@@ -35,6 +35,13 @@ struct NoRingTextField: NSViewRepresentable {
         if !isFocused && field.currentEditor() != nil {
             field.window?.makeFirstResponder(nil)
         }
+        if isFocused && field.currentEditor() == nil {
+            // Deferred: taking focus during an update would re-enter the view cycle.
+            DispatchQueue.main.async {
+                guard let window = field.window, field.currentEditor() == nil else { return }
+                window.makeFirstResponder(field)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {

@@ -98,6 +98,66 @@ struct ConnectionCoordinatorTests {
         await coordinator.cancelReconnection()
     }
 
+    @Test @MainActor func startReconnectionWithoutDelayAttemptsImmediately() async {
+        let state = MockStateUpdater()
+        let coordinator = ConnectionCoordinator(stateUpdater: state)
+        await coordinator.recordConnection(host: "10.0.0.1", port: 1255, playerID: nil)
+
+        let tracker = CallTracker()
+        await coordinator.startReconnection(initialDelay: 0) { _, _, _ in
+            await tracker.record()
+        }
+
+        // Well inside the 1s the default backoff would have waited
+        try? await Task.sleep(for: .milliseconds(200))
+
+        let wasCalled = await tracker.wasCalled
+        #expect(wasCalled == true)
+        await coordinator.cancelReconnection()
+    }
+
+    // MARK: - retryNow
+
+    @Test @MainActor func retryNowSkipsTheBackoffWhenNothingIsInFlight() async {
+        let state = MockStateUpdater()
+        let coordinator = ConnectionCoordinator(stateUpdater: state)
+        await coordinator.recordConnection(host: "10.0.0.1", port: 1255, playerID: nil)
+
+        let tracker = CallTracker()
+        await coordinator.retryNow { _, _, _ in
+            await tracker.record()
+        }
+
+        try? await Task.sleep(for: .milliseconds(200))
+
+        let count = await tracker.count
+        #expect(count == 1)
+        await coordinator.cancelReconnection()
+    }
+
+    /// `NWPathMonitor` reports every interface change; a burst must not restart the handshake.
+    @Test @MainActor func retryNowLeavesAnAttemptInFlightAlone() async {
+        let state = MockStateUpdater()
+        let coordinator = ConnectionCoordinator(stateUpdater: state)
+        await coordinator.recordConnection(host: "10.0.0.1", port: 1255, playerID: nil)
+
+        let tracker = CallTracker()
+        await coordinator.startReconnection(initialDelay: 0) { _, _, _ in
+            await tracker.record()
+            // A speaker still answering the handshake
+            try await Task.sleep(for: .milliseconds(600))
+        }
+        try? await Task.sleep(for: .milliseconds(150))
+
+        await coordinator.retryNow { _, _, _ in await tracker.record() }
+        await coordinator.retryNow { _, _, _ in await tracker.record() }
+        try? await Task.sleep(for: .milliseconds(150))
+
+        let count = await tracker.count
+        #expect(count == 1)
+        await coordinator.cancelReconnection()
+    }
+
     // MARK: - cancelReconnection
 
     @Test @MainActor func cancelReconnectionStopsAttempts() async {
@@ -140,9 +200,11 @@ struct ConnectionCoordinatorTests {
 }
 
 private actor CallTracker {
-    private(set) var wasCalled = false
+    private(set) var count = 0
+
+    var wasCalled: Bool { count > 0 }
 
     func record() {
-        wasCalled = true
+        count += 1
     }
 }

@@ -64,22 +64,74 @@ public actor HEOSConnection {
         nextCommandID &+= 1
 
         let data = Data(commandString.utf8)
-        try await transport.send(data)
 
-        HEOSLogger.connection.debug("Sent command #\(id): \(commandString.trimmingCharacters(in: .whitespacesAndNewlines))")
+        // Cancellable: a caller that gives up must free its FIFO slot instead of waiting it out.
+        return try await withTaskCancellationHandler {
+            // Registered before sending: an instant reply during `transport.send` would go unmatched.
+            try await withCheckedThrowingContinuation { continuation in
+                registerPending(id: id, commandKey: commandKey, continuation: continuation, timeout: timeout)
 
-        return try await withCheckedThrowingContinuation { continuation in
-            let timeoutTask = Task {
-                try? await Task.sleep(for: timeout)
-                guard !Task.isCancelled else { return }
-                if let timedOut = pendingCommands.removeValue(forKey: id) {
-                    HEOSLogger.connection.warning("Command #\(id) timed out: \(commandKey)")
-                    timedOut.continuation.resume(throwing: TransportError.timeout)
+                // Cancelled before registration, so `onCancel` could not find it.
+                guard !Task.isCancelled else {
+                    abandonPending(id)
+                    return
                 }
+
+                writeCommand(data, id: id, commandString: commandString)
             }
-            let pending = PendingCommand(id: id, commandKey: commandKey, continuation: continuation, timeoutTask: timeoutTask, timeoutDuration: timeout)
-            pendingCommands[id] = pending
+        } onCancel: {
+            Task { await self.abandonPending(id) }
         }
+    }
+
+    /// Records the command and arms its timeout, so a response can match it from this point on.
+    private func registerPending(
+        id: UInt64,
+        commandKey: String,
+        continuation: CheckedContinuation<HEOSResponse, Error>,
+        timeout: Duration
+    ) {
+        pendingCommands[id] = PendingCommand(
+            id: id,
+            commandKey: commandKey,
+            continuation: continuation,
+            timeoutTask: makeTimeoutTask(id: id, commandKey: commandKey, timeout: timeout),
+            timeoutDuration: timeout
+        )
+    }
+
+    private func makeTimeoutTask(id: UInt64, commandKey: String, timeout: Duration) -> Task<Void, Never> {
+        Task {
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            if let timedOut = pendingCommands.removeValue(forKey: id) {
+                HEOSLogger.connection.warning("Command #\(id) timed out: \(commandKey)")
+                timedOut.continuation.resume(throwing: TransportError.timeout)
+            }
+        }
+    }
+
+    /// One task per write: `transport.send` has no timeout, so serialising would let one stall block the rest.
+    /// The priority is pinned: the executor orders jobs by priority first, and two commands sharing a
+    /// matching key must reach the wire in ID order or `oldestPendingID` hands them the wrong response.
+    private func writeCommand(_ data: Data, id: UInt64, commandString: String) {
+        Task(priority: .userInitiated) {
+            do {
+                try await transport.send(data)
+                HEOSLogger.connection.debug("Sent command #\(id): \(commandString.trimmingCharacters(in: .whitespacesAndNewlines))")
+            } catch {
+                guard let failed = pendingCommands.removeValue(forKey: id) else { return }
+                failed.timeoutTask.cancel()
+                failed.continuation.resume(throwing: error)
+            }
+        }
+    }
+
+    /// Drops a command whose caller gave up, freeing its slot for the next matching response.
+    private func abandonPending(_ id: UInt64) {
+        guard let pending = pendingCommands.removeValue(forKey: id) else { return }
+        pending.timeoutTask.cancel()
+        pending.continuation.resume(throwing: CancellationError())
     }
 
     public func sendFireAndForget(_ command: HEOSCommand) async throws {

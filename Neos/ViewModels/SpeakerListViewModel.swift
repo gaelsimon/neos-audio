@@ -41,14 +41,14 @@ final class SpeakerListViewModel {
         })
     }
 
-    func startContinuousDiscovery() {
+    /// The search keeps running; `giveUpAfter` is only how long the UI says so (SSDP alone takes 5 s).
+    func startContinuousDiscovery(giveUpAfter timeout: Duration = .seconds(10)) {
         let requestID = discoveryTracker.next()
         state.isDiscovering = true
         state.discoveryError = nil
         continuousDiscoveryTask.replace(with: Task {
             service.startContinuousDiscovery()
-            // Mark initial burst as complete after a short delay
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: timeout)
             guard discoveryTracker.isCurrent(requestID), !Task.isCancelled else { return }
             state.isDiscovering = false
         })
@@ -62,11 +62,11 @@ final class SpeakerListViewModel {
         }
     }
 
-    func connectToDevice(_ device: DiscoveredDevice) {
+    func connectToDevice(_ device: DiscoveredDevice, cachedPlayerID: Int? = nil) {
         state.connectionState = .connecting
         connectTask.replace(with: Task {
             do {
-                try await service.connect(host: device.host, port: device.port)
+                try await service.connect(host: device.host, port: device.port, cachedPlayerID: cachedPlayerID)
                 guard !Task.isCancelled else { return }
                 stopContinuousDiscovery()
                 state.connectedDevice = device
@@ -75,9 +75,48 @@ final class SpeakerListViewModel {
                 guard !Task.isCancelled else { return }
                 state.connectedDevice = nil
                 state.error = .connectionFailed("Failed to connect: \(error.localizedDescription)")
-                state.connectionState = .disconnected
+                state.setConnectionState(.disconnected)
             }
         })
+    }
+
+    /// A booting speaker or a late Wi-Fi must not make the app forget it: keep the cache and retry.
+    func connectToCachedDevice(_ cached: CachedDevice, attempts: Int = 3, retryDelay: Duration = .seconds(2)) {
+        state.connectionState = .connecting
+        state.connectedDevice = cached.device
+        let total = max(attempts, 1)
+        connectTask.replace(with: Task {
+            for attempt in 1...total {
+                do {
+                    try await service.connect(
+                        host: cached.device.host,
+                        port: cached.device.port,
+                        cachedPlayerID: cached.selectedPlayerID
+                    )
+                    guard !Task.isCancelled else { return }
+                    stopContinuousDiscovery()
+                    DeviceCache.save(device: cached.device, selectedPlayerID: state.selectedPlayerID)
+                    return
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    if attempt < total {
+                        try? await Task.sleep(for: retryDelay)
+                        guard !Task.isCancelled else { return }
+                    }
+                }
+            }
+            // The cache is kept for the auto-reconnect, but nothing is connected any more.
+            state.connectedDevice = nil
+            state.setConnectionState(.disconnected)
+        })
+    }
+
+    /// A remembered speaker reappearing reconnects without a click, on whatever address it now has.
+    func autoConnectIfCached(_ device: DiscoveredDevice) {
+        guard state.connectionState == .disconnected,
+              let cached = DeviceCache.load(),
+              cached.matches(device) else { return }
+        connectToDevice(device, cachedPlayerID: cached.selectedPlayerID)
     }
 
     func connectManual(host: String) {
@@ -97,7 +136,7 @@ final class SpeakerListViewModel {
                 guard !Task.isCancelled else { return }
                 state.connectedDevice = nil
                 state.error = .connectionFailed("Failed to connect to \(trimmed): \(error.localizedDescription)")
-                state.connectionState = .disconnected
+                state.setConnectionState(.disconnected)
             }
         })
     }

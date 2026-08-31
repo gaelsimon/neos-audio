@@ -9,27 +9,58 @@ actor EventRouter {
     private let playerService: PlayerService?
     private let groupService: GroupService?
     private let browseService: BrowseService?
-    private static let serviceTimeout: Duration = .seconds(5)
+    /// Re-runs the pair/multi-room classification; an un-paired follower must leave the caches
+    /// even when other groups survive the change.
+    private let refreshTopology: @Sendable ([SpeakerGroup]) async -> Void
+    private let serviceTimeout: Duration
+    /// Backstop above the command's own budget, so a device answering "command under process" is never re-asked.
+    private let fetchTimeout: Duration
+    private var nowPlayingTask: Task<Void, Never>?
+    private var queueTask: Task<Void, Never>?
+    private var topologyTask: Task<Void, Never>?
 
     init(
         stateUpdater: StateUpdater,
         playerService: PlayerService?,
         groupService: GroupService?,
-        browseService: BrowseService?
+        browseService: BrowseService?,
+        refreshTopology: @escaping @Sendable ([SpeakerGroup]) async -> Void = { _ in
+            // Only the owning session can reclassify; tests that ignore topology need not supply one.
+        },
+        serviceTimeout: Duration = .seconds(5),
+        fetchTimeout: Duration = .seconds(20)
     ) {
         self.stateUpdater = stateUpdater
         self.playerService = playerService
         self.groupService = groupService
         self.browseService = browseService
+        self.refreshTopology = refreshTopology
+        self.serviceTimeout = serviceTimeout
+        self.fetchTimeout = fetchTimeout
     }
 
+    /// Drops in-flight device fetches, so a torn-down session stops asking a dead connection.
+    func cancelPendingFetches() {
+        nowPlayingTask?.cancel()
+        nowPlayingTask = nil
+        queueTask?.cancel()
+        queueTask = nil
+        topologyTask?.cancel()
+        topologyTask = nil
+    }
+
+    /// Device fetches run on their own task: a waking amp takes 20 s, and a newer event replaces the fetch.
     func handle(_ event: HEOSEvent) async {
         switch event.eventName {
         case "player_state_changed":        await handlePlayerStateChanged(event)
-        case "player_now_playing_changed":  await handleNowPlayingChanged(event)
+        case "player_now_playing_changed":
+            nowPlayingTask?.cancel()
+            nowPlayingTask = Task { await handleNowPlayingChanged(event) }
         case "player_now_playing_progress": await handleNowPlayingProgress(event)
         case "player_volume_changed":       await handlePlayerVolumeChanged(event)
-        case "player_queue_changed":        await handlePlayerQueueChanged(event)
+        case "player_queue_changed":
+            queueTask?.cancel()
+            queueTask = Task { await handlePlayerQueueChanged(event) }
         case "player_playback_error":       await handlePlaybackError(event)
         case "repeat_mode_changed":         await handleRepeatModeChanged(event)
         case "shuffle_mode_changed":        await handleShuffleModeChanged(event)
@@ -50,14 +81,15 @@ actor EventRouter {
     /// Throws `TransportError` on connection failures (caller should bail).
     private func withTimeout<T: Sendable>(
         _ label: String,
-        timeout: Duration = EventRouter.serviceTimeout,
+        timeout: Duration? = nil,
         operation: @Sendable @escaping () async throws -> T
     ) async throws -> T? {
+        let interval = timeout ?? serviceTimeout
         do {
             return try await withThrowingTaskGroup(of: T.self) { group in
                 group.addTask { try await operation() }
                 group.addTask {
-                    try await Task.sleep(for: timeout)
+                    try await Task.sleep(for: interval)
                     throw TransportError.timeout
                 }
                 guard let result = try await group.next() else {
@@ -67,6 +99,7 @@ actor EventRouter {
                 return result
             }
         } catch let transportError as TransportError {
+            if case .timeout = transportError { return nil }
             // Connection-level failure; retrying won't help
             HEOSLogger.service.debug("EventRouter: \(label) skipped (transport unavailable)")
             throw transportError
@@ -98,15 +131,16 @@ actor EventRouter {
         guard await isSelectedPlayer(event) else { return }
         guard let pidStr = event.message["pid"], let pid = Int(pidStr) else { return }
         for attempt in 0..<3 {
+            // A newer event replaced this fetch; its own task carries the fresher state.
+            guard !Task.isCancelled else { return }
             do {
-                if let result = try await withTimeout("now_playing_changed", operation: { [playerService] in
+                let fetched = try await withTimeout("now_playing_changed", timeout: fetchTimeout, operation: { [playerService] in
                     try await playerService?.getNowPlayingMedia(pid: pid)
-                }) {
-                    if let (media, options) = result {
-                        await stateUpdater.setNowPlaying(media)
-                        await stateUpdater.setNowPlayingOptions(options)
-                        return
-                    }
+                })
+                if let mediaAndOptions = fetched, let (media, options) = mediaAndOptions {
+                    await stateUpdater.setNowPlaying(media)
+                    await stateUpdater.setNowPlayingOptions(options)
+                    return
                 }
             } catch {
                 return // Transport error; connection is dead, stop retrying
@@ -115,6 +149,7 @@ actor EventRouter {
                 try? await Task.sleep(for: .milliseconds(300 * (attempt + 1)))
             }
         }
+        guard !Task.isCancelled else { return }
         await stateUpdater.reportNonFatal(source: "event.now_playing_changed", message: "Failed after 3 attempts")
     }
 
@@ -149,8 +184,10 @@ actor EventRouter {
         // Queue fetches can be slow when the device is processing browse commands.
         // Retry up to 3 times with increasing back-off so the UI eventually updates.
         for attempt in 0..<3 {
+            guard !Task.isCancelled else { return }
             do {
-                if let queue = try await withTimeout("queue_changed", timeout: .seconds(15), operation: { [playerService] in
+                // The queue command carries a 20 s budget of its own, so allow a little more.
+                if let queue = try await withTimeout("queue_changed", timeout: fetchTimeout + .seconds(5), operation: { [playerService] in
                     try await playerService?.getQueue(pid: pid)
                 }) {
                     await stateUpdater.setQueue(queue ?? [])
@@ -163,6 +200,7 @@ actor EventRouter {
                 try? await Task.sleep(for: .milliseconds(500 * (attempt + 1)))
             }
         }
+        guard !Task.isCancelled else { return }
         await stateUpdater.reportNonFatal(source: "event.queue_changed", message: "Timed out fetching queue after 3 attempts")
     }
 
@@ -230,6 +268,11 @@ actor EventRouter {
             switch result {
             case .some(.some(let groups)):
                 await stateUpdater.setGroups(groups)
+                // A successful fetch is authoritative, empty or not: reclassify so a broken-up pair
+                // stops hiding its ex-follower even when the system still has other groups.
+                // Detached: it reads getPlayers plus one UPnP channel per member, and events are serial.
+                topologyTask?.cancel()
+                topologyTask = Task { [refreshTopology] in await refreshTopology(groups) }
             case .some(.none):
                 break
             case .none:

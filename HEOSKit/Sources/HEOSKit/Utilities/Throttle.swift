@@ -1,11 +1,12 @@
 import Foundation
 
-/// Debounces rapid calls, only executing the action with the latest value after the interval elapses.
+/// Throttles rapid calls: emits the first value immediately, then at most one per interval, ending with the latest value.
 actor Throttle<Value: Sendable> {
     private let interval: Duration
     private let action: (Value) async throws -> Void
     private let onError: (@Sendable (Error) async -> Void)?
-    private var pendingTask: Task<Void, Never>?
+    private var latestValue: Value?
+    private var windowTask: Task<Void, Never>?
 
     init(
         interval: Duration,
@@ -18,20 +19,38 @@ actor Throttle<Value: Sendable> {
     }
 
     func submit(_ value: Value) {
-        pendingTask?.cancel()
-        pendingTask = Task {
-            try? await Task.sleep(for: interval)
-            guard !Task.isCancelled else { return }
-            do {
-                try await action(value)
-            } catch {
-                await onError?(error)
-            }
+        if windowTask == nil {
+            windowTask = Task { await drain(first: value) }
+        } else {
+            latestValue = value
         }
     }
 
     func cancel() {
-        pendingTask?.cancel()
-        pendingTask = nil
+        windowTask?.cancel()
+        windowTask = nil
+        latestValue = nil
+    }
+
+    /// Emits the first value, then keeps the window open one interval at a time until no new value arrives.
+    private func drain(first: Value) async {
+        var next: Value? = first
+        var didReportError = false
+        while !Task.isCancelled, let value = next {
+            do {
+                try await action(value)
+            } catch {
+                // Reported once per burst: one error per emission would evict the diagnostics that explain it.
+                if !didReportError {
+                    didReportError = true
+                    await onError?(error)
+                }
+            }
+            try? await Task.sleep(for: interval)
+            next = latestValue
+            latestValue = nil
+        }
+        latestValue = nil
+        if !Task.isCancelled { windowTask = nil }
     }
 }

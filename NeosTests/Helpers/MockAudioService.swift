@@ -38,6 +38,8 @@ final class MockAudioService: AudioService, @unchecked Sendable {
     var discoveredDevicesList: [DiscoveredDevice] = [MockData.discoveredDevice]
     var discoverError: Error?
     var connectError: Error?
+    /// Leading connect() calls that fail before one succeeds, for retry tests.
+    var failingConnectAttempts = 0
     var powerOffError: Error?
     var powerOnError: Error?
 
@@ -45,11 +47,23 @@ final class MockAudioService: AudioService, @unchecked Sendable {
 
     func connect(host: String, port: Int, cachedPlayerID: Int?) async throws {
         calls.append("connect")
+        if failingConnectAttempts > 0 {
+            failingConnectAttempts -= 1
+            throw connectError ?? NSError(domain: "mock", code: 1)
+        }
         if let error = connectError { throw error }
     }
 
     func disconnect() async {
         calls.append("disconnect")
+    }
+
+    func suspend() async {
+        calls.append("suspend")
+    }
+
+    func resume() async {
+        calls.append("resume")
     }
 
     // MARK: - Discovery
@@ -106,8 +120,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         if let error = setVolumeError { throw error }
     }
 
+    var toggleMuteError: Error?
+
     func toggleMute(pid: Int) async throws {
         calls.append("toggleMute:\(pid)")
+        if let error = toggleMuteError { throw error }
     }
 
     func setPlayMode(pid: Int, repeat repeatMode: RepeatMode, shuffle: ShuffleMode) async throws {
@@ -196,8 +213,18 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         calls.append("playInput:\(pid):\(input)")
     }
 
+    /// Per-mid outcomes, so a test can let one play fail while another is still in flight.
+    var addToQueueFailingMIDs: Set<String> = []
+    var addToQueueSlowMIDs: Set<String> = []
+
     func addToQueue(pid: Int, sid: Int, cid: String, mid: String?, criteria: AddCriteria) async throws {
         calls.append("addToQueue:\(pid)")
+        if let mid, addToQueueSlowMIDs.contains(mid) {
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        if let mid, addToQueueFailingMIDs.contains(mid) {
+            throw NSError(domain: "mock", code: 2, userInfo: [NSLocalizedDescriptionKey: "addToQueue failed"])
+        }
     }
 
     func getHistory(range: ClosedRange<Int>?) async throws -> BrowseResult {

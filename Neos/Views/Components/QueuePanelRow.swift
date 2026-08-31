@@ -8,7 +8,8 @@ struct QueuePanelRow: View {
     let isStation: Bool
     let isNowPlaying: Bool
     let showRemoveButton: Bool
-    let onTap: () -> Void
+    /// Nil on display-only rows, such as the standalone now-playing entry.
+    var onTap: (() -> Void)?
     var onRemove: (() -> Void)?
 
     @State private var isHovered = false
@@ -26,8 +27,27 @@ struct QueuePanelRow: View {
         .frame(height: 54)
         .background(rowBackground, in: RoundedRectangle(cornerRadius: DS.Radius.small))
         .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
+        .onTapGesture { onTap?() }
         .onHover { isHovered = $0 }
+        .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
+    }
+
+    // MARK: - Context Menu
+
+    private var hasActions: Bool { onTap != nil || onRemove != nil }
+
+    @ViewBuilder
+    private var menuItems: some View {
+        if let onTap {
+            Button { onTap() } label: {
+                Label("Play", systemImage: DS.Icons.playing)
+            }
+        }
+        if let onRemove {
+            Button(role: .destructive) { onRemove() } label: {
+                Label("Remove from Queue", systemImage: DS.Icons.close)
+            }
+        }
     }
 
     // MARK: - Artwork
@@ -67,7 +87,7 @@ struct QueuePanelRow: View {
 
     private var textContent: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-            Text(name)
+            Text(name.displayTitle)
                 .typography(.bodyPrimary)
                 .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
                 .lineLimit(1)

@@ -70,14 +70,14 @@ final class ImageURLCacheTests: XCTestCase {
         XCTAssertLessThanOrEqual(all.count, 5000)
     }
 
-    func testPersistsToDisk() {
+    func testPersistsToDisk() throws {
         ImageURLCache.cacheEntries([(mid: "s100", imageURL: "https://example.com/a.png")])
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: Self.fileURL.path))
 
-        let data = try! Data(contentsOf: Self.fileURL)
-        let map = try! JSONDecoder().decode([String: String].self, from: data)
-        XCTAssertEqual(map["s100"], "https://example.com/a.png")
+        let data = try Data(contentsOf: Self.fileURL)
+        let map = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: [String: Any]])
+        XCTAssertEqual(map["s100"]?["url"] as? String, "https://example.com/a.png")
     }
 
     func testInMemoryCacheAvoidsDiskReads() {

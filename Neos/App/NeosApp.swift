@@ -7,6 +7,8 @@ struct NeosApp: App {
     @State private var appState = AppState()
     @State private var service: HEOSService?
     @State private var container: ViewModelContainer?
+    @State private var lifecycleMonitor: LifecycleMonitor?
+    @State private var spaceKeyMonitor: SpaceKeyMonitor?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -36,9 +38,10 @@ struct NeosApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 700, height: 500)
+        .commands { playbackCommands }
 
         // Menu bar quick controls
-        MenuBarExtra("Neos", systemImage: menuBarIcon) {
+        MenuBarExtra {
             if let container {
                 MenuBarView(
                     state: appState,
@@ -54,23 +57,65 @@ struct NeosApp: App {
                 .frame(width: 280, height: 100)
                 .background(DS.Colors.background)
                 .preferredColorScheme(.dark)
+                .onAppear { initializeServices() }
             }
+        } label: {
+            // The status item renders at launch, so this boots the app even with no window.
+            Image(nsImage: menuBarIcon)
+                .onAppear { initializeServices() }
         }
         .menuBarExtraStyle(.window)
     }
 
-    private var menuBarIcon: String {
-        switch appState.connectionState {
-        case .connected:
-            DS.Icons.speakerFill
-        case .connecting, .reconnecting:
-            DS.Icons.speaker
-        case .disconnected:
-            DS.Icons.speaker
+    // MARK: - Menu Commands
+
+    /// Play/Pause carries no shortcut: `SpaceKeyMonitor` owns Space so typing still works.
+    @CommandsBuilder
+    private var playbackCommands: some Commands {
+        CommandMenu("Playback") {
+            Button(appState.isPlaying ? "Pause" : "Play") {
+                container?.playerVM.togglePlayPause()
+            }
+            .disabled(container == nil || !appState.isConnected)
+
+            Divider()
+
+            Button("Back") { container?.goBack() }
+                .keyboardShortcut("[", modifiers: .command)
+                .disabled(container?.canGoBack != true)
+
+            Button("Forward") { container?.goForward() }
+                .keyboardShortcut("]", modifiers: .command)
+                .disabled(container?.canGoForward != true)
+
+            Divider()
+
+            Button("Search") { appState.isSearchFieldFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(container == nil || !appState.isConnected)
+
+            Button(appState.isNowPlayingCanvasOpen ? "Exit Full Screen Player" : "Full Screen Player") {
+                appState.isNowPlayingCanvasOpen.toggle()
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+            .disabled(container == nil || !appState.isConnected)
         }
     }
 
+    private var menuBarIcon: NSImage {
+        menuBarVinyl(connectionState: appState.connectionState, isPlaying: appState.isPlaying).image()
+    }
+
+    /// Space is owned by a key monitor, which reads the first responder as the key lands.
+    private func installSpaceKeyMonitor(for vms: ViewModelContainer) {
+        let monitor = SpaceKeyMonitor(state: appState) { vms.playerVM.togglePlayPause() }
+        monitor.start()
+        self.spaceKeyMonitor = monitor
+    }
+
+    /// Idempotent: whichever scene appears first boots the services.
     private func initializeServices() {
+        guard container == nil else { return }
         let isDemoMode = CommandLine.arguments.contains("--demo-mode")
 
         // Demo mode takes priority; always initialize even when hosted by XCTest
@@ -78,6 +123,7 @@ struct NeosApp: App {
             let svc = DemoAudioService()
             let vms = ViewModelContainer(service: svc, state: appState)
             self.container = vms
+            installSpaceKeyMonitor(for: vms)
             DemoDataProvider.populate(appState)
             return
         }
@@ -98,31 +144,22 @@ struct NeosApp: App {
         let vms = ViewModelContainer(service: svc, state: appState)
         self.container = vms
 
+        let monitor = LifecycleMonitor(service: svc, state: appState)
+        monitor.start()
+        self.lifecycleMonitor = monitor
+
+        installSpaceKeyMonitor(for: vms)
+
         // Skip network operations when running UI tests without a speaker
         if skipDiscovery {
             return
         }
 
-        // Try cached device first, fall back to discovery
+        // Discovery runs alongside the cached connection, so a speaker on a new IP is still found
+        vms.speakerVM.startContinuousDiscovery()
+
         if let cached = DeviceCache.load() {
-            appState.connectionState = .connecting
-            appState.connectedDevice = cached.device
-            Task {
-                do {
-                    try await svc.connect(
-                        host: cached.device.host,
-                        port: cached.device.port,
-                        cachedPlayerID: cached.selectedPlayerID
-                    )
-                    DeviceCache.save(device: cached.device, selectedPlayerID: appState.selectedPlayerID)
-                } catch {
-                    DeviceCache.clear()
-                    appState.connectionState = .disconnected
-                    vms.speakerVM.startContinuousDiscovery()
-                }
-            }
-        } else {
-            vms.speakerVM.startContinuousDiscovery()
+            vms.speakerVM.connectToCachedDevice(cached)
         }
     }
 }

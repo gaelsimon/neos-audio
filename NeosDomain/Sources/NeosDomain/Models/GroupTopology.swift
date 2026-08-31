@@ -1,7 +1,6 @@
 import Foundation
 
-// Stereo/surround bonds (members carry LEFT/RIGHT/… channels) collapse to one leader row;
-// plain multi-room groups (all NORMAL) stay expanded. Missing channel info → collapse (safe).
+// Stereo bonds collapse to one row; plain multi-room stays expanded; unknown channels collapse.
 
 public let normalAudioChannel = "NORMAL"
 
@@ -26,6 +25,13 @@ public extension Array where Element == SpeakerGroup {
             group.players.allSatisfy { channelsByPID[$0.pid] == normalAudioChannel }
         }.map(\.gid))
     }
+
+    /// GIDs with a member whose channel went unread: collapsed by fallback, not by evidence.
+    func unclassifiedGroupIDs(channelsByPID: [Int: String]) -> Set<Int> {
+        Set(filter { group in
+            !group.players.allSatisfy { channelsByPID[$0.pid] != nil }
+        }.map(\.gid))
+    }
 }
 
 public extension Array where Element == Player {
@@ -46,10 +52,39 @@ public extension Array where Element == SpeakerGroup {
     }
 }
 
+public extension Array where Element == SpeakerGroup {
+    /// Pair room name by leader serial *and* name: Bonjour reports no serial before connecting.
+    func collapsedPairNames(players: [Player], expanded: Set<Int> = []) -> [String: String] {
+        var names: [String: String] = [:]
+        for group in self where !expanded.contains(group.gid) && !group.members.isEmpty {
+            guard let leader = group.leader else { continue }
+            let roomName = group.collapsedDisplayName
+            if let serial = players.first(where: { $0.pid == leader.pid })?.serial, !serial.isEmpty {
+                names[serial] = roomName
+            }
+            if !leader.name.isEmpty {
+                names[leader.name] = roomName
+            }
+        }
+        return names
+    }
+
+    /// Names of collapsed-group followers, for discovery entries that carry no serial.
+    func collapsedFollowerNames(expanded: Set<Int> = []) -> Set<String> {
+        Set(filter { !expanded.contains($0.gid) }
+            .flatMap { $0.members.map(\.name) }
+            .filter { !$0.isEmpty })
+    }
+}
+
 public extension Array where Element == DiscoveredDevice {
-    /// Hides devices that are known stereo/surround followers (by serial), so a pair shows as one card.
-    func hidingKnownFollowers(_ followerSerials: Set<String>) -> [DiscoveredDevice] {
-        guard !followerSerials.isEmpty else { return self }
-        return filter { $0.serialNumber.isEmpty || !followerSerials.contains($0.serialNumber) }
+    /// Hides known followers so a pair shows as one card; falls back to the name without a serial.
+    func hidingKnownFollowers(_ followerSerials: Set<String>, names followerNames: Set<String> = []) -> [DiscoveredDevice] {
+        guard !followerSerials.isEmpty || !followerNames.isEmpty else { return self }
+        return filter { device in
+            device.serialNumber.isEmpty
+                ? !followerNames.contains(device.friendlyName)
+                : !followerSerials.contains(device.serialNumber)
+        }
     }
 }

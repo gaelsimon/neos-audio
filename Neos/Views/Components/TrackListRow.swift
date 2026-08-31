@@ -72,6 +72,7 @@ struct TrackListRow: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         .onHover { isHovered = $0 }
+        .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
         .accessibilityIdentifier(AccessibilityID.TrackList.row(index))
     }
 
@@ -86,6 +87,23 @@ struct TrackListRow: View {
     @ViewBuilder
     private var actionMenu: some View {
         Menu {
+            menuItems
+        } label: {
+            Image(systemName: "ellipsis")
+                .typography(.secondary)
+                .foregroundStyle(DS.Colors.textSecondary)
+                .frame(minWidth: 36, minHeight: 36)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+
+    /// Shared by the hover "…" button and the right-click context menu.
+    @ViewBuilder
+    private var menuItems: some View {
+        Group {
             if let onPlayNext {
                 Button { onPlayNext() } label: {
                     Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward")
@@ -141,16 +159,7 @@ struct TrackListRow: View {
                     Label("Remove Custom Artwork", systemImage: "photo.badge.x")
                 }
             }
-        } label: {
-            Image(systemName: "ellipsis")
-                .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
-                .frame(minWidth: 36, minHeight: 36)
-                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
     }
 
     // MARK: - Number Column
@@ -190,7 +199,7 @@ struct TrackListRow: View {
             .frame(width: DS.ImageSize.trackListRow, height: DS.ImageSize.trackListRow)
             .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
 
-            Text(name)
+            Text(name.displayTitle)
                 .typography(.bodyPrimary)
                 .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
                 .lineLimit(1)

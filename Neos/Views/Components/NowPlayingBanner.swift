@@ -25,13 +25,13 @@ struct NowPlayingBanner: View {
 
                 // Song Info
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text(state.nowPlaying.song.isEmpty ? "Not Playing" : state.nowPlaying.song)
+                    Text(state.nowPlaying.song.isEmpty ? "Not Playing" : state.nowPlaying.song.displayTitle)
                         .typography(.sectionHeader)
                         .lineLimit(1)
                         .accessibilityIdentifier(AccessibilityID.NowPlayingBanner.songTitle)
 
                     if let station = state.nowPlaying.station, !station.isEmpty {
-                        Text(station)
+                        Text(station.displayTitle)
                             .typography(.secondary)
                             .lineLimit(1)
                     } else if !state.nowPlaying.artist.isEmpty {
