@@ -44,6 +44,59 @@ enum DemoDataProvider {
         ])
     ]
 
+    /// Demo players: both AVR zones, the Home 150 pair, and the Kitchen/Den members.
+    static let players: [Player] = [
+        Player(
+            pid: avrMainZonePID,
+            name: "Denon AVR-X2800H",
+            model: "Denon - AVR-X2800H",
+            version: "3.34.510",
+            ip: "192.0.2.10",
+            network: .wired,
+            lineout: 2,
+            serial: "ABC123456"
+        ),
+        Player(
+            pid: avrZone2PID,
+            name: "Denon AVR-X2800H - Zone 2",
+            model: "Denon - AVR-X2800H",
+            version: "3.34.510",
+            ip: "192.0.2.10",
+            network: .wired,
+            lineout: 2,
+            serial: "ABC123456",
+            control: 3
+        ),
+        Player(
+            pid: home150PID,
+            name: "Home 150 Pair",
+            model: "HEOS Home 150",
+            version: "3.34.510",
+            ip: "192.0.2.20",
+            network: .wifi,
+            lineout: 0,
+            serial: "H150PAIR01"
+        ),
+        Player(pid: kitchenLeftPID, name: "Kitchen Left", model: "HEOS Home 150",
+               ip: "192.0.2.30", network: .wifi, lineout: 0, serial: "H150KITL"),
+        Player(pid: kitchenRightPID, name: "Kitchen Right", model: "HEOS Home 150",
+               ip: "192.0.2.31", network: .wifi, lineout: 0, serial: "H150KITR"),
+        Player(pid: denPID, name: "Den", model: "HEOS Home 350",
+               ip: "192.0.2.40", network: .wifi, lineout: 0, serial: "H350DEN"),
+        Player(pid: bathPID, name: "Bathroom", model: "HEOS 1",
+               ip: "192.0.2.41", network: .wifi, lineout: 0, serial: "H1BATH")
+    ]
+
+    /// The AVR the demo session is "connected" to.
+    static let connectedDevice = DiscoveredDevice(
+        host: "192.0.2.10",
+        port: 1255,
+        friendlyName: "Denon AVR-X2800H",
+        modelName: "Denon - AVR-X2800H",
+        modelNumber: "AVR-X2800H",
+        serialNumber: "ABC123456"
+    )
+
     // MARK: - Public Entry Point
 
     static func populate(_ state: AppState) {
@@ -51,56 +104,9 @@ enum DemoDataProvider {
         state.persistsDiscoveryCaches = false
         state.setConnectionState(.connected)
 
-        state.connectedDevice = DiscoveredDevice(
-            host: "192.0.2.10",
-            port: 1255,
-            friendlyName: "Denon AVR-X2800H",
-            modelName: "Denon - AVR-X2800H",
-            modelNumber: "AVR-X2800H",
-            serialNumber: "ABC123456"
-        )
+        state.connectedDevice = connectedDevice
 
-        state.setPlayers([
-            Player(
-                pid: avrMainZonePID,
-                name: "Denon AVR-X2800H",
-                model: "Denon - AVR-X2800H",
-                version: "3.34.510",
-                ip: "192.0.2.10",
-                network: .wired,
-                lineout: 2,
-                serial: "ABC123456"
-            ),
-            Player(
-                pid: avrZone2PID,
-                name: "Denon AVR-X2800H - Zone 2",
-                model: "Denon - AVR-X2800H",
-                version: "3.34.510",
-                ip: "192.0.2.10",
-                network: .wired,
-                lineout: 2,
-                serial: "ABC123456",
-                control: 3
-            ),
-            Player(
-                pid: home150PID,
-                name: "Home 150 Pair",
-                model: "HEOS Home 150",
-                version: "3.34.510",
-                ip: "192.0.2.20",
-                network: .wifi,
-                lineout: 0,
-                serial: "H150PAIR01"
-            ),
-            Player(pid: kitchenLeftPID, name: "Kitchen Left", model: "HEOS Home 150",
-                   ip: "192.0.2.30", network: .wifi, lineout: 0, serial: "H150KITL"),
-            Player(pid: kitchenRightPID, name: "Kitchen Right", model: "HEOS Home 150",
-                   ip: "192.0.2.31", network: .wifi, lineout: 0, serial: "H150KITR"),
-            Player(pid: denPID, name: "Den", model: "HEOS Home 350",
-                   ip: "192.0.2.40", network: .wifi, lineout: 0, serial: "H350DEN"),
-            Player(pid: bathPID, name: "Bathroom", model: "HEOS 1",
-                   ip: "192.0.2.41", network: .wifi, lineout: 0, serial: "H1BATH")
-        ])
+        state.setPlayers(players)
 
         // Kitchen is a stereo pair (collapses to one row); Den + Bathroom is multi-room (expanded).
         state.setGroups(groups)

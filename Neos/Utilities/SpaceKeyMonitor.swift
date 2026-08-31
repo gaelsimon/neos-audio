@@ -16,13 +16,18 @@ final class SpaceKeyMonitor {
     func start() {
         guard monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Only Sendable values cross into the actor; NSEvent itself stays on this side.
+            let characters = event.charactersIgnoringModifiers
+            let modifiers = event.modifierFlags.rawValue
             // The monitor is called on the main thread, where this class lives.
-            MainActor.assumeIsolated {
-                guard let self, self.handle(event, firstResponder: NSApp.keyWindow?.firstResponder) else {
-                    return event
-                }
-                return nil
+            let consumed = MainActor.assumeIsolated {
+                self?.handleKey(
+                    characters: characters,
+                    modifiers: NSEvent.ModifierFlags(rawValue: modifiers),
+                    firstResponder: NSApp.keyWindow?.firstResponder
+                ) ?? false
             }
+            return consumed ? nil : event
         }
     }
 
@@ -33,17 +38,25 @@ final class SpaceKeyMonitor {
 
     /// True when the keystroke was consumed as play/pause.
     func handle(_ event: NSEvent, firstResponder: NSResponder?) -> Bool {
-        guard Self.isBareSpace(event),
+        handleKey(
+            characters: event.charactersIgnoringModifiers,
+            modifiers: event.modifierFlags,
+            firstResponder: firstResponder
+        )
+    }
+
+    func handleKey(characters: String?, modifiers: NSEvent.ModifierFlags, firstResponder: NSResponder?) -> Bool {
+        guard Self.isBareSpace(characters: characters, modifiers: modifiers),
               state.isConnected,
               !Self.isEditingText(firstResponder) else { return false }
         onToggle()
         return true
     }
 
-    static func isBareSpace(_ event: NSEvent) -> Bool {
-        guard event.charactersIgnoringModifiers == " " else { return false }
+    static func isBareSpace(characters: String?, modifiers: NSEvent.ModifierFlags) -> Bool {
+        guard characters == " " else { return false }
         let relevant: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
-        return event.modifierFlags.isDisjoint(with: relevant)
+        return modifiers.isDisjoint(with: relevant)
     }
 
     /// A focused field hands editing to an NSTextView field editor, SwiftUI's `TextField` included.
