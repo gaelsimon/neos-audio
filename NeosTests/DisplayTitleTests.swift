@@ -4,16 +4,38 @@ import NeosDomain
 
 final class DisplayTitleTests: XCTestCase {
 
-    func testStreamURLFallsBackToHost() {
-        XCTAssertEqual("https://icecast.radiofrance.fr/fip-hifi.aac".displayTitle, "icecast.radiofrance.fr")
+    func testStreamURLKeepsTheSegmentThatIdentifiesIt() {
+        XCTAssertEqual("https://icecast.radiofrance.fr/fip-hifi.aac".displayTitle, "fip-hifi.aac")
     }
 
-    func testHTTPStreamURLFallsBackToHost() {
-        XCTAssertEqual("http://stream.example.org:8000/live".displayTitle, "stream.example.org")
+    /// The host alone collapses every stream a station serves into one indistinguishable title.
+    func testTwoStreamsOnOneHostStayDistinct() {
+        let jazz = "http://mscp3.live-streams.nl:8340/jazz-flac.flac".displayTitle
+        let classical = "http://mscp3.live-streams.nl:8340/class-flac.flac".displayTitle
+        XCTAssertEqual(jazz, "jazz-flac.flac")
+        XCTAssertEqual(classical, "class-flac.flac")
+        XCTAssertNotEqual(jazz, classical)
     }
 
-    func testWWWPrefixIsStripped() {
-        XCTAssertEqual("https://www.example.com/stream.mp3".displayTitle, "example.com")
+    func testHTTPStreamURLKeepsItsSegment() {
+        XCTAssertEqual("http://stream.example.org:8000/live".displayTitle, "live")
+    }
+
+    /// No path to distinguish anything: the host is all there is.
+    func testPathlessURLFallsBackToHost() {
+        XCTAssertEqual("http://stream.example.org:8000".displayTitle, "stream.example.org")
+    }
+
+    func testTrailingSlashFallsBackToHost() {
+        XCTAssertEqual("https://www.example.com/".displayTitle, "example.com")
+    }
+
+    func testDeepPathUsesTheLastSegment() {
+        XCTAssertEqual("https://cdn.example.com/eu/west/fip-rock.aac".displayTitle, "fip-rock.aac")
+    }
+
+    func testWWWPrefixIsStrippedWhenTheHostIsUsed() {
+        XCTAssertEqual("https://www.example.com".displayTitle, "example.com")
     }
 
     func testOrdinaryNameIsUnchanged() {
@@ -33,7 +55,7 @@ final class DisplayTitleTests: XCTestCase {
     }
 
     func testUppercaseSchemeIsRecognized() {
-        XCTAssertEqual("HTTPS://Example.com/a.mp3".displayTitle, "Example.com")
+        XCTAssertEqual("HTTPS://Example.com/a.mp3".displayTitle, "a.mp3")
     }
 
     func testBrowseItemUsesItsName() {
@@ -45,6 +67,6 @@ final class DisplayTitleTests: XCTestCase {
             browsable: false
         )
 
-        XCTAssertEqual(item.displayTitle, "icecast.radiofrance.fr")
+        XCTAssertEqual(item.displayTitle, "fip-hifi.aac")
     }
 }
