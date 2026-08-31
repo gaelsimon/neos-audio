@@ -210,7 +210,7 @@ final class AppState: StateUpdater {
         self.groups = groups
     }
 
-    func setMultiRoomGroups(_ gids: Set<Int>) {
+    func setMultiRoomGroups(_ gids: Set<Int>, unconfirmed: Set<Int>) {
         self.multiRoomGroupIDs = gids
         guard persistsDiscoveryCaches else { return }
         // No groups means no pair: clear the caches so an ungrouped speaker reappears in discovery.
@@ -221,14 +221,18 @@ final class AppState: StateUpdater {
             FollowerCache.clear()
             return
         }
+        // A wrong entry hides a real speaker from discovery, so only groups whose channels we
+        // actually read may feed the caches. `gids` alone still drives the collapse on screen:
+        // an unconfirmed group stays collapsed there, it just never gets remembered as a pair.
+        let evidenced = gids.union(unconfirmed)
         // Remember this system's stereo/surround followers so the next launch hides them pre-connect.
-        let followers = groups.collapsedFollowerSerials(players: players, expanded: gids)
+        let followers = groups.collapsedFollowerSerials(players: players, expanded: evidenced)
         knownFollowerSerials = followers
         FollowerCache.save(followers)
-        let followerNames = groups.collapsedFollowerNames(expanded: gids)
+        let followerNames = groups.collapsedFollowerNames(expanded: evidenced)
         knownFollowerNames = followerNames
         FollowerCache.saveFollowerNames(followerNames)
-        let pairNames = groups.collapsedPairNames(players: players, expanded: gids)
+        let pairNames = groups.collapsedPairNames(players: players, expanded: evidenced)
         knownPairNames = pairNames
         FollowerCache.savePairNames(pairNames)
     }

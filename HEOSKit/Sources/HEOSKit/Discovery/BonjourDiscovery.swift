@@ -68,6 +68,11 @@ public actor BonjourDiscovery {
         try? await Task.sleep(for: .seconds(timeout))
         session.end()
         browser.cancel()
+        // Hop onto the resolve queue first: a probe that turned ready just before the timeout
+        // still has its callback queued, and reading straight away would drop that speaker.
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            resolveQueue.async { continuation.resume() }
+        }
         return collector.all
     }
 
@@ -130,6 +135,9 @@ public actor BonjourDiscovery {
         }
     }
 
+    /// A `.waiting` probe usually finds its route within a few hundred ms; only give up if it doesn't.
+    static let waitingGrace: TimeInterval = 0.5
+
     /// 1s, 2s, 4s, then give up: one lost probe must not silence the only reliable channel.
     static func retryDelay(forAttempt attempt: Int) -> TimeInterval? {
         guard attempt < 3 else { return nil }
@@ -172,7 +180,11 @@ public actor BonjourDiscovery {
                     onDevice(device)
                 }
                 finish(true)
-            case .failed, .waiting:
+            case .waiting:
+                // Transient "no route yet": killing the probe here costs a full retry delay, which
+                // in a 3 s browse lands after the session ended and loses the device entirely.
+                resolveQueue.asyncAfter(deadline: .now() + waitingGrace) { finish(false) }
+            case .failed:
                 finish(false)
             default:
                 break

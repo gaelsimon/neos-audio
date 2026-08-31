@@ -60,7 +60,10 @@ public actor HEOSService {
             stateUpdater: stateUpdater,
             playerService: self.playerService,
             groupService: self.groupService,
-            browseService: self.browseService
+            browseService: self.browseService,
+            refreshTopology: { [weak self] groups in
+                await self?.refreshGroupTopology(groups: groups)
+            }
         )
 
         await resetVolumeThrottles()

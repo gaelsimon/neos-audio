@@ -112,8 +112,10 @@ public actor HEOSConnection {
     }
 
     /// One task per write: `transport.send` has no timeout, so serialising would let one stall block the rest.
+    /// The priority is pinned: the executor orders jobs by priority first, and two commands sharing a
+    /// matching key must reach the wire in ID order or `oldestPendingID` hands them the wrong response.
     private func writeCommand(_ data: Data, id: UInt64, commandString: String) {
-        Task {
+        Task(priority: .userInitiated) {
             do {
                 try await transport.send(data)
                 HEOSLogger.connection.debug("Sent command #\(id): \(commandString.trimmingCharacters(in: .whitespacesAndNewlines))")

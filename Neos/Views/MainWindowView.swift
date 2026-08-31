@@ -5,6 +5,8 @@ struct MainWindowView: View {
     let state: AppState
     let container: ViewModelContainer
     @State private var showConnectedSplash = false
+    /// Armed once per session, so only the first connect gets the splash.
+    @State private var hasShownConnectedSplash = false
 
     private var playerVM: PlayerViewModel { container.playerVM }
     private var speakerVM: SpeakerListViewModel { container.speakerVM }
@@ -100,19 +102,27 @@ struct MainWindowView: View {
         .preferredColorScheme(.dark)
         .background(WindowAccessor())
         .onChange(of: state.isConnected) { _, isConnected in
-            if isConnected {
-                showConnectedSplash = true
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(1.5))
-                    showConnectedSplash = false
-                }
-            } else {
+            guard isConnected else {
                 showConnectedSplash = false
-                // A reconnection keeps panels open; only a real disconnect closes them.
-                guard state.connectionState == .disconnected else { return }
-                state.isQueuePanelOpen = false
-                state.isNowPlayingCanvasOpen = false
+                return
             }
+            // The splash belongs to the first connect only: a reconnection is announced by the
+            // banner, and covering the session for 1.5 s would undo the point of keeping it up.
+            guard !hasShownConnectedSplash else { return }
+            hasShownConnectedSplash = true
+            showConnectedSplash = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.5))
+                showConnectedSplash = false
+            }
+        }
+        // A reconnection keeps panels open; only a real disconnect closes them, and that
+        // transition is reconnecting -> disconnected, which never moves `isConnected`.
+        .onChange(of: state.connectionState) { _, connectionState in
+            guard connectionState == .disconnected else { return }
+            hasShownConnectedSplash = false
+            state.isQueuePanelOpen = false
+            state.isNowPlayingCanvasOpen = false
         }
         .onChange(of: browseVM.currentDestination) {
             state.isSearchFieldFocused = false

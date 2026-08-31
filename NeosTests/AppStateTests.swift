@@ -654,6 +654,59 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.visibleDiscoveredDevices.map(\.friendlyName), ["Kitchen Left"])
     }
 
+    /// A group whose UPnP channels could not be read only collapses by fallback: caching its
+    /// members by name would hide a plain multi-room speaker from discovery for good.
+    @MainActor
+    func testUnclassifiedGroupDoesNotHideItsMembersFromDiscovery() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([], unconfirmed: [1])
+
+        XCTAssertTrue(state.knownFollowerNames.isEmpty)
+        XCTAssertTrue(FollowerCache.loadFollowerNames().isEmpty)
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left"),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right")
+        ]
+        XCTAssertEqual(
+            state.visibleDiscoveredDevices.map(\.friendlyName),
+            ["Kitchen Left", "Kitchen Right"]
+        )
+    }
+
+    /// Same fallback, reached by serial: a Bonjour result that does carry one must not be
+    /// hidden either, or a multi-room speaker vanishes until the channels read cleanly again.
+    @MainActor
+    func testUnclassifiedGroupDoesNotCacheItsMembersBySerial() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([], unconfirmed: [1])
+
+        XCTAssertTrue(state.knownFollowerSerials.isEmpty)
+        XCTAssertTrue(FollowerCache.load().isEmpty)
+        XCTAssertEqual(
+            state.visibleDiscoveredDevices.map(\.friendlyName),
+            ["Kitchen Left", "Kitchen Right"]
+        )
+    }
+
+    /// A name learned from an unread group would survive as a pair label it was never proven to be.
+    @MainActor
+    func testUnclassifiedGroupDoesNotCacheAPairName() {
+        FollowerCache.clear()
+        defer { FollowerCache.clear() }
+        let state = makePairState()
+
+        state.setMultiRoomGroups([], unconfirmed: [1])
+
+        XCTAssertTrue(state.knownPairNames.isEmpty)
+        XCTAssertTrue(FollowerCache.loadPairNames().isEmpty)
+    }
+
     @MainActor
     func testDemoDataNeverTouchesTheRealCaches() {
         FollowerCache.clear()

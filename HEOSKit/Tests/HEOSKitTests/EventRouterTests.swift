@@ -361,26 +361,38 @@ struct EventRouterTests {
 
     // MARK: - Groups Changed
 
+    /// Captures the groups handed to the topology refresh, which owns the pair-cache update.
+    private actor TopologyRecorder {
+        private(set) var calls: [[Int]] = []
+
+        func record(_ groups: [SpeakerGroup]) {
+            calls.append(groups.map(\.gid))
+        }
+    }
+
     @MainActor
-    private func makeRouterWithGroups() async throws -> (EventRouter, MockStateUpdater, MockTCPTransport) {
+    private func makeRouterWithGroups() async throws
+        -> (EventRouter, MockStateUpdater, MockTCPTransport, TopologyRecorder) {
         let transport = MockTCPTransport(autoRespond: true)
         let connection = HEOSConnection(transport: transport)
         try await connection.connect(host: "test", port: 1255)
         try await Task.sleep(for: .milliseconds(50))
         let state = MockStateUpdater()
         state.selectedPlayerID = 42
+        let recorder = TopologyRecorder()
         let router = EventRouter(
             stateUpdater: state,
             playerService: nil,
             groupService: GroupService(connection: connection),
-            browseService: nil
+            browseService: nil,
+            refreshTopology: { groups in await recorder.record(groups) }
         )
-        return (router, state, transport)
+        return (router, state, transport, recorder)
     }
 
     /// Breaking up a pair is the moment the follower must become selectable again.
-    @Test @MainActor func groupsChangedWithNoGroupsPublishesAnEmptyTopology() async throws {
-        let (router, state, transport) = try await makeRouterWithGroups()
+    @Test @MainActor func groupsChangedWithNoGroupsReclassifiesTheTopology() async throws {
+        let (router, state, transport, recorder) = try await makeRouterWithGroups()
         await transport.enqueueResponse(
             """
             {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[]}
@@ -390,12 +402,13 @@ struct EventRouterTests {
         await router.handle(makeEvent("groups_changed"))
 
         #expect(state.groups.isEmpty)
-        #expect(state.multiRoomGroupIDs == [])
+        #expect(await recorder.calls == [[]])
     }
 
-    /// A pair still exists, so the caches must be left alone until the topology probe runs.
-    @Test @MainActor func groupsChangedWithGroupsLeavesTheTopologyAlone() async throws {
-        let (router, state, transport) = try await makeRouterWithGroups()
+    /// A surviving group is no reason to skip the probe: the pair that was broken up may be
+    /// one of several, and its ex-follower must still leave the caches.
+    @Test @MainActor func groupsChangedWithGroupsStillReclassifiesTheTopology() async throws {
+        let (router, state, transport, recorder) = try await makeRouterWithGroups()
         await transport.enqueueResponse(
             """
             {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[{"name":"Kitchen Left","gid":1,"players":[{"name":"Kitchen Left","pid":1,"role":"leader"},{"name":"Kitchen Right","pid":2,"role":"member"}]}]}
@@ -405,7 +418,7 @@ struct EventRouterTests {
         await router.handle(makeEvent("groups_changed"))
 
         #expect(state.groups.count == 1)
-        #expect(state.multiRoomGroupIDs == nil)
+        #expect(await recorder.calls == [[1]])
     }
 }
 

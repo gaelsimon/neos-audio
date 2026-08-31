@@ -76,6 +76,19 @@ struct GroupTopologyTests {
         #expect([pair].multiRoomGroupIDs(channelsByPID: channels).isEmpty)
     }
 
+    // MARK: - unclassifiedGroupIDs
+
+    @Test func aFullyReadGroupIsClassified() {
+        let channels = [100: "LEFT", 101: "RIGHT"]
+        #expect([pair].unclassifiedGroupIDs(channelsByPID: channels).isEmpty)
+    }
+
+    @Test func aMemberWeCouldNotQueryLeavesTheGroupUnclassified() {
+        // Collapsed by fallback, not by evidence: its members must not be cached as followers.
+        let channels = [100: "NORMAL"]
+        #expect([pair].unclassifiedGroupIDs(channelsByPID: channels) == [100])
+    }
+
     // MARK: - collapsedFollowerSerials
 
     private func serialPlayers() -> [Player] {

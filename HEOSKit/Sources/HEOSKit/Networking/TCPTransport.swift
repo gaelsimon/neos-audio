@@ -166,6 +166,9 @@ public actor TCPTransport: TransportProtocol {
     private func handleDisconnection() {
         receiveContinuation?.finish(throwing: TransportError.disconnected)
         receiveContinuation = nil
+        // `.waiting` leaves the socket alive and retrying: without this it would hold a HEOS
+        // CLI session, of which the speaker grants only a few, with nothing left to close it.
+        connection?.cancel()
         connection = nil
         buffer = Data()
     }

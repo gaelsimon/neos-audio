@@ -52,7 +52,7 @@ extension HEOSService {
         guard Self.shouldResume(hasTarget: hasTarget, hasConnection: connection != nil, isReconnecting: isReconnecting)
         else { return }
         HEOSLogger.service.info("Resuming")
-        await connectionCoordinator.startReconnection(initialDelay: 0) { [weak self] host, port, cachedPlayerID in
+        await connectionCoordinator.retryNow { [weak self] host, port, cachedPlayerID in
             try await self?.connect(host: host, port: port, cachedPlayerID: cachedPlayerID)
         }
     }
@@ -412,6 +412,17 @@ extension HEOSService {
         await stateUpdater.applyPlayerSnapshot(snapshot)
     }
 
+    /// Reclassifies after a groups_changed, on freshly read players: a speaker that just left a
+    /// group may have changed address, and an empty list needs no fetch at all.
+    func refreshGroupTopology(groups: [SpeakerGroup]) async {
+        guard !groups.isEmpty else {
+            await stateUpdater.setMultiRoomGroups([])
+            return
+        }
+        let players = (try? await playerService?.getPlayers()) ?? []
+        await refreshGroupTopology(groups: groups, players: players)
+    }
+
     /// Reads each member's UPnP channel to find which groups are plain multi-room, and publishes
     /// those GIDs. Best-effort: a failed query leaves the group collapsed.
     /// `groups` is nil when the fetch failed; an empty list is authoritative and clears the pair caches.
@@ -430,7 +441,10 @@ extension HEOSService {
                 channels[member.pid] = channel
             }
         }
-        await stateUpdater.setMultiRoomGroups(groups.multiRoomGroupIDs(channelsByPID: channels))
+        await stateUpdater.setMultiRoomGroups(
+            groups.multiRoomGroupIDs(channelsByPID: channels),
+            unconfirmed: groups.unclassifiedGroupIDs(channelsByPID: channels)
+        )
     }
 
     private func memberAudioChannel(host: String) async throws -> String {

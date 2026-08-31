@@ -244,6 +244,26 @@ final class SpeakerListViewModelTests: XCTestCase {
         XCTAssertNotNil(DeviceCache.load())
     }
 
+    /// A speaker that accepts TCP but never answers the CLI publishes `.connected` before the
+    /// session exists; giving up must clear it, or discovery stays behind a dead banner.
+    @MainActor
+    func testFailedCachedConnectEndsTheEstablishedSession() async {
+        let device = DiscoveredDevice(host: "192.168.1.10", friendlyName: "Living Room")
+        DeviceCache.save(device: device, selectedPlayerID: 7)
+        defer { DeviceCache.clear() }
+        let state = AppState()
+        state.setConnectionState(.connected)
+        let mock = MockAudioService()
+        mock.connectError = NSError(domain: "test", code: 1)
+        let vm = SpeakerListViewModel(service: mock, state: state)
+
+        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelay: .milliseconds(10))
+
+        try? await Task.sleep(for: .milliseconds(150))
+        XCTAssertEqual(state.connectionState, .disconnected)
+        XCTAssertFalse(state.hasEstablishedSession)
+    }
+
     // MARK: - autoConnectIfCached
 
     @MainActor

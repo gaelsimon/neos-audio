@@ -9,6 +9,9 @@ actor EventRouter {
     private let playerService: PlayerService?
     private let groupService: GroupService?
     private let browseService: BrowseService?
+    /// Re-runs the pair/multi-room classification; an un-paired follower must leave the caches
+    /// even when other groups survive the change.
+    private let refreshTopology: @Sendable ([SpeakerGroup]) async -> Void
     private let serviceTimeout: Duration
     /// Backstop above the command's own budget, so a device answering "command under process" is never re-asked.
     private let fetchTimeout: Duration
@@ -20,6 +23,7 @@ actor EventRouter {
         playerService: PlayerService?,
         groupService: GroupService?,
         browseService: BrowseService?,
+        refreshTopology: @escaping @Sendable ([SpeakerGroup]) async -> Void = { _ in },
         serviceTimeout: Duration = .seconds(5),
         fetchTimeout: Duration = .seconds(20)
     ) {
@@ -27,6 +31,7 @@ actor EventRouter {
         self.playerService = playerService
         self.groupService = groupService
         self.browseService = browseService
+        self.refreshTopology = refreshTopology
         self.serviceTimeout = serviceTimeout
         self.fetchTimeout = fetchTimeout
     }
@@ -258,10 +263,9 @@ actor EventRouter {
             switch result {
             case .some(.some(let groups)):
                 await stateUpdater.setGroups(groups)
-                // A successful empty fetch is authoritative: the pair is gone, so its caches must go too.
-                if groups.isEmpty {
-                    await stateUpdater.setMultiRoomGroups([])
-                }
+                // A successful fetch is authoritative, empty or not: reclassify so a broken-up pair
+                // stops hiding its ex-follower even when the system still has other groups.
+                await refreshTopology(groups)
             case .some(.none):
                 break
             case .none:

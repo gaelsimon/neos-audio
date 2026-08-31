@@ -25,6 +25,13 @@ public extension Array where Element == SpeakerGroup {
             group.players.allSatisfy { channelsByPID[$0.pid] == normalAudioChannel }
         }.map(\.gid))
     }
+
+    /// GIDs with a member whose channel went unread: collapsed by fallback, not by evidence.
+    func unclassifiedGroupIDs(channelsByPID: [Int: String]) -> Set<Int> {
+        Set(filter { group in
+            !group.players.allSatisfy { channelsByPID[$0.pid] != nil }
+        }.map(\.gid))
+    }
 }
 
 public extension Array where Element == Player {

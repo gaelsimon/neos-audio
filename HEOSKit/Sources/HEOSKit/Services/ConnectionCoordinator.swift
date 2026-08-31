@@ -8,6 +8,8 @@ actor ConnectionCoordinator {
     private let stateUpdater: StateUpdater
     private var reconnectTask: Task<Void, Never>?
     private(set) var isReconnecting = false
+    /// True while a `connect` call is in flight, so a nudge cannot cancel an attempt mid-handshake.
+    private(set) var isAttemptingConnection = false
     private(set) var lastHost: String?
     private(set) var lastPort: Int?
     private(set) var lastPlayerID: Int?
@@ -36,6 +38,17 @@ actor ConnectionCoordinator {
         lastPlayerID = nil
     }
 
+    /// Retries the target now instead of waiting out the backoff, for a wake-up or a restored
+    /// network. Ignored while an attempt is in flight: `NWPathMonitor` reports every interface
+    /// change, and restarting there would cancel a handshake the speaker is still answering.
+    func retryNow(using connect: @escaping ConnectAction) {
+        guard !isAttemptingConnection else {
+            HEOSLogger.service.debug("Retry skipped: an attempt is already in flight")
+            return
+        }
+        startReconnection(initialDelay: 0, using: connect)
+    }
+
     /// `initialDelay` is 0 when a wake-up or a network change makes an immediate attempt worthwhile.
     func startReconnection(initialDelay: TimeInterval = 1.0, using connect: @escaping ConnectAction) {
         isReconnecting = true
@@ -55,6 +68,8 @@ actor ConnectionCoordinator {
                       let host = lastHost,
                       let port = lastPort else { break }
 
+                isAttemptingConnection = true
+                defer { isAttemptingConnection = false }
                 do {
                     try await connect(host, port, lastPlayerID)
                     HEOSLogger.service.info("Reconnected successfully")

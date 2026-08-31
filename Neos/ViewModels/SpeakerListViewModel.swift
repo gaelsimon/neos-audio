@@ -75,7 +75,7 @@ final class SpeakerListViewModel {
                 guard !Task.isCancelled else { return }
                 state.connectedDevice = nil
                 state.error = .connectionFailed("Failed to connect: \(error.localizedDescription)")
-                state.connectionState = .disconnected
+                state.setConnectionState(.disconnected)
             }
         })
     }
@@ -107,7 +107,7 @@ final class SpeakerListViewModel {
             }
             // The cache is kept for the auto-reconnect, but nothing is connected any more.
             state.connectedDevice = nil
-            state.connectionState = .disconnected
+            state.setConnectionState(.disconnected)
         })
     }
 
@@ -136,7 +136,7 @@ final class SpeakerListViewModel {
                 guard !Task.isCancelled else { return }
                 state.connectedDevice = nil
                 state.error = .connectionFailed("Failed to connect to \(trimmed): \(error.localizedDescription)")
-                state.connectionState = .disconnected
+                state.setConnectionState(.disconnected)
             }
         })
     }
