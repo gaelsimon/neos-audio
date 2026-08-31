@@ -402,6 +402,7 @@ struct EventRouterTests {
         await router.handle(makeEvent("groups_changed"))
 
         #expect(state.groups.isEmpty)
+        await waitUntil { await recorder.calls == [[]] }
         #expect(await recorder.calls == [[]])
     }
 
@@ -418,7 +419,58 @@ struct EventRouterTests {
         await router.handle(makeEvent("groups_changed"))
 
         #expect(state.groups.count == 1)
+        await waitUntil { await recorder.calls == [[1]] }
         #expect(await recorder.calls == [[1]])
+    }
+
+    /// The classification reads getPlayers plus one UPnP channel per member, and `handle` is awaited
+    /// serially by the event loop: awaiting it here would freeze transport and volume events with it.
+    @Test @MainActor func groupsChangedDoesNotHoldTheEventStreamForTheClassification() async throws {
+        let transport = MockTCPTransport(autoRespond: true)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        try await Task.sleep(for: .milliseconds(50))
+        let state = MockStateUpdater()
+        let recorder = TopologyRecorder()
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: nil,
+            groupService: GroupService(connection: connection),
+            browseService: nil,
+            refreshTopology: { groups in
+                await recorder.record(groups)
+                try? await Task.sleep(for: .seconds(2))
+            }
+        )
+        await transport.enqueueResponse(
+            """
+            {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[]}
+            """
+        )
+
+        let elapsed = await ContinuousClock().measure {
+            await router.handle(makeEvent("groups_changed"))
+        }
+
+        #expect(elapsed < .milliseconds(500))
+        await waitUntil { await recorder.calls == [[]] }
+        #expect(await recorder.calls == [[]])
+    }
+
+    /// A torn-down session must stop the classification too, or it keeps asking a dead connection.
+    @Test @MainActor func cancelPendingFetchesDropsTheClassification() async throws {
+        let (router, _, transport, recorder) = try await makeRouterWithGroups()
+        await transport.enqueueResponse(
+            """
+            {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[]}
+            """
+        )
+
+        await router.handle(makeEvent("groups_changed"))
+        await waitUntil { await recorder.calls == [[]] }
+        await router.cancelPendingFetches()
+
+        #expect(await recorder.calls == [[]])
     }
 }
 

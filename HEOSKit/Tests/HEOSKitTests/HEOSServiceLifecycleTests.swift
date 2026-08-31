@@ -76,4 +76,29 @@ struct HEOSServiceLifecycleTests {
 
         await service.disconnect()
     }
+
+    // MARK: - A failed group fetch
+
+    /// A getGroups that times out on reconnect used to publish an empty list: the sidebar lost every
+    /// group and a stereo pair un-collapsed into two rows until the next groups_changed.
+    @Test @MainActor func aFailedGroupFetchLeavesTheGroupsOnScreenAlone() async {
+        let state = MockStateUpdater()
+        let pair = SpeakerGroup(
+            gid: 1,
+            name: "Kitchen Left",
+            players: [
+                GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+                GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+            ]
+        )
+        state.groups = [pair]
+        state.multiRoomGroupIDs = []
+        // No services: every fetch reads as a failure, which is the reconnect-after-a-blip case.
+        let service = HEOSService(stateUpdater: state)
+
+        await service.loadStateTwoPhase()
+
+        #expect(state.groups.map(\.gid) == [1])
+        #expect(state.calls.contains { $0.hasPrefix("setGroups") } == false)
+    }
 }

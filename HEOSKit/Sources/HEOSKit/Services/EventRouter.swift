@@ -17,6 +17,7 @@ actor EventRouter {
     private let fetchTimeout: Duration
     private var nowPlayingTask: Task<Void, Never>?
     private var queueTask: Task<Void, Never>?
+    private var topologyTask: Task<Void, Never>?
 
     init(
         stateUpdater: StateUpdater,
@@ -42,6 +43,8 @@ actor EventRouter {
         nowPlayingTask = nil
         queueTask?.cancel()
         queueTask = nil
+        topologyTask?.cancel()
+        topologyTask = nil
     }
 
     /// Device fetches run on their own task: a waking amp takes 20 s, and a newer event replaces the fetch.
@@ -265,7 +268,9 @@ actor EventRouter {
                 await stateUpdater.setGroups(groups)
                 // A successful fetch is authoritative, empty or not: reclassify so a broken-up pair
                 // stops hiding its ex-follower even when the system still has other groups.
-                await refreshTopology(groups)
+                // Detached: it reads getPlayers plus one UPnP channel per member, and events are serial.
+                topologyTask?.cancel()
+                topologyTask = Task { [refreshTopology] in await refreshTopology(groups) }
             case .some(.none):
                 break
             case .none:

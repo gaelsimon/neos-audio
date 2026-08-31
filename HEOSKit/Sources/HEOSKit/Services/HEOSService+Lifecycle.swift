@@ -283,12 +283,13 @@ extension HEOSService {
         // Phase 1: UI-critical state; apply as soon as available so the sidebar
         // renders sources without waiting for slower queries (account, queue).
         let players = await playersResult ?? []
-        // Left optional: a failed fetch must not read as "no groups" and clear the pair caches.
+        // Left optional: a failed fetch must not read as "no groups", which would drop every group
+        // from the sidebar and un-collapse a stereo pair until the next groups_changed.
         let fetchedGroups = await groupsResult
         let sources = await sourcesResult ?? []
 
         await stateUpdater.setPlayers(players)
-        await stateUpdater.setGroups(fetchedGroups ?? [])
+        if let fetchedGroups { await stateUpdater.setGroups(fetchedGroups) }
         await stateUpdater.setMusicSources(sources)
 
         // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
@@ -350,12 +351,13 @@ extension HEOSService {
 
         // Apply UI-critical state first without waiting for account check
         let players = await playersResult ?? []
-        // Left optional: a failed fetch must not read as "no groups" and clear the pair caches.
+        // Left optional: a failed fetch must not read as "no groups", which would drop every group
+        // from the sidebar and un-collapse a stereo pair until the next groups_changed.
         let fetchedGroups = await groupsResult
         let sources = await sourcesResult ?? []
 
         await stateUpdater.setPlayers(players)
-        await stateUpdater.setGroups(fetchedGroups ?? [])
+        if let fetchedGroups { await stateUpdater.setGroups(fetchedGroups) }
         await stateUpdater.setMusicSources(sources)
 
         // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
