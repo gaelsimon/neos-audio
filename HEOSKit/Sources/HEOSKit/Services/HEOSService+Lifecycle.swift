@@ -61,6 +61,7 @@ extension HEOSService {
     func tearDownSession() async {
         eventTask?.cancel()
         eventTask = nil
+        await eventRouter?.cancelPendingFetches()
         avrEventTask?.cancel()
         avrEventTask = nil
         await connectionCoordinator.cancelReconnection()
@@ -282,22 +283,23 @@ extension HEOSService {
         // Phase 1: UI-critical state; apply as soon as available so the sidebar
         // renders sources without waiting for slower queries (account, queue).
         let players = await playersResult ?? []
-        let groups = await groupsResult ?? []
+        // Left optional: a failed fetch must not read as "no groups" and clear the pair caches.
+        let fetchedGroups = await groupsResult
         let sources = await sourcesResult ?? []
 
         await stateUpdater.setPlayers(players)
-        await stateUpdater.setGroups(groups)
+        await stateUpdater.setGroups(fetchedGroups ?? [])
         await stateUpdater.setMusicSources(sources)
 
         // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
-        Task { await self.refreshGroupTopology(groups: groups, players: players) }
+        Task { await self.refreshGroupTopology(groups: fetchedGroups, players: players) }
 
         // Phase 2: remaining global state (account check may hit cloud servers)
         let signedInUser = await accountResult
         await stateUpdater.setSignedInUser(signedInUser)
 
         // Determine the correct PID; prefer cached if it still exists, then standalone speakers
-        guard let preferred = preferredPlayer(from: players, groups: groups, cachedPID: cachedPID) else {
+        guard let preferred = preferredPlayer(from: players, groups: fetchedGroups ?? [], cachedPID: cachedPID) else {
             HEOSLogger.service.warning("getPlayers returned empty during parallel load; skipping player state")
             return
         }
@@ -348,20 +350,21 @@ extension HEOSService {
 
         // Apply UI-critical state first without waiting for account check
         let players = await playersResult ?? []
-        let groups = await groupsResult ?? []
+        // Left optional: a failed fetch must not read as "no groups" and clear the pair caches.
+        let fetchedGroups = await groupsResult
         let sources = await sourcesResult ?? []
 
         await stateUpdater.setPlayers(players)
-        await stateUpdater.setGroups(groups)
+        await stateUpdater.setGroups(fetchedGroups ?? [])
         await stateUpdater.setMusicSources(sources)
 
         // Non-blocking: classify pairs vs multi-room groups over UPnP and expand the latter.
-        Task { await self.refreshGroupTopology(groups: groups, players: players) }
+        Task { await self.refreshGroupTopology(groups: fetchedGroups, players: players) }
 
         let signedInUser = await accountResult
         await stateUpdater.setSignedInUser(signedInUser)
 
-        if let player = preferredPlayer(from: players, groups: groups, cachedPID: nil) {
+        if let player = preferredPlayer(from: players, groups: fetchedGroups ?? [], cachedPID: nil) {
             await connectionCoordinator.updateLastPlayerID(player.pid)
             await stateUpdater.setSelectedPlayerID(player.pid)
             await loadPlayerState(pid: player.pid)
@@ -411,8 +414,13 @@ extension HEOSService {
 
     /// Reads each member's UPnP channel to find which groups are plain multi-room, and publishes
     /// those GIDs. Best-effort: a failed query leaves the group collapsed.
-    func refreshGroupTopology(groups: [SpeakerGroup], players: [Player]) async {
-        guard !groups.isEmpty else { return }
+    /// `groups` is nil when the fetch failed; an empty list is authoritative and clears the pair caches.
+    func refreshGroupTopology(groups: [SpeakerGroup]?, players: [Player]) async {
+        guard let groups else { return }
+        guard !groups.isEmpty else {
+            await stateUpdater.setMultiRoomGroups([])
+            return
+        }
         let ipByPID = Dictionary(players.map { ($0.pid, $0.ip) }, uniquingKeysWith: { first, _ in first })
         var channels: [Int: String] = [:]
         for group in groups {

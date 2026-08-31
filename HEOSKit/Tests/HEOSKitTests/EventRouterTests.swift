@@ -358,6 +358,55 @@ struct EventRouterTests {
 
         #expect(state.playState == nil)
     }
+
+    // MARK: - Groups Changed
+
+    @MainActor
+    private func makeRouterWithGroups() async throws -> (EventRouter, MockStateUpdater, MockTCPTransport) {
+        let transport = MockTCPTransport(autoRespond: true)
+        let connection = HEOSConnection(transport: transport)
+        try await connection.connect(host: "test", port: 1255)
+        try await Task.sleep(for: .milliseconds(50))
+        let state = MockStateUpdater()
+        state.selectedPlayerID = 42
+        let router = EventRouter(
+            stateUpdater: state,
+            playerService: nil,
+            groupService: GroupService(connection: connection),
+            browseService: nil
+        )
+        return (router, state, transport)
+    }
+
+    /// Breaking up a pair is the moment the follower must become selectable again.
+    @Test @MainActor func groupsChangedWithNoGroupsPublishesAnEmptyTopology() async throws {
+        let (router, state, transport) = try await makeRouterWithGroups()
+        await transport.enqueueResponse(
+            """
+            {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[]}
+            """
+        )
+
+        await router.handle(makeEvent("groups_changed"))
+
+        #expect(state.groups.isEmpty)
+        #expect(state.multiRoomGroupIDs == [])
+    }
+
+    /// A pair still exists, so the caches must be left alone until the topology probe runs.
+    @Test @MainActor func groupsChangedWithGroupsLeavesTheTopologyAlone() async throws {
+        let (router, state, transport) = try await makeRouterWithGroups()
+        await transport.enqueueResponse(
+            """
+            {"heos":{"command":"group/get_groups","result":"success","message":""},"payload":[{"name":"Kitchen Left","gid":1,"players":[{"name":"Kitchen Left","pid":1,"role":"leader"},{"name":"Kitchen Right","pid":2,"role":"member"}]}]}
+            """
+        )
+
+        await router.handle(makeEvent("groups_changed"))
+
+        #expect(state.groups.count == 1)
+        #expect(state.multiRoomGroupIDs == nil)
+    }
 }
 
 /// Polls until `condition` holds or the timeout elapses, keeping timing-sensitive tests CI-safe.

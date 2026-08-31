@@ -12,7 +12,12 @@ final class LifecycleMonitorTests: XCTestCase {
         let state = AppState()
         state.connectionState = connectionState
         let center = NotificationCenter()
-        let monitor = LifecycleMonitor(service: service, state: state, notificationCenter: center)
+        let monitor = LifecycleMonitor(
+            service: service,
+            state: state,
+            notificationCenter: center,
+            monitorsNetworkPath: false
+        )
         monitor.start()
         return (monitor, service, center, state)
     }

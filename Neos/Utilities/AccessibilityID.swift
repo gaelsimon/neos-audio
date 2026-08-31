@@ -125,6 +125,7 @@ enum AccessibilityID {
 
     enum Connection {
         static let reconnectingBanner = "connection.reconnectingBanner"
+        static let chooseAnotherButton = "connection.chooseAnotherButton"
     }
 
     // MARK: - Discovery

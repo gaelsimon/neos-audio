@@ -73,7 +73,7 @@ final class AppStateTests: XCTestCase {
     @MainActor
     func testSetPlayStateClearsLoadingFlag() {
         let state = AppState()
-        state.isLoadingTrack = true
+        state.beginTrackLoad()
 
         state.setPlayState(.pause)
 
@@ -83,7 +83,7 @@ final class AppStateTests: XCTestCase {
     @MainActor
     func testPlaybackStartingKeepsLoadingUntilTrackArrives() {
         let state = AppState()
-        state.isLoadingTrack = true
+        state.beginTrackLoad()
 
         // A waking amp reports play long before it can describe the track.
         state.setPlayState(.play)
@@ -94,11 +94,33 @@ final class AppStateTests: XCTestCase {
     @MainActor
     func testTrackArrivingClearsLoadingFlag() {
         let state = AppState()
-        state.isLoadingTrack = true
+        state.beginTrackLoad()
 
         state.setNowPlaying(NowPlayingMedia(song: "Song", mid: "m1"))
 
         XCTAssertFalse(state.isLoadingTrack)
+    }
+
+    @MainActor
+    func testWatchdogClearsLoadingWhenTheDeviceStaysSilent() async throws {
+        let state = AppState()
+        state.beginTrackLoad(timeout: .milliseconds(50))
+
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertFalse(state.isLoadingTrack)
+    }
+
+    @MainActor
+    func testANewLoadDisarmsTheOlderWatchdog() async throws {
+        let state = AppState()
+        // The first load's watchdog must not clear the spinner of the load that replaced it.
+        state.beginTrackLoad(timeout: .milliseconds(50))
+        state.beginTrackLoad(timeout: .seconds(30))
+
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertTrue(state.isLoadingTrack)
     }
 
     // MARK: - setNowPlaying

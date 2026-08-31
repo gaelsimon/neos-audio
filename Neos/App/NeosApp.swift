@@ -8,6 +8,7 @@ struct NeosApp: App {
     @State private var service: HEOSService?
     @State private var container: ViewModelContainer?
     @State private var lifecycleMonitor: LifecycleMonitor?
+    @State private var spaceKeyMonitor: SpaceKeyMonitor?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -68,15 +69,14 @@ struct NeosApp: App {
 
     // MARK: - Menu Commands
 
-    /// Space stays disabled while the search field has focus so the key reaches the text field.
+    /// Play/Pause carries no shortcut: `SpaceKeyMonitor` owns Space so typing still works.
     @CommandsBuilder
     private var playbackCommands: some Commands {
         CommandMenu("Playback") {
             Button(appState.isPlaying ? "Pause" : "Play") {
                 container?.playerVM.togglePlayPause()
             }
-            .keyboardShortcut(.space, modifiers: [])
-            .disabled(container == nil || !appState.isConnected || appState.isSearchFieldFocused)
+            .disabled(container == nil || !appState.isConnected)
 
             Divider()
 
@@ -106,6 +106,13 @@ struct NeosApp: App {
         menuBarIconName(connectionState: appState.connectionState, isPlaying: appState.isPlaying)
     }
 
+    /// Space is owned by a key monitor, which reads the first responder as the key lands.
+    private func installSpaceKeyMonitor(for vms: ViewModelContainer) {
+        let monitor = SpaceKeyMonitor(state: appState) { vms.playerVM.togglePlayPause() }
+        monitor.start()
+        self.spaceKeyMonitor = monitor
+    }
+
     /// Idempotent: whichever scene appears first boots the services.
     private func initializeServices() {
         guard container == nil else { return }
@@ -116,6 +123,7 @@ struct NeosApp: App {
             let svc = DemoAudioService()
             let vms = ViewModelContainer(service: svc, state: appState)
             self.container = vms
+            installSpaceKeyMonitor(for: vms)
             DemoDataProvider.populate(appState)
             return
         }
@@ -139,6 +147,8 @@ struct NeosApp: App {
         let monitor = LifecycleMonitor(service: svc, state: appState)
         monitor.start()
         self.lifecycleMonitor = monitor
+
+        installSpaceKeyMonitor(for: vms)
 
         // Skip network operations when running UI tests without a speaker
         if skipDiscovery {

@@ -8,24 +8,28 @@ final class LifecycleMonitor {
     private let service: any ConnectionService
     private let state: AppState
     private let notificationCenter: NotificationCenter
+    private let monitorsNetworkPath: Bool
     nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
     nonisolated(unsafe) private var pathMonitor: NWPathMonitor?
 
+    /// `monitorsNetworkPath` is off in tests: a live monitor fires on its own and fakes a pass.
     init(
         service: any ConnectionService,
         state: AppState,
-        notificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+        notificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        monitorsNetworkPath: Bool = true
     ) {
         self.service = service
         self.state = state
         self.notificationCenter = notificationCenter
+        self.monitorsNetworkPath = monitorsNetworkPath
     }
 
     func start() {
         guard observers.isEmpty else { return }
         observe(NSWorkspace.willSleepNotification) { service in await service.suspend() }
         observe(NSWorkspace.didWakeNotification) { service in await service.resume() }
-        startPathMonitoring()
+        if monitorsNetworkPath { startPathMonitoring() }
     }
 
     func stop() {

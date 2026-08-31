@@ -95,7 +95,7 @@ final class AppState: StateUpdater {
 
     // MARK: - UI State (owned by view models / views, not from StateUpdater)
 
-    var isLoadingTrack: Bool = false
+    private(set) var isLoadingTrack: Bool = false
     var isAdjustingVolume: Bool = false
     var error: AppError?
     var discoveryError: String?
@@ -108,6 +108,7 @@ final class AppState: StateUpdater {
     var canvasDominantColors: [Color] = DominantColorExtractor.defaultColors
     var diagnostics: [DiagnosticEvent] = []
     private var toastDismissTask: Task<Void, Never>?
+    private var trackLoadWatchdog: Task<Void, Never>?
     /// Called for every device discovery reports, so a remembered speaker can reconnect on its own.
     @ObservationIgnored var onDeviceDiscovered: ((DiscoveredDevice) -> Void)?
 
@@ -241,6 +242,28 @@ final class AppState: StateUpdater {
         self.selectedPlayerID = groups.leaderPID(for: pid, expanded: multiRoomGroupIDs)
     }
 
+    // MARK: - Track Loading
+
+    /// Arms the spinner and its watchdog: a device that never reports the track must not strand it.
+    func beginTrackLoad(timeout: Duration = .seconds(30)) {
+        isLoadingTrack = true
+        trackLoadWatchdog?.cancel()
+        trackLoadWatchdog = Task {
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            isLoadingTrack = false
+        }
+    }
+
+    /// Clears the spinner and disarms the watchdog, so an older load cannot clear a newer one.
+    func endTrackLoad() {
+        trackLoadWatchdog?.cancel()
+        trackLoadWatchdog = nil
+        isLoadingTrack = false
+    }
+
+    // MARK: - Playback
+
     func setPlayState(_ state: PlayState) {
         // Reset interpolation anchor on resume so elapsed time doesn't include pause duration
         if state == .play && playback.playState != .play {
@@ -249,12 +272,12 @@ final class AppState: StateUpdater {
         playback.playState = state
         // Playback starting is not the end of the load; a waking amp needs ~20 s to describe the track.
         if state != .play {
-            isLoadingTrack = false
+            endTrackLoad()
         }
     }
 
     func setNowPlaying(_ media: NowPlayingMedia) {
-        isLoadingTrack = false
+        endTrackLoad()
         var enrichedMedia = media
 
         // Enrich generic "Url Stream" metadata with context captured at play-time

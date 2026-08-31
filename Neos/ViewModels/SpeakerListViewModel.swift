@@ -42,7 +42,7 @@ final class SpeakerListViewModel {
     }
 
     /// The search keeps running; `giveUpAfter` is only how long the UI says so (SSDP alone takes 5 s).
-    func startContinuousDiscovery(giveUpAfter timeout: Duration = .seconds(30)) {
+    func startContinuousDiscovery(giveUpAfter timeout: Duration = .seconds(10)) {
         let requestID = discoveryTracker.next()
         state.isDiscovering = true
         state.discoveryError = nil
@@ -84,8 +84,9 @@ final class SpeakerListViewModel {
     func connectToCachedDevice(_ cached: CachedDevice, attempts: Int = 3, retryDelay: Duration = .seconds(2)) {
         state.connectionState = .connecting
         state.connectedDevice = cached.device
+        let total = max(attempts, 1)
         connectTask.replace(with: Task {
-            for attempt in 1...max(attempts, 1) {
+            for attempt in 1...total {
                 do {
                     try await service.connect(
                         host: cached.device.host,
@@ -98,12 +99,14 @@ final class SpeakerListViewModel {
                     return
                 } catch {
                     guard !Task.isCancelled else { return }
-                    if attempt < attempts {
+                    if attempt < total {
                         try? await Task.sleep(for: retryDelay)
                         guard !Task.isCancelled else { return }
                     }
                 }
             }
+            // The cache is kept for the auto-reconnect, but nothing is connected any more.
+            state.connectedDevice = nil
             state.connectionState = .disconnected
         })
     }

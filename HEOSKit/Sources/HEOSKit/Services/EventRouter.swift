@@ -31,6 +31,14 @@ actor EventRouter {
         self.fetchTimeout = fetchTimeout
     }
 
+    /// Drops in-flight device fetches, so a torn-down session stops asking a dead connection.
+    func cancelPendingFetches() {
+        nowPlayingTask?.cancel()
+        nowPlayingTask = nil
+        queueTask?.cancel()
+        queueTask = nil
+    }
+
     /// Device fetches run on their own task: a waking amp takes 20 s, and a newer event replaces the fetch.
     func handle(_ event: HEOSEvent) async {
         switch event.eventName {
@@ -250,6 +258,10 @@ actor EventRouter {
             switch result {
             case .some(.some(let groups)):
                 await stateUpdater.setGroups(groups)
+                // A successful empty fetch is authoritative: the pair is gone, so its caches must go too.
+                if groups.isEmpty {
+                    await stateUpdater.setMultiRoomGroups([])
+                }
             case .some(.none):
                 break
             case .none:

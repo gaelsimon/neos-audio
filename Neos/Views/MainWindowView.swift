@@ -59,7 +59,10 @@ struct MainWindowView: View {
         }
         .overlay(alignment: .top) {
             if presentation.showsReconnectingBanner {
-                ReconnectingBanner(deviceName: reconnectingDeviceName)
+                ReconnectingBanner(
+                    deviceName: reconnectingDeviceName,
+                    onChooseAnother: { speakerVM.disconnect() }
+                )
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
