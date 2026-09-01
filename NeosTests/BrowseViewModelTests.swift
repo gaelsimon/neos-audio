@@ -28,7 +28,7 @@ final class BrowseViewModelTests: XCTestCase {
         viewModel.selectSource(sourceA)
         viewModel.selectSource(sourceB)
 
-        await waitUntil(timeoutSeconds: 1.0) {
+        await waitUntil(timeout: 1.0) {
             await backend.pendingSourceRequestCount() == 2
         }
 
@@ -49,19 +49,6 @@ final class BrowseViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.items.map(\.name), ["B track"])
         XCTAssertFalse(viewModel.isLoading)
-    }
-
-    @MainActor
-    private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () async -> Bool) async {
-        let deadline = Date().addingTimeInterval(timeoutSeconds)
-        while Date() < deadline {
-            if await condition() {
-                return
-            }
-            await Task.yield()
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-        XCTFail("Condition not met within timeout")
     }
 
     @MainActor

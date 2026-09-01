@@ -11,7 +11,7 @@ class DemoTestCase: XCTestCase {
     override class func setUp() {
         super.setUp()
         _app = XCUIApplication()
-        _app.launchArguments = ["--uitesting", "--demo-mode"]
+        _app.launchArguments = ["--uitesting", "--demo-mode", "-ApplePersistenceIgnoreState", "YES"]
         _app.launch()
     }
 

@@ -23,19 +23,19 @@ final class QueueViewModelTests: XCTestCase {
         state.selectedPlayerID = 11
         viewModel.loadQueue()
 
-        await waitUntil(timeoutSeconds: 1.0) {
+        await waitUntil(timeout: 1.0) {
             await backend.hasPendingRequest(for: 11)
         }
 
         state.selectedPlayerID = 22
         viewModel.loadQueue()
 
-        await waitUntil(timeoutSeconds: 1.0) {
+        await waitUntil(timeout: 1.0) {
             await backend.hasPendingRequest(for: 22)
         }
 
         await backend.resume(pid: 22, with: [QueueItem(qid: 2201, song: "Current")])
-        await waitUntil(timeoutSeconds: 1.0) {
+        await waitUntil(timeout: 1.0) {
             state.queue.map(\.qid) == [2201]
         }
 
@@ -129,15 +129,14 @@ final class QueueViewModelTests: XCTestCase {
 
         state.selectedPlayerID = 42
         vm.loadQueue()
-        await yieldForTask()
+        await waitUntil { state.queue.count == 100 }
 
-        XCTAssertEqual(state.queue.count, 100)
         XCTAssertTrue(vm.hasMore)
 
         // Enqueue second page
         mock.queueItems = [QueueItem(qid: 200, song: "Extra")]
         vm.loadMoreQueue()
-        await yieldForTask()
+        await waitUntil { state.queue.count == 101 }
 
         XCTAssertEqual(state.queue.count, 101)
         XCTAssertEqual(state.queue.last?.song, "Extra")
@@ -322,20 +321,6 @@ final class QueueViewModelTests: XCTestCase {
         XCTAssertEqual(state.queue.count, 1)
     }
 
-    // MARK: - Helpers
-
-    @MainActor
-    private func waitUntil(timeoutSeconds: TimeInterval, condition: @escaping () async -> Bool) async {
-        let deadline = Date().addingTimeInterval(timeoutSeconds)
-        while Date() < deadline {
-            if await condition() {
-                return
-            }
-            await Task.yield()
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-        XCTFail("Condition not met within timeout")
-    }
 }
 
 private actor MockQueueBackend {

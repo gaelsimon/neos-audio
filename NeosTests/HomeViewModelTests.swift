@@ -101,7 +101,8 @@ final class HomeViewModelTests: XCTestCase {
         let vm = HomeViewModel(service: mock, state: state)
 
         vm.loadRecentlyPlayed()
-        await yieldForTask()
+        // Two hops: the history container, then its contents.
+        await waitUntil { !vm.isLoadingRecents }
 
         XCTAssertEqual(vm.recentlyPlayed.count, 2)
         XCTAssertFalse(vm.isLoadingRecents)

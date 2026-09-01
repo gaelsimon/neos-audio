@@ -60,7 +60,9 @@ final class DemoQueuePanelTests: DemoTestCase {
         ensurePanelOpen()
         waitForElement(panel.upNextSection)
         // The up next section should contain text from the next track (Under Pressure)
-        let underPressure = app.descendants(matching: .any).matching(
+        // Static texts only: `value CONTAINS` on every element reaches the volume slider,
+        // whose value is a number, and the exception that raises kills the app under test.
+        let underPressure = app.descendants(matching: .staticText).matching(
             NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Under Pressure", "Under Pressure")
         )
         XCTAssertTrue(underPressure.count > 0 || panel.upNextSection.exists, "Up next section should have content")

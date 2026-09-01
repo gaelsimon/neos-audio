@@ -13,7 +13,7 @@ class LiveTestCase: XCTestCase {
         super.setUp()
         _app = XCUIApplication()
         // --uitesting resets UI state; NO --skip-discovery so real discovery runs
-        _app.launchArguments = ["--uitesting"]
+        _app.launchArguments = ["--uitesting", "-ApplePersistenceIgnoreState", "YES"]
         _app.launch()
 
         let home = _app.descendants(matching: .any)[AccessibilityID.Home.view]
