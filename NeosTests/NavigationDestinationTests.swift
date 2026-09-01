@@ -1,5 +1,6 @@
 import Testing
-@testable import NeosDomain
+@testable import Neos
+import NeosDomain
 
 @Suite("NavigationDestination")
 struct NavigationDestinationTests {
