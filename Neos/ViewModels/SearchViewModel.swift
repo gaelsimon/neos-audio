@@ -10,7 +10,7 @@ struct ServiceCriteriaKey: Hashable {
 enum SearchOverlayPhase: Equatable {
     case inactive
     case active
-    case suspended(originHistoryIndex: Int)
+    case suspended(originToken: Int)
 }
 
 @Observable
@@ -80,18 +80,20 @@ final class SearchViewModel {
     }
 
     func dismissOverlay() {
+        // A suspended search survives ambient dismissals so back-navigation can still restore it.
+        guard overlayPhase == .active else { return }
         overlayPhase = .inactive
     }
 
-    func suspendForNavigation(originHistoryIndex: Int) {
+    func suspendForNavigation(originToken: Int) {
         guard overlayPhase == .active else { return }
-        overlayPhase = .suspended(originHistoryIndex: originHistoryIndex)
+        overlayPhase = .suspended(originToken: originToken)
     }
 
     @discardableResult
-    func tryRestore(atHistoryIndex index: Int) -> Bool {
-        guard case .suspended(let originIndex) = overlayPhase,
-              originIndex == index,
+    func tryRestore(atToken token: Int) -> Bool {
+        guard case .suspended(let originToken) = overlayPhase,
+              originToken == token,
               !serviceResults.isEmpty else {
             return false
         }
@@ -208,9 +210,9 @@ final class SearchViewModel {
             serviceResults = [:]
             expandedCategories = []
             loadingMoreCategories = []
-            if overlayPhase == .active {
-                overlayPhase = .inactive
-            }
+            // Results are gone, so a suspension could never be restored; it would only
+            // keep the back arrow enabled with nothing to go back to.
+            overlayPhase = .inactive
             return
         }
 
@@ -414,7 +416,8 @@ final class SearchViewModel {
             return []
         }
 
-        logger.info("Found \(subSourceItems.count) sub-source(s) under \(parent.name): \(subSourceItems.map { "\($0.name) (sid=\($0.sid ?? 0))" }.joined(separator: ", "))")
+        let names = subSourceItems.map { "\($0.name) (sid=\($0.sid ?? 0))" }.joined(separator: ", ")
+        logger.info("Found \(subSourceItems.count) sub-source(s) under \(parent.name): \(names)")
 
         var loadedSIDs = Set<Int>()
         for item in subSourceItems {

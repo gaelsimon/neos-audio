@@ -49,6 +49,11 @@ enum ImageURLUpscaler {
         return nil
     }
 
+    /// Same URL over https, unless it points at the local network where plaintext is expected.
+    static func httpsURL(_ urlString: String) -> String {
+        upgradeToHTTPS(urlString)
+    }
+
     // MARK: - Private
 
     private static func upgradeToHTTPS(_ urlString: String) -> String {

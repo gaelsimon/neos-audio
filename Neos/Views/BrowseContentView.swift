@@ -220,7 +220,7 @@ struct BrowseContentView: View {
         if !browsableItems.isEmpty && !isTrackList {
             if useGridForBrowsable {
                 LazyVGrid(columns: gridColumns, spacing: DS.Spacing.xl) {
-                    ForEach(Array(browsableItems.enumerated()), id: \.element.id) { index, item in
+                    ForEach(Array(browsableItems.enumerated()), id: \.element.id) { _, item in
                         BrowseGridTile(item: item) {
                             if item.browsable {
                                 browseVM.browseItem(item)
@@ -240,7 +240,7 @@ struct BrowseContentView: View {
                 .padding(.bottom, DS.Spacing.lg)
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(browsableItems.enumerated()), id: \.element.id) { index, item in
+                    ForEach(Array(browsableItems.enumerated()), id: \.element.id) { _, item in
                         BrowseItemRow(
                             item: item,
                             isNowPlaying: false,
@@ -692,8 +692,7 @@ struct BrowseContentView: View {
     }
 
     private func isNowPlaying(_ item: BrowseItem) -> Bool {
-        guard !state.nowPlaying.mid.isEmpty, let mid = item.mid else { return false }
-        return state.nowPlaying.mid == mid
+        state.isNowPlaying(item)
     }
 }
 

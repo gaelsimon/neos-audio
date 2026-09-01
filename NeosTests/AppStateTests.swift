@@ -130,7 +130,8 @@ final class AppStateTests: XCTestCase {
         // The user clicked another track before the first one answered.
         let second = state.beginTrackLoad()
         state.pendingStreamContext = .init(
-            pid: 1, stationName: "Second", browseMID: "mid-2", imageURL: "", streamURL: "http://s/2"
+            pid: 1, stationName: "Second", browseMID: "mid-2", imageURL: "", streamURL: "http://s/2",
+            previousMID: ""
         )
 
         // The first play now reports its failure; it owns neither the spinner nor the context.
@@ -371,6 +372,302 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.diagnostics.count, 100)
     }
 
+    @MainActor
+    func testSwitchingStationsDoesNotLetTheOldStreamStealTheContext() {
+        let state = AppState()
+        state.selectedPlayerID = 42
+        state.playback.nowPlaying = NowPlayingMedia(song: "Url Stream", mid: "https://old.example.com/live")
+        state.pendingStreamContext = .init(
+            pid: 42, stationName: "New Station", browseMID: "u33", imageURL: "new.jpg",
+            streamURL: "https://new.example.com/live", previousMID: "https://old.example.com/live"
+        )
+
+        // The amp replays the outgoing station as a generic Url Stream event.
+        state.setNowPlaying(NowPlayingMedia(song: "Url Stream", mid: "https://old.example.com/live"))
+        XCTAssertNil(state.nowPlaying.station)
+        XCTAssertNotNil(state.pendingStreamContext)
+
+        // The new station then arrives and gets its name.
+        state.setNowPlaying(NowPlayingMedia(song: "Url Stream", mid: "https://new.example.com/live"))
+        XCTAssertEqual(state.nowPlaying.station, "New Station")
+        XCTAssertEqual(state.browseMID(forDeviceMID: "https://new.example.com/live"), "u33")
+        XCTAssertNil(state.browseMID(forDeviceMID: "https://old.example.com/live"))
+    }
+
+    @MainActor
+    func testStartingAPlayLetsTheSameErrorShowAgain() {
+        let state = AppState()
+        state.setError(.playbackFailed("Unable to stream from TuneIn. Please try again later."))
+        state.toast = nil
+
+        // The user retries the same station.
+        _ = state.beginTrackLoad()
+        state.setError(.playbackFailed("Unable to stream from TuneIn. Please try again later."))
+
+        XCTAssertEqual(state.toast?.text, "Unable to stream from TuneIn. Please try again later.")
+    }
+
+    @MainActor
+    func testResolvedImageURLUpgradesPlaintextArtwork() {
+        let state = AppState()
+
+        XCTAssertEqual(
+            state.resolvedImageURL(forMID: "s1", originalURL: "http://art.example.com/a.jpg"),
+            "https://art.example.com/a.jpg"
+        )
+        // Device-hosted artwork stays plaintext; the local network is allowed.
+        XCTAssertEqual(
+            state.resolvedImageURL(forMID: "s2", originalURL: "http://192.168.8.219:8200/a.jpg"),
+            "http://192.168.8.219:8200/a.jpg"
+        )
+    }
+
+    // MARK: - Artwork Resolution
+
+    @MainActor
+    func testCustomArtworkIsNotUpgradedBackToTheOriginal() {
+        let state = AppState()
+        state.imageCache.customStationImages["s1"] = "https://example.com/my-cover.jpg"
+
+        let artwork = state.artwork(forMID: "s1", originalURL: "https://cdns-images.dzcdn.net/images/x/250x250.jpg")
+
+        XCTAssertEqual(artwork.base?.absoluteString, "https://example.com/my-cover.jpg")
+        // The upgrade must never be the artwork the custom image replaced.
+        XCTAssertNotEqual(artwork.highRes?.absoluteString.contains("dzcdn.net"), true)
+    }
+
+    @MainActor
+    func testArtworkUpgradeComesFromTheImageActuallyShown() {
+        let state = AppState()
+
+        let artwork = state.artwork(forMID: "s2", originalURL: "https://cdns-images.dzcdn.net/images/x/250x250.jpg")
+
+        XCTAssertEqual(artwork.base?.absoluteString, "https://cdns-images.dzcdn.net/images/x/250x250.jpg")
+        XCTAssertEqual(artwork.highRes?.absoluteString, "https://cdns-images.dzcdn.net/images/x/1000x1000.jpg")
+    }
+
+    @MainActor
+    func testTwoURLStreamsSharingAPlaceholderMidStillEnrich() {
+        // Captured from the amp: every raw url stream is reported as mid "1".
+        let state = AppState()
+        state.selectedPlayerID = 42
+        state.playback.nowPlaying = NowPlayingMedia(song: "Url Stream", mid: "1")
+        state.pendingStreamContext = .init(
+            pid: 42, stationName: "France Musique", browseMID: "u40", imageURL: "",
+            streamURL: "https://icecast.radiofrance.fr/francemusique-hifi.aac", previousMID: "1"
+        )
+
+        // The outgoing stream is replayed under the same placeholder mid.
+        state.setNowPlaying(NowPlayingMedia(song: "Url Stream", mid: "1"))
+        XCTAssertNotNil(state.pendingStreamContext)
+
+        // The station we asked for arrives, indistinguishable except for its turn.
+        state.setNowPlaying(NowPlayingMedia(song: "Url Stream", mid: "1"))
+        XCTAssertEqual(state.nowPlaying.station, "France Musique")
+        XCTAssertEqual(state.browseMID(forDeviceMID: "1"), "u40")
+    }
+
+    @MainActor
+    func testFavoriteMatchesWhenTheDeviceSwitchesScheme() {
+        // Captured: the same station reported over http on one play and https on the next.
+        let state = AppState()
+        state.playback.nowPlaying = NowPlayingMedia(mid: "https://provisioning.streamtheworld.com/pls/KLINAMAAC")
+        let favorite = BrowseItem(
+            name: "KLIN", type: .station,
+            mid: "http://provisioning.streamtheworld.com/pls/KLINAMAAC"
+        )
+
+        XCTAssertTrue(state.isNowPlaying(favorite))
+    }
+
+    @MainActor
+    func testTuneInFavoriteMatchesWithAnEmptyStationName() {
+        // Captured: album_id carries the station id while station comes back empty.
+        let state = AppState()
+        state.playback.nowPlaying = NowPlayingMedia(
+            albumID: "s44491", mid: "https://open.live.bbc.co.uk/mediaselector/6/redir", station: ""
+        )
+        let favorite = BrowseItem(name: "BBC Radio 6 Music", type: .station, mid: "s44491")
+
+        XCTAssertTrue(state.isNowPlaying(favorite))
+    }
+
+    @MainActor
+    func testATrackIsNotMatchedByItsAlbumID() {
+        let state = AppState()
+        state.playback.nowPlaying = NowPlayingMedia(albumID: "82425106", mid: "82425107")
+        let track = BrowseItem(name: "Some Song", type: .song, mid: "82425106")
+
+        XCTAssertFalse(state.isNowPlaying(track))
+    }
+
+    // MARK: - Station Row Matching
+
+    @MainActor
+    func testStationNamedAfterItsStreamIsHighlighted() {
+        let state = AppState()
+        state.playback.nowPlaying = NowPlayingMedia(mid: "https://icecast.radiofrance.fr/fip-hifi.aac")
+        let row = BrowseItem(name: "https://icecast.radiofrance.fr/fip-hifi.aac", type: .station, mid: "u32")
+
+        XCTAssertTrue(state.isNowPlaying(row))
+    }
+
+    @MainActor
+    func testTwoStationsSharingAFileNameAreToldApart() {
+        let state = AppState()
+        state.playback.nowPlaying = NowPlayingMedia(mid: "https://a.example.com/classic.aac")
+        let playing = BrowseItem(name: "https://a.example.com/classic.aac", type: .station, mid: "u1")
+        let other = BrowseItem(name: "https://b.example.com/classic.aac", type: .station, mid: "u2")
+
+        XCTAssertTrue(state.isNowPlaying(playing))
+        XCTAssertFalse(state.isNowPlaying(other))
+        // And they no longer read the same in the list.
+        XCTAssertNotEqual(playing.displayTitle, other.displayTitle)
+    }
+
+    // MARK: - Timeline Hold On Resume
+
+    @MainActor
+    func testTimelineHoldsUntilTheAmpConfirmsTheResume() async throws {
+        let state = AppState()
+        state.setPlayState(.play)
+        state.setProgress(position: 16_000, duration: 188_000)
+        state.setPlayStateOptimistically(.pause)
+
+        state.setPlayStateOptimistically(.play)
+        try await Task.sleep(for: .milliseconds(120))
+
+        // The amp has not answered, so the position must not have moved.
+        XCTAssertFalse(state.isTimelineRunning)
+        XCTAssertEqual(state.playback.interpolatedPosition(at: Date()), state.playbackPosition)
+    }
+
+    @MainActor
+    func testTimelineRunsOnceTheAmpConfirms() async throws {
+        let state = AppState()
+        state.setPlayState(.play)
+        state.setProgress(position: 16_000, duration: 188_000)
+        state.setPlayStateOptimistically(.pause)
+        state.setPlayStateOptimistically(.play)
+
+        // The amp reports that it resumed.
+        state.setPlayState(.play)
+        XCTAssertTrue(state.isTimelineRunning)
+
+        try await Task.sleep(for: .milliseconds(120))
+        XCTAssertGreaterThan(state.playback.interpolatedPosition(at: Date()), state.playbackPosition)
+    }
+
+    @MainActor
+    func testAProgressReportAlsoReleasesTheHold() {
+        let state = AppState()
+        state.setPlayState(.play)
+        state.setProgress(position: 16_000, duration: 188_000)
+        state.setPlayStateOptimistically(.pause)
+        state.setPlayStateOptimistically(.play)
+
+        state.setProgress(position: 16_500, duration: 188_000)
+
+        XCTAssertTrue(state.isTimelineRunning)
+    }
+
+    // MARK: - Progress On Pause
+
+    @MainActor
+    func testPausingFreezesWherePlaybackActuallyGot() async throws {
+        let state = AppState()
+        state.setPlayState(.play)
+        state.setProgress(position: 16_000, duration: 188_000)
+
+        // Playback runs on past the last position the amp sent.
+        try await Task.sleep(for: .milliseconds(150))
+        state.setPlayState(.pause)
+
+        // Pausing must not rewind to the amp's last report.
+        XCTAssertGreaterThan(state.playbackPosition, 16_000)
+        XCTAssertLessThan(state.playbackPosition, 17_000)
+    }
+
+    // MARK: - Progress On Resume
+
+    @MainActor
+    func testResumeIgnoresTheZeroTheAmpReportsFirst() {
+        let state = AppState()
+        state.setProgress(position: 16_000, duration: 188_000)
+        state.setPlayState(.pause)
+        state.setPlayState(.play)
+
+        state.setProgress(position: 0, duration: 188_000)
+
+        XCTAssertEqual(state.playbackPosition, 16_000)
+    }
+
+    @MainActor
+    func testTheRealPositionAfterAResumeIsTaken() {
+        let state = AppState()
+        state.setProgress(position: 16_000, duration: 188_000)
+        state.setPlayState(.pause)
+        state.setPlayState(.play)
+        state.setProgress(position: 0, duration: 188_000)
+
+        state.setProgress(position: 17_000, duration: 188_000)
+
+        XCTAssertEqual(state.playbackPosition, 17_000)
+    }
+
+    @MainActor
+    func testZeroIsTakenWhenPlaybackDidNotJustResume() {
+        let state = AppState()
+        state.setPlayState(.play)
+        state.setProgress(position: 16_000, duration: 188_000)
+
+        // A second zero, with no resume in between, is a real one.
+        state.setProgress(position: 0, duration: 188_000)
+
+        XCTAssertEqual(state.playbackPosition, 0)
+    }
+
+    // MARK: - Now Playing Display
+
+    @MainActor
+    func testPlayingStationWithoutTrackNameShowsTheStation() {
+        let media = NowPlayingMedia(song: "", mid: "https://bbc/6music", station: "BBC Radio 6 Music")
+
+        XCTAssertEqual(media.displayedTitle, "BBC Radio 6 Music")
+        // Would only repeat the title.
+        XCTAssertNil(media.displayedStation)
+    }
+
+    @MainActor
+    func testStationWithATrackNameKeepsBothLines() {
+        let media = NowPlayingMedia(song: "Roy Ayers", mid: "https://wefunk", station: "WEFUNK Radio")
+
+        XCTAssertEqual(media.displayedTitle, "Roy Ayers")
+        XCTAssertEqual(media.displayedStation, "WEFUNK Radio")
+    }
+
+    @MainActor
+    func testNothingPlayingStillSaysNotPlaying() {
+        XCTAssertEqual(NowPlayingMedia().displayedTitle, "Not Playing")
+    }
+
+    // MARK: - Playback Error Dedupe
+
+    @MainActor
+    func testRepeatedPlaybackErrorShowsOneBanner() {
+        let state = AppState()
+
+        state.setError(.playbackFailed("Unable to stream from TuneIn. Please try again later."))
+        XCTAssertEqual(state.toast?.text, "Unable to stream from TuneIn. Please try again later.")
+
+        state.toast = nil
+        state.setError(.playbackFailed("Unable to stream from TuneIn. Please try again later."))
+        XCTAssertNil(state.toast)
+
+        state.setError(.playbackFailed("A different error"))
+        XCTAssertEqual(state.toast?.text, "A different error")
+    }
+
     // MARK: - Stream Play Context
 
     @MainActor
@@ -381,7 +678,8 @@ final class AppStateTests: XCTestCase {
             pid: 42, stationName: "My Radio",
             browseMID: "https://stream.example.com/live",
             imageURL: "https://example.com/art.jpg",
-            streamURL: "https://stream.example.com/live"
+            streamURL: "https://stream.example.com/live",
+            previousMID: state.nowPlaying.mid
         )
 
         let generic = NowPlayingMedia(
@@ -397,6 +695,59 @@ final class AppStateTests: XCTestCase {
     }
 
     @MainActor
+    func testOldTrackTailEventDoesNotKillFreshStreamContext() {
+        let state = AppState()
+        state.selectedPlayerID = 42
+        state.playback.nowPlaying = NowPlayingMedia(song: "Old Song", mid: "old-track-mid")
+        state.pendingStreamContext = .init(
+            pid: 42, stationName: "Fresh Station",
+            browseMID: "u32", imageURL: "art.jpg",
+            streamURL: "https://stream.example.com/live",
+            previousMID: "old-track-mid"
+        )
+
+        // The device replays the outgoing track before the stream starts.
+        state.setNowPlaying(NowPlayingMedia(song: "Old Song", mid: "old-track-mid"))
+        XCTAssertNotNil(state.pendingStreamContext)
+
+        // The stream then arrives and still gets enriched.
+        state.setNowPlaying(NowPlayingMedia(song: "Url Stream", mid: "https://device.resolved/url"))
+        XCTAssertEqual(state.nowPlaying.station, "Fresh Station")
+    }
+
+    @MainActor
+    func testGenuinelyNewTrackDropsStaleStreamContext() {
+        let state = AppState()
+        state.selectedPlayerID = 42
+        state.pendingStreamContext = .init(
+            pid: 42, stationName: "Stale Station", browseMID: "u32", imageURL: "art.jpg",
+            streamURL: "https://stream.example.com/live", previousMID: "old-track-mid"
+        )
+
+        state.setNowPlaying(NowPlayingMedia(song: "Some New Song", mid: "another-track"))
+
+        XCTAssertNil(state.pendingStreamContext)
+        XCTAssertNil(state.nowPlaying.station)
+    }
+
+    @MainActor
+    func testStreamContextBoundToOneStreamDoesNotEnrichAnother() {
+        let state = AppState()
+        state.selectedPlayerID = 42
+        state.pendingStreamContext = .init(
+            pid: 42, stationName: "First Station", browseMID: "u32", imageURL: "art.jpg",
+            streamURL: "https://one.example.com/live", previousMID: ""
+        )
+        state.setNowPlaying(NowPlayingMedia(song: "Url Stream", mid: "https://one.example.com/live"))
+        XCTAssertEqual(state.nowPlaying.station, "First Station")
+
+        // A different stream starts (e.g. from the amp itself): no stolen identity.
+        state.setNowPlaying(NowPlayingMedia(song: "Url Stream", mid: "https://two.example.com/live"))
+        XCTAssertNil(state.nowPlaying.station)
+        XCTAssertNil(state.pendingStreamContext)
+    }
+
+    @MainActor
     func testRepeatedUrlStreamEventsAllGetEnriched() {
         let state = AppState()
         state.selectedPlayerID = 42
@@ -404,7 +755,8 @@ final class AppStateTests: XCTestCase {
             pid: 42, stationName: "My Radio",
             browseMID: "https://stream.example.com/live",
             imageURL: "https://example.com/art.jpg",
-            streamURL: "https://stream.example.com/live"
+            streamURL: "https://stream.example.com/live",
+            previousMID: state.nowPlaying.mid
         )
 
         let generic = NowPlayingMedia(
@@ -430,7 +782,7 @@ final class AppStateTests: XCTestCase {
         state.pendingStreamContext = .init(
             pid: 42, stationName: "Old Station",
             browseMID: "u32", imageURL: "",
-            streamURL: "https://old.url"
+            streamURL: "https://old.url", previousMID: ""
         )
 
         let real = NowPlayingMedia(
@@ -451,7 +803,7 @@ final class AppStateTests: XCTestCase {
         state.pendingStreamContext = .init(
             pid: 42, stationName: "Wrong Player",
             browseMID: "u32", imageURL: "",
-            streamURL: "https://stream.example.com"
+            streamURL: "https://stream.example.com", previousMID: ""
         )
 
         let generic = NowPlayingMedia(
@@ -469,7 +821,8 @@ final class AppStateTests: XCTestCase {
         state.imageCache.customStationImages["u32"] = "https://example.com/custom-art.jpg"
         state.pendingStreamContext = .init(
             pid: 42, stationName: nil, browseMID: "u32",
-            imageURL: "", streamURL: "https://icecast.radiofrance.fr/fip-hifi.aac"
+            imageURL: "", streamURL: "https://icecast.radiofrance.fr/fip-hifi.aac",
+            previousMID: ""
         )
 
         let generic = NowPlayingMedia(
@@ -489,7 +842,7 @@ final class AppStateTests: XCTestCase {
         state.pendingStreamContext = .init(
             pid: 42, stationName: "Test",
             browseMID: "u32", imageURL: "",
-            streamURL: "https://example.com"
+            streamURL: "https://example.com", previousMID: ""
         )
 
         state.setConnectionState(.disconnected)

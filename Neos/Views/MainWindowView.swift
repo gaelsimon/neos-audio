@@ -128,10 +128,6 @@ struct MainWindowView: View {
             state.isSearchFieldFocused = false
         }
         .onChange(of: browseVM.navigationTapCount) {
-            if searchVM.isOverlayVisible {
-                // Push already happened; origin is one before current
-                searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex - 1)
-            }
             state.isSearchFieldFocused = false
         }
         .task {
@@ -297,6 +293,9 @@ struct MainWindowView: View {
         .padding(.horizontal, DS.Spacing.lg)
         .frame(width: 380, height: 40)
         .contentShape(Capsule())
+        // The text field is narrower than the capsule, so clicking the magnifier or the padding
+        // used to do nothing. Simultaneous so a click inside the field still places the cursor.
+        .simultaneousGesture(TapGesture().onEnded { state.isSearchFieldFocused = true })
         .background(DS.Colors.surfaceElevated, in: Capsule())
         .overlay(
             Capsule()
@@ -335,7 +334,6 @@ struct MainWindowView: View {
     private var speakerIndicator: some View {
         let isActive = browseVM.currentDestination == .ampSettings
         return HoverButton(action: {
-            searchVM.dismissOverlay()
             if isActive {
                 browseVM.goBack()
             } else {
@@ -373,7 +371,6 @@ struct MainWindowView: View {
     private var profileButton: some View {
         let isActive = browseVM.currentDestination == .settings
         return HoverButton(action: {
-            searchVM.dismissOverlay()
             if isActive {
                 browseVM.goBack()
             } else {

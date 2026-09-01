@@ -88,10 +88,7 @@ final class PlayerViewModel {
         guard let pid = state.selectedPlayerID else { return }
         let wasPlaying = state.isPlaying
         // Optimistic
-        state.playback.playState = wasPlaying ? .pause : .play
-        if !wasPlaying {
-            state.playback.lastProgressUpdate = Date()
-        }
+        state.setPlayStateOptimistically(wasPlaying ? .pause : .play)
         playPauseTask.replace(with: Task {
             do {
                 if wasPlaying {
@@ -102,7 +99,7 @@ final class PlayerViewModel {
             } catch {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 // Revert
-                state.playback.playState = wasPlaying ? .play : .pause
+                state.setPlayStateOptimistically(wasPlaying ? .play : .pause)
                 state.error = .playbackFailed(error.localizedDescription)
             }
         })

@@ -52,11 +52,9 @@ enum ImageURLCache {
         var map = ensureLoaded()
         var changed = false
         let now = Date()
-        for entry in filtered {
-            if map[entry.mid]?.url != entry.imageURL {
-                map[entry.mid] = Entry(url: entry.imageURL, lastAccess: now)
-                changed = true
-            }
+        for entry in filtered where map[entry.mid]?.url != entry.imageURL {
+            map[entry.mid] = Entry(url: entry.imageURL, lastAccess: now)
+            changed = true
         }
         if changed {
             // Evict by oldest lastAccess when over cap

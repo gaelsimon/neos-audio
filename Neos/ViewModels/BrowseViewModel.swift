@@ -19,7 +19,7 @@ private struct NavigationEntry: Equatable {
     var cachedItems: [BrowseItem]?
     var cachedPagination: CachedPagination?
 
-    static func == (lhs: NavigationEntry, rhs: NavigationEntry) -> Bool {
+    static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.destination == rhs.destination
             && lhs.browseStack == rhs.browseStack
             && lhs.searchContext == rhs.searchContext
@@ -64,7 +64,8 @@ final class BrowseViewModel {
     var searchContext: SearchResultsContext? { history.current.searchContext }
     var canGoBack: Bool { history.canGoBack }
     var canGoForward: Bool { history.canGoForward }
-    var currentHistoryIndex: Int { history.currentIndex }
+    var currentHistoryToken: Int { history.currentToken }
+    var previousHistoryToken: Int? { history.previousToken }
 
     // MARK: - Pagination State
 
@@ -118,7 +119,15 @@ final class BrowseViewModel {
 
     // MARK: - History Helpers
 
+    /// Called before a new entry is pushed, while the current token still names the entry
+    /// being left. Lets an open search pin itself to the place it belongs to.
+    var onWillPushEntry: (() -> Void)?
+
+    /// Called after back or forward lands on an entry, so a search pinned to it can come back.
+    var onDidMoveInHistory: (() -> Void)?
+
     private func pushEntry(destination: NavigationDestination, browseStack: [BrowseTarget], searchContext: SearchResultsContext? = nil) {
+        onWillPushEntry?()
         snapshotCurrentEntry()
         history.push(NavigationEntry(destination: destination, browseStack: browseStack, searchContext: searchContext))
     }
@@ -431,12 +440,14 @@ final class BrowseViewModel {
         snapshotCurrentEntry()
         guard history.goBack() != nil else { return }
         applyCurrentEntry()
+        onDidMoveInHistory?()
     }
 
     func goForward() {
         snapshotCurrentEntry()
         guard history.goForward() != nil else { return }
         applyCurrentEntry()
+        onDidMoveInHistory?()
     }
 
     var currentLocationName: String {

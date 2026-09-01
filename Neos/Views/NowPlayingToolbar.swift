@@ -28,13 +28,11 @@ struct NowPlayingToolbar: View {
 
     private func navigateToAlbum() {
         guard let sid = state.nowPlaying.sid else { return }
-        searchVM.dismissOverlay()
         browseVM.pushAlbumSearchNavigate(sid: sid, albumName: state.nowPlaying.album, artistHint: state.nowPlaying.artist)
     }
 
     private func navigateToArtist() {
         guard let sid = state.nowPlaying.sid else { return }
-        searchVM.dismissOverlay()
         browseVM.pushArtistSearchNavigate(sid: sid, artistName: state.nowPlaying.artist)
     }
 
@@ -80,8 +78,8 @@ struct NowPlayingToolbar: View {
 
     @ViewBuilder private var artworkSection: some View {
         CachedAsyncImage(
-            url: URL(string: state.resolvedImageURL(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL)),
-            highResURL: ImageURLUpscaler.highResURL(from: state.nowPlaying.imageURL).flatMap(URL.init(string:))
+            url: state.artwork(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL).base,
+            highResURL: state.artwork(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL).highRes
         ) {
             Image(systemName: DS.Icons.musicNote)
                 .typography(.bodyPrimary)
@@ -119,12 +117,12 @@ struct NowPlayingToolbar: View {
 
     @ViewBuilder private var trackInfoSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-            Text(state.nowPlaying.song.isEmpty ? "Not Playing" : state.nowPlaying.song.displayTitle)
+            Text(state.nowPlaying.displayedTitle)
                 .typography(.bodyMedium)
                 .lineLimit(1)
                 .accessibilityIdentifier(AccessibilityID.Player.songTitle)
-            if let station = state.nowPlaying.station, !station.isEmpty {
-                Text(station.displayTitle)
+            if let station = state.nowPlaying.displayedStation {
+                Text(station)
                     .typography(.secondary)
                     .lineLimit(1)
                     .accessibilityIdentifier(AccessibilityID.Player.artistName)
@@ -286,7 +284,7 @@ private struct ToolbarProgressSection: View {
             playbackPosition: state.playbackPosition,
             playbackDuration: state.playbackDuration,
             lastProgressUpdate: state.lastProgressUpdate,
-            isPlaying: state.isPlaying,
+            isPlaying: state.isTimelineRunning,
             nowPlayingMID: state.nowPlaying.mid,
             onSeek: { position in playerVM.seek(to: position) },
             showTrack: true,

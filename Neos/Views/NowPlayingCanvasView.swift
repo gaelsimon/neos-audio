@@ -13,14 +13,24 @@ struct NowPlayingCanvasView: View {
 
     // MARK: - Artwork URL
 
+    /// The artwork already known to load: what the player bar shows.
+    private var baseArtworkURL: URL? {
+        guard !nowPlayingResolvedImageURL.isEmpty else { return nil }
+        return URL(string: nowPlayingResolvedImageURL)
+    }
+
+    /// The better artwork, when the track carries its own. It may fail to load, so it is
+    /// offered as an upgrade over `baseArtworkURL` rather than replacing it.
     private var artworkURL: URL? {
+        // A custom image is a deliberate choice; the track's own art must not replace it.
+        if state.hasCustomStationImage(forMID: state.nowPlaying.mid) { return nil }
         let rawURL: String? = {
             if let uri = state.trackMetadata?.albumArtURI, !uri.isEmpty { return uri }
             if !nowPlayingResolvedImageURL.isEmpty { return nowPlayingResolvedImageURL }
             return nil
         }()
         guard let rawURL else { return nil }
-        let resolved = ImageURLUpscaler.highResURL(from: rawURL) ?? rawURL
+        let resolved = ImageURLUpscaler.highResURL(from: rawURL) ?? ImageURLUpscaler.httpsURL(rawURL)
         return URL(string: resolved)
     }
 
@@ -105,7 +115,7 @@ struct NowPlayingCanvasView: View {
     // MARK: - Hero Artwork
 
     private var heroArtwork: some View {
-        CachedAsyncImage(url: artworkURL) {
+        CachedAsyncImage(url: baseArtworkURL ?? artworkURL, highResURL: artworkURL) {
             Image(systemName: DS.Icons.musicNote)
                 .font(DS.IconFont.mega)
                 .foregroundStyle(DS.Colors.textTertiary)
@@ -129,16 +139,18 @@ struct NowPlayingCanvasView: View {
             return
         }
 
-        // Use cached image from CachedAsyncImage if available, otherwise download
-        let nsImage: NSImage?
-        if let cached = await ImageCache.shared.load(url) {
-            nsImage = cached
-        } else {
-            do {
-                let (data, _) = try await NeosURLSession.shared.data(from: url)
-                nsImage = NSImage(data: data)
-            } catch {
-                nsImage = nil
+        // Colours come from whichever artwork is actually on screen, so try the same
+        // order the view does: the track's own image, then the one that always loads.
+        var nsImage: NSImage?
+        for candidate in [url, baseArtworkURL].compactMap({ $0 }) {
+            if let cached = await ImageCache.shared.load(candidate) {
+                nsImage = cached
+                break
+            }
+            if let data = try? await NeosURLSession.shared.data(from: candidate).0,
+               let downloaded = NSImage(data: data) {
+                nsImage = downloaded
+                break
             }
         }
 

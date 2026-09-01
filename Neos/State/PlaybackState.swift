@@ -13,6 +13,9 @@ final class PlaybackState {
         let browseMID: String      // key for custom artwork (e.g., "u32" or stream URL)
         let imageURL: String       // from BrowseItem
         let streamURL: String      // the actual stream URL sent to playURL
+        let previousMID: String    // track playing at capture; its tail events must not kill the context
+        var enrichedDeviceMID: String?   // set on first enrichment; a different mid means another stream
+        var toleratedTail = false        // the outgoing track's replay went by; the next event is ours
     }
 
     // MARK: - Playback
@@ -29,6 +32,10 @@ final class PlaybackState {
     var playbackPosition: Int = 0
     var playbackDuration: Int = 0
     var lastProgressUpdate: Date = .distantPast
+    /// When playback last resumed, to spot the position the amp reports before the real one.
+    var resumedAt: Date?
+    /// The user pressed play and the amp has not confirmed yet; the timeline holds until it does.
+    var awaitingResumeConfirmation = false
 
     // MARK: - Queue
 
@@ -52,7 +59,7 @@ final class PlaybackState {
     /// Interpolated position (ms) accounting for wall-clock time elapsed since last HEOS event.
     /// Only advances while playing; clamped to duration.
     func interpolatedPosition(at now: Date) -> Int {
-        guard isPlaying else { return playbackPosition }
+        guard isPlaying, !awaitingResumeConfirmation else { return playbackPosition }
         let elapsed = now.timeIntervalSince(lastProgressUpdate)
         guard elapsed > 0 else { return playbackPosition }
         let interpolated = playbackPosition + Int(elapsed * 1000)
@@ -72,6 +79,8 @@ final class PlaybackState {
         nowPlayingOptions = []
         trackMetadata = nil
         playbackPosition = 0
+        resumedAt = nil
+        awaitingResumeConfirmation = false
         playbackDuration = 0
         lastProgressUpdate = .distantPast
         queue = []
