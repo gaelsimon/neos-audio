@@ -84,6 +84,8 @@ Neos talks directly to your speaker over the local network. No cloud, no interne
 
 Swift and SwiftUI. Only Apple frameworks (Network.framework, Foundation, Security). No Combine, async/await throughout.
 
+The HEOS protocol layer lives in its own package, [swift-heos](https://github.com/gaelsimon/swift-heos), so other projects can use it.
+
 ## Known Limitations
 
 - Speaker grouping is untested (I only have one speaker)

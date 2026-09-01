@@ -37,11 +37,8 @@ xcodebuild -project Neos.xcodeproj -scheme Neos -configuration Release build
 # App + UI tests
 xcodebuild test -project Neos.xcodeproj -scheme Neos -destination 'platform=macOS'
 
-# HEOSKit (Swift Package, no Xcode required)
-cd HEOSKit && swift test
-
-# NeosDomain (Swift Package, no Xcode required)
-cd NeosDomain && swift test
+# The HEOS protocol layer has its own tests, in its own repository
+git clone https://github.com/gaelsimon/swift-heos && cd swift-heos && swift test
 ```
 
 ### Building a release DMG locally
@@ -60,10 +57,10 @@ Neos (SwiftUI App)
 ├── @Observable AppState (single source of truth)
 ├── MVVM ViewModels calling AudioService
 │
-NeosDomain (Local Swift Package)
+NeosDomain (from the swift-heos package)
 └── Vendor-neutral domain models and AudioService protocol
 │
-HEOSKit (Local Swift Package)
+HEOSKit (from the swift-heos package)
 ├── Models: Player, NowPlayingMedia, TrackMetadata, etc.
 ├── Protocol: HEOSCommand, CommandBuilder, ResponseParser, DIDLLiteParser
 ├── Networking: TCPTransport, HEOSConnection, AVRControlClient, UPnP clients
@@ -71,7 +68,7 @@ HEOSKit (Local Swift Package)
 └── Services: PlayerService, GroupService, BrowseService, SystemService
 ```
 
-The UI layer depends only on `NeosDomain`. `HEOSKit` is the only module that knows about the HEOS protocol. Swapping in a different speaker backend would mean adding a sibling package that conforms to `AudioService`.
+The UI layer depends only on `NeosDomain`. `HEOSKit` is the only module that knows about the HEOS protocol. Both come from [swift-heos](https://github.com/gaelsimon/swift-heos), so protocol changes belong there and app changes belong here. Swapping in a different speaker backend would mean another package conforming to `AudioService`.
 
 ### Key design rules
 
@@ -99,7 +96,7 @@ Sample HEOS CLI responses live in `docs/samples/` and are useful test fixtures.
 
 - SwiftLint enforces the project style; `swiftlint` must pass before a PR can land.
 - Match existing patterns. Small focused files, MVVM, no force unwraps (`!`) outside test code.
-- Tests for new HEOSKit functionality. HEOSKit has ~200 unit tests, keep that bar.
+- Tests for new behaviour. The app has over 400 unit tests and the protocol package has its own, keep that bar.
 
 ## Pull request process
 
