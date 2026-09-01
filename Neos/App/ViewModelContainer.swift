@@ -44,6 +44,19 @@ final class ViewModelContainer {
         state.onDeviceDiscovered = { [weak speakers] device in
             speakers?.autoConnectIfCached(device)
         }
+
+        // Any navigation suspends an open search, not just the few that used to report one.
+        let search = searchVM
+        let browse = browseVM
+        browseVM.onWillPushEntry = { [weak search, weak browse] in
+            guard let search, let browse, search.isOverlayVisible else { return }
+            search.suspendForNavigation(originToken: browse.currentHistoryToken)
+        }
+        // And it comes back on the entry it belongs to, whichever control moved there.
+        browseVM.onDidMoveInHistory = { [weak search, weak browse] in
+            guard let search, let browse else { return }
+            search.tryRestore(atToken: browse.currentHistoryToken)
+        }
     }
 
     // MARK: - Navigation Commands
@@ -61,12 +74,11 @@ final class ViewModelContainer {
             return
         }
         browseVM.goBack()
-        searchVM.tryRestore(atHistoryIndex: browseVM.currentHistoryIndex)
     }
 
     func goForward() {
         if searchVM.isOverlayVisible {
-            searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex)
+            searchVM.suspendForNavigation(originToken: browseVM.currentHistoryToken)
         }
         browseVM.goForward()
     }

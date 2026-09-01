@@ -90,4 +90,20 @@ struct ImageURLUpscalerTests {
         let result = ImageURLUpscaler.highResURL(from: input)
         #expect(result?.hasPrefix("https://") == true)
     }
+
+    // MARK: - Scheme upgrade for unrecognized hosts
+
+    @Test func unknownHostKeepsItsHTTPSUpgrade() {
+        // App Transport Security blocks plaintext http, and station artwork rarely
+        // lives on a service the upscaler recognizes.
+        #expect(ImageURLUpscaler.httpsURL("http://art.example.com/wefunk.jpg")
+            == "https://art.example.com/wefunk.jpg")
+    }
+
+    @Test func httpsURLLeavesTheLocalNetworkAlone() {
+        #expect(ImageURLUpscaler.httpsURL("http://192.168.8.219:8200/art.jpg")
+            == "http://192.168.8.219:8200/art.jpg")
+        #expect(ImageURLUpscaler.httpsURL("http://mynas.local:9000/icon.png")
+            == "http://mynas.local:9000/icon.png")
+    }
 }

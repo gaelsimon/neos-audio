@@ -73,10 +73,8 @@ final class ImageCacheState {
         guard !entries.isEmpty else { return }
         if ImageURLCache.cacheEntries(entries) {
             // Merge into in-memory dict for reactivity
-            for entry in entries {
-                if cachedImageURLs[entry.mid] != entry.imageURL {
-                    cachedImageURLs[entry.mid] = entry.imageURL
-                }
+            for entry in entries where cachedImageURLs[entry.mid] != entry.imageURL {
+                cachedImageURLs[entry.mid] = entry.imageURL
             }
         }
     }
@@ -85,10 +83,8 @@ final class ImageCacheState {
     func cacheImageEntries(_ entries: [(mid: String, imageURL: String)]) {
         guard !entries.isEmpty else { return }
         if ImageURLCache.cacheEntries(entries) {
-            for entry in entries {
-                if cachedImageURLs[entry.mid] != entry.imageURL {
-                    cachedImageURLs[entry.mid] = entry.imageURL
-                }
+            for entry in entries where cachedImageURLs[entry.mid] != entry.imageURL {
+                cachedImageURLs[entry.mid] = entry.imageURL
             }
         }
     }

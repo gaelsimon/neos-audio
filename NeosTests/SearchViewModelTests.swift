@@ -75,9 +75,9 @@ final class SearchViewModelTests: XCTestCase {
         let vm = SearchViewModel(service: mock, state: state)
 
         vm.overlayPhase = .active
-        vm.suspendForNavigation(originHistoryIndex: 3)
+        vm.suspendForNavigation(originToken: 3)
 
-        XCTAssertEqual(vm.overlayPhase, .suspended(originHistoryIndex: 3))
+        XCTAssertEqual(vm.overlayPhase, .suspended(originToken: 3))
         XCTAssertFalse(vm.isOverlayVisible)
         XCTAssertTrue(vm.hasSuspendedSearch)
     }
@@ -89,21 +89,21 @@ final class SearchViewModelTests: XCTestCase {
         let vm = SearchViewModel(service: mock, state: state)
 
         vm.overlayPhase = .inactive
-        vm.suspendForNavigation(originHistoryIndex: 3)
+        vm.suspendForNavigation(originToken: 3)
 
         XCTAssertEqual(vm.overlayPhase, .inactive)
     }
 
     @MainActor
-    func testTryRestoreSucceedsAtCorrectIndex() {
+    func testTryRestoreSucceedsAtMatchingToken() {
         let state = AppState()
         let mock = MockAudioService()
         let vm = SearchViewModel(service: mock, state: state)
 
         vm.serviceResults = [ServiceCriteriaKey(sid: 1, scid: 1): [BrowseItem(name: "Song")]]
-        vm.overlayPhase = .suspended(originHistoryIndex: 2)
+        vm.overlayPhase = .suspended(originToken: 2)
 
-        let restored = vm.tryRestore(atHistoryIndex: 2)
+        let restored = vm.tryRestore(atToken: 2)
 
         XCTAssertTrue(restored)
         XCTAssertEqual(vm.overlayPhase, .active)
@@ -111,18 +111,34 @@ final class SearchViewModelTests: XCTestCase {
     }
 
     @MainActor
-    func testTryRestoreFailsAtWrongIndex() {
+    func testDismissOverlayDoesNotKillSuspendedSearch() {
         let state = AppState()
         let mock = MockAudioService()
         let vm = SearchViewModel(service: mock, state: state)
 
         vm.serviceResults = [ServiceCriteriaKey(sid: 1, scid: 1): [BrowseItem(name: "Song")]]
-        vm.overlayPhase = .suspended(originHistoryIndex: 2)
+        vm.overlayPhase = .suspended(originToken: 2)
 
-        let restored = vm.tryRestore(atHistoryIndex: 5)
+        // An ambient dismissal (player-bar link, amp settings button) while suspended.
+        vm.dismissOverlay()
+
+        XCTAssertTrue(vm.tryRestore(atToken: 2))
+        XCTAssertTrue(vm.isOverlayVisible)
+    }
+
+    @MainActor
+    func testTryRestoreFailsAtOtherToken() {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = SearchViewModel(service: mock, state: state)
+
+        vm.serviceResults = [ServiceCriteriaKey(sid: 1, scid: 1): [BrowseItem(name: "Song")]]
+        vm.overlayPhase = .suspended(originToken: 2)
+
+        let restored = vm.tryRestore(atToken: 5)
 
         XCTAssertFalse(restored)
-        XCTAssertEqual(vm.overlayPhase, .suspended(originHistoryIndex: 2))
+        XCTAssertEqual(vm.overlayPhase, .suspended(originToken: 2))
     }
 
     @MainActor
@@ -132,23 +148,36 @@ final class SearchViewModelTests: XCTestCase {
         let vm = SearchViewModel(service: mock, state: state)
 
         vm.serviceResults = [:]
-        vm.overlayPhase = .suspended(originHistoryIndex: 2)
+        vm.overlayPhase = .suspended(originToken: 2)
 
-        let restored = vm.tryRestore(atHistoryIndex: 2)
+        let restored = vm.tryRestore(atToken: 2)
 
         XCTAssertFalse(restored)
         XCTAssertFalse(vm.isOverlayVisible)
     }
 
     @MainActor
-    func testDismissOverlayClearsSuspension() {
+    func testEmptyingTheQueryClearsASuspension() {
+        let state = AppState()
+        let vm = SearchViewModel(service: MockAudioService(), state: state)
+        vm.serviceResults = [ServiceCriteriaKey(sid: 1, scid: 1): [BrowseItem(name: "Song")]]
+        vm.overlayPhase = .suspended(originToken: 2)
+
+        vm.onQueryChanged("")
+
+        // Results are gone; a surviving suspension would only strand the back arrow.
+        XCTAssertFalse(vm.hasSuspendedSearch)
+    }
+
+    @MainActor
+    func testClearSearchClearsSuspension() {
         let state = AppState()
         let mock = MockAudioService()
         let vm = SearchViewModel(service: mock, state: state)
 
-        vm.overlayPhase = .suspended(originHistoryIndex: 2)
+        vm.overlayPhase = .suspended(originToken: 2)
 
-        vm.dismissOverlay()
+        vm.clearSearch()
 
         XCTAssertEqual(vm.overlayPhase, .inactive)
         XCTAssertFalse(vm.hasSuspendedSearch)

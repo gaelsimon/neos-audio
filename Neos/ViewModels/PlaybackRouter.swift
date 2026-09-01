@@ -23,7 +23,8 @@ enum PlaybackRouter {
             if item.type == .station, let mid = item.mid, mid.hasPrefix("http://") || mid.hasPrefix("https://") {
                 state.pendingStreamContext = .init(
                     pid: pid, stationName: item.name,
-                    browseMID: mid, imageURL: item.imageURL, streamURL: mid
+                    browseMID: mid, imageURL: item.imageURL, streamURL: mid,
+                    previousMID: state.nowPlaying.mid
                 )
                 try await service.playURL(pid: pid, url: mid)
             } else if item.type == .station, let mid = item.mid, isTuneInCustomURL(mid) {
@@ -63,7 +64,8 @@ enum PlaybackRouter {
         if name.hasPrefix("http://") || name.hasPrefix("https://") {
             state.pendingStreamContext = .init(
                 pid: pid, stationName: nil,
-                browseMID: mid, imageURL: imageURL, streamURL: name
+                browseMID: mid, imageURL: imageURL, streamURL: name,
+                previousMID: state.nowPlaying.mid
             )
             try await service.playURL(pid: pid, url: name)
             return

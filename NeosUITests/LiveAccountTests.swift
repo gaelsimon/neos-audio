@@ -21,7 +21,7 @@ final class LiveAccountTests: XCTestCase {
         }
 
         _app = XCUIApplication()
-        _app.launchArguments = ["--uitesting"]
+        _app.launchArguments = ["--uitesting", "-ApplePersistenceIgnoreState", "YES"]
         _app.launch()
 
         let home = _app.descendants(matching: .any)[AccessibilityID.Home.view]

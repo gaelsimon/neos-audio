@@ -178,7 +178,7 @@ struct BrowseItemRow: View {
             } else {
                 CachedAsyncImage(
                     url: URL(string: effectiveImageURL),
-                    highResURL: ImageURLUpscaler.highResURL(from: item.imageURL).flatMap(URL.init(string:))
+                    highResURL: ImageURLUpscaler.highResURL(from: effectiveImageURL).flatMap(URL.init(string:))
                 ) {
                     Image(systemName: iconForType)
                         .font(DS.IconFont.body)

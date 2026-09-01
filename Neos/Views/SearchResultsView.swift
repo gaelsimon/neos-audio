@@ -249,7 +249,6 @@ struct SearchResultsView: View {
 
     private func seeAll(criteriaName: String, sid: Int, scid: Int) {
         guard let source = searchVM.musicSource(for: sid) else { return }
-        searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex)
         browseVM.navigateToSearchResults(
             source: source,
             categoryName: criteriaName,
@@ -313,7 +312,6 @@ struct SearchResultsView: View {
     private func browseInto(_ item: BrowseItem, sid: Int) {
         let effectiveSID = item.sid ?? sid
         guard let source = searchVM.musicSource(for: effectiveSID) else { return }
-        searchVM.suspendForNavigation(originHistoryIndex: browseVM.currentHistoryIndex)
         if let cid = item.cid {
             browseVM.navigateToContainer(source: source, containerName: item.displayTitle, cid: cid, imageURL: item.imageURL)
         } else {
@@ -322,8 +320,7 @@ struct SearchResultsView: View {
     }
 
     private func isNowPlaying(_ item: BrowseItem) -> Bool {
-        guard !state.nowPlaying.mid.isEmpty, let mid = item.mid else { return false }
-        return state.nowPlaying.mid == mid
+        state.isNowPlaying(item)
     }
 
 }

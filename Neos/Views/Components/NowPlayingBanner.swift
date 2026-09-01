@@ -10,8 +10,8 @@ struct NowPlayingBanner: View {
             HStack(spacing: DS.Spacing.md) {
                 // Album Art
                 CachedAsyncImage(
-                    url: URL(string: state.resolvedImageURL(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL)),
-                    highResURL: ImageURLUpscaler.highResURL(from: state.nowPlaying.imageURL).flatMap(URL.init(string:))
+                    url: state.artwork(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL).base,
+                    highResURL: state.artwork(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL).highRes
                 ) {
                     Image(systemName: DS.Icons.musicNote)
                         .typography(.pageTitle)
@@ -25,13 +25,13 @@ struct NowPlayingBanner: View {
 
                 // Song Info
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text(state.nowPlaying.song.isEmpty ? "Not Playing" : state.nowPlaying.song.displayTitle)
+                    Text(state.nowPlaying.displayedTitle)
                         .typography(.sectionHeader)
                         .lineLimit(1)
                         .accessibilityIdentifier(AccessibilityID.NowPlayingBanner.songTitle)
 
-                    if let station = state.nowPlaying.station, !station.isEmpty {
-                        Text(station.displayTitle)
+                    if let station = state.nowPlaying.displayedStation {
+                        Text(station)
                             .typography(.secondary)
                             .lineLimit(1)
                     } else if !state.nowPlaying.artist.isEmpty {
@@ -81,7 +81,7 @@ private struct BannerProgressSection: View {
             playbackPosition: state.playbackPosition,
             playbackDuration: state.playbackDuration,
             lastProgressUpdate: state.lastProgressUpdate,
-            isPlaying: state.isPlaying,
+            isPlaying: state.isTimelineRunning,
             nowPlayingMID: state.nowPlaying.mid,
             onSeek: onSeek
         )

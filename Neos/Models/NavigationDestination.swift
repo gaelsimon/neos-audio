@@ -1,4 +1,5 @@
 import Foundation
+import NeosDomain
 
 // MARK: - NavigationDestination
 

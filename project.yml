@@ -8,10 +8,9 @@ options:
   defaultConfig: Release
 
 packages:
-  HEOSKit:
-    path: HEOSKit
-  NeosDomain:
-    path: NeosDomain
+  swift-heos:
+    url: https://github.com/gaelsimon/swift-heos
+    minorVersion: 0.1.0
 
 settings:
   base:
@@ -39,8 +38,10 @@ targets:
         COMBINE_HIDPI_IMAGES: true
         ENABLE_HARDENED_RUNTIME: true
     dependencies:
-      - package: HEOSKit
-      - package: NeosDomain
+      - package: swift-heos
+        product: HEOSKit
+      - package: swift-heos
+        product: NeosDomain
     entitlements:
       path: Neos/Neos.entitlements
       properties:

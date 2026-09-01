@@ -11,7 +11,7 @@ class BaseUITestCase: XCTestCase {
     override class func setUp() {
         super.setUp()
         _app = XCUIApplication()
-        _app.launchArguments = ["--uitesting", "--skip-discovery"]
+        _app.launchArguments = ["--uitesting", "--skip-discovery", "-ApplePersistenceIgnoreState", "YES"]
         _app.launch()
     }
 

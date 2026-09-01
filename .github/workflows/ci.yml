@@ -11,25 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  swift-packages:
-    name: Swift packages (HEOSKit + NeosDomain)
-    runs-on: macos-14
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16'
-
-      - name: HEOSKit tests
-        working-directory: HEOSKit
-        run: swift test
-
-      - name: NeosDomain tests
-        working-directory: NeosDomain
-        run: swift test
-
   app-build:
     name: App build & lint
     runs-on: macos-14
@@ -79,9 +60,6 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             DEVELOPMENT_TEAM= \
             | xcbeautify
-
-      - name: Generate coverage report
-        run: ./scripts/sonar-coverage.sh
 
       - name: SonarCloud Scan
         if: ${{ env.SONAR_TOKEN != '' }}
