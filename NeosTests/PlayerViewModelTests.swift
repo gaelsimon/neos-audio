@@ -405,6 +405,17 @@ final class PlayerViewModelTests: XCTestCase {
         mock.calls.filter { $0 == "fetchTrackMetadata" }.count
     }
 
+    /// Waits for a condition instead of a fixed delay, so a loaded machine does not decide the
+    /// outcome. Returns whether it held before giving up.
+    @MainActor
+    private func eventually(_ condition: () -> Bool) async -> Bool {
+        for _ in 0..<200 {
+            if condition() { return true }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return condition()
+    }
+
     @MainActor
     func testATrackChangeDuringTheAttemptsIsPickedUpImmediately() async {
         let state = AppState()
@@ -415,12 +426,12 @@ final class PlayerViewModelTests: XCTestCase {
         state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
         vm.startTrackMetadataObserver()
         // Let the first attempt land, then move the track under the running loop.
-        try? await Task.sleep(for: .milliseconds(15))
+        _ = await eventually { metadataFetchCount(mock) >= 1 }
         state.setNowPlaying(NowPlayingMedia(song: "B", mid: "B"))
-        try? await Task.sleep(for: .milliseconds(200))
 
         // Track B gets its own attempts. Waiting for the next mid would have stopped at A's.
-        XCTAssertGreaterThan(metadataFetchCount(mock), 2)
+        let reachedB = await eventually { metadataFetchCount(mock) > 2 }
+        XCTAssertTrue(reachedB, "only \(metadataFetchCount(mock)) fetches; B never got its own")
     }
 
     @MainActor
@@ -433,10 +444,10 @@ final class PlayerViewModelTests: XCTestCase {
         state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
         vm.startTrackMetadataObserver()
         // Nothing to report yet, as the amp does for the first seconds of a track.
-        try? await Task.sleep(for: .milliseconds(15))
+        _ = await eventually { metadataFetchCount(mock) >= 1 }
         mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitDepth: 24, codec: "FLAC")
-        try? await Task.sleep(for: .milliseconds(200))
 
+        _ = await eventually { state.trackMetadata?.qualityDescription != nil }
         XCTAssertEqual(state.trackMetadata?.qualityDescription, "24-bit / 48 kHz FLAC")
     }
 
@@ -450,7 +461,9 @@ final class PlayerViewModelTests: XCTestCase {
 
         state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
         vm.startTrackMetadataObserver()
-        try? await Task.sleep(for: .milliseconds(200))
+        _ = await eventually { state.trackMetadata?.qualityDescription != nil }
+        // Long enough that further attempts would have landed had the loop kept going.
+        try? await Task.sleep(for: .milliseconds(150))
 
         // One answer is enough; the remaining gaps are not spent.
         XCTAssertEqual(metadataFetchCount(mock), 1)

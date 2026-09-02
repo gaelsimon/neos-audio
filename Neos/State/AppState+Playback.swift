@@ -20,7 +20,7 @@ extension AppState {
                 if confirmedByDevice {
                     // The amp is playing now, so the timeline starts counting from now.
                     playback.lastProgressUpdate = Date()
-                    playback.resumedAt = Date()
+                    playback.positionBaselineAt = Date()
                     playback.awaitingResumeConfirmation = false
                 } else {
                     // Hold the position until the amp says it resumed, the way a seek does.
@@ -34,7 +34,7 @@ extension AppState {
                 playback.playbackPosition = playback.interpolatedPosition(at: Date())
                 playback.lastProgressUpdate = Date()
             }
-            playback.resumedAt = nil
+            playback.positionBaselineAt = nil
             playback.awaitingResumeConfirmation = false
         }
         playback.playState = state

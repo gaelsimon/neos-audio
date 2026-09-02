@@ -591,6 +591,55 @@ final class AppStateTests: XCTestCase {
     // MARK: - Progress On Resume
 
     @MainActor
+    func testANewTrackIgnoresTheZeroTheAmpReportsFirst() {
+        let state = AppState()
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        let baseline = state.playback.lastProgressUpdate
+
+        // Arrives a couple of seconds in, reporting a position playback has already passed.
+        state.setProgress(position: 0, duration: 519_000)
+
+        // The interpolation baseline must not move, or the bar jumps back to the start.
+        XCTAssertEqual(state.playback.lastProgressUpdate, baseline)
+        XCTAssertEqual(state.playbackPosition, 0)
+    }
+
+    @MainActor
+    func testTheDurationIsTakenFromTheZeroTheAmpReportsFirst() {
+        let state = AppState()
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+
+        state.setProgress(position: 0, duration: 519_000)
+
+        // The amp sends the duration with that first event; dropping it leaves no bar.
+        XCTAssertEqual(state.playbackDuration, 519_000)
+    }
+
+    @MainActor
+    func testTheRealPositionAfterANewTrackIsTaken() {
+        let state = AppState()
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        state.setProgress(position: 0, duration: 519_000)
+
+        state.setProgress(position: 1_000, duration: 519_000)
+
+        XCTAssertEqual(state.playbackPosition, 1_000)
+    }
+
+    @MainActor
+    func testAZeroLongAfterTheTrackStartedIsTaken() {
+        let state = AppState()
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        state.setProgress(position: 30_000, duration: 519_000)
+        // Past the window, so a zero is the track really being back at the start.
+        state.playback.positionBaselineAt = Date().addingTimeInterval(-30)
+
+        state.setProgress(position: 0, duration: 519_000)
+
+        XCTAssertEqual(state.playbackPosition, 0)
+    }
+
+    @MainActor
     func testResumeIgnoresTheZeroTheAmpReportsFirst() {
         let state = AppState()
         state.setProgress(position: 16_000, duration: 188_000)

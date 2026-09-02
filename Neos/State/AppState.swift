@@ -331,6 +331,7 @@ final class AppState: StateUpdater {
             playback.nowPlayingOptions = []
             playback.playbackPosition = 0
             playback.lastProgressUpdate = Date()
+            playback.positionBaselineAt = Date()
         }
         playback.nowPlaying = enrichedMedia
 
@@ -373,18 +374,25 @@ final class AppState: StateUpdater {
         playback.shuffleMode = mode
     }
 
+    /// The amp reports position 0 once before the real one, on a resume and on a new track
+    /// alike, up to about 3s in. Taking it moves the interpolation baseline to now and sends
+    /// the bar back to the start, which is why it is dropped near a restart. Seeking absorbs
+    /// the same quirk through its own lockout. The duration is kept either way: the amp sends
+    /// it with that first event, and dropping it leaves the bar without one.
     func setProgress(position: Int, duration: Int) {
-        // Resuming makes the amp report position 0 once before the real one, which sends the
-        // bar back to the start. Seeking absorbs the same quirk through its own lockout.
-        if position == 0, playback.playbackPosition > 0, let resumedAt = playback.resumedAt {
-            guard Date().timeIntervalSince(resumedAt) > 3 else { return }
+        playback.playbackDuration = duration
+        if position == 0, let baseline = playback.positionBaselineAt,
+           Date().timeIntervalSince(baseline) <= Self.staleZeroWindow {
+            return
         }
-        playback.resumedAt = nil
+        playback.positionBaselineAt = nil
         playback.awaitingResumeConfirmation = false
         playback.playbackPosition = position
-        playback.playbackDuration = duration
         playback.lastProgressUpdate = Date()
     }
+
+    /// Measured across twenty track starts: the first position lands between 0 and 3.1s in.
+    private static let staleZeroWindow: TimeInterval = 5
 
     func setQueue(_ items: [QueueItem]) {
         playback.queue = items

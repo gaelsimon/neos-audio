@@ -32,8 +32,9 @@ final class PlaybackState {
     var playbackPosition: Int = 0
     var playbackDuration: Int = 0
     var lastProgressUpdate: Date = .distantPast
-    /// When playback last resumed, to spot the position the amp reports before the real one.
-    var resumedAt: Date?
+    /// When the timeline last restarted, on a resume or on a new track, to spot the stale
+    /// position the amp reports before the real one.
+    var positionBaselineAt: Date?
     /// The user pressed play and the amp has not confirmed yet; the timeline holds until it does.
     var awaitingResumeConfirmation = false
 
@@ -79,7 +80,7 @@ final class PlaybackState {
         nowPlayingOptions = []
         trackMetadata = nil
         playbackPosition = 0
-        resumedAt = nil
+        positionBaselineAt = nil
         awaitingResumeConfirmation = false
         playbackDuration = 0
         lastProgressUpdate = .distantPast
