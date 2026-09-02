@@ -21,9 +21,11 @@ final class PlayerViewModel {
     private let serviceOptionTask = CancellableTaskHandle()
     private let resyncTask = CancellableTaskHandle()
 
-    init(service: any AudioService, state: AppState) {
+    /// Gaps are injectable so tests do not wait out the real schedule.
+    init(service: any AudioService, state: AppState, metadataAttemptGaps: [Double] = defaultMetadataAttemptGaps) {
         self.service = service
         self.state = state
+        self.metadataAttemptGaps = metadataAttemptGaps
     }
 
     /// Call once after init to start observing track changes and fetching DIDL-Lite metadata.
@@ -32,7 +34,8 @@ final class PlayerViewModel {
         metadataTask.replace(with: Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
-                await retryMetadataFetch()
+                // Re-enters for the track now playing; waiting would skip it until the next one.
+                if await self.retryMetadataFetch() { continue }
                 guard !Task.isCancelled else { return }
                 await withCheckedContinuation { continuation in
                     withObservationTracking {
@@ -49,22 +52,28 @@ final class PlayerViewModel {
     /// The amp reports sampleFrequency and bitsPerSample either at once or 1.3 to 4.6 seconds
     /// into a track and never in between, so an exponential backoff spends two attempts inside
     /// the first second, where the answer is not yet there, and still gives up before it is.
-    private static let metadataAttemptGaps: [Double] = [0.15, 1.35, 1.5, 2.0]
+    static let defaultMetadataAttemptGaps: [Double] = [0.15, 1.35, 1.5, 2.0]
+
+    private let metadataAttemptGaps: [Double]
 
     /// Fetches DIDL-Lite metadata while the current mid still lacks a quality description.
-    private func retryMetadataFetch() async {
+    /// Returns true when the track changed while it was working, so the caller starts again for
+    /// the one now playing instead of waiting for the track after it.
+    private func retryMetadataFetch() async -> Bool {
         let startMid = state.nowPlaying.mid
-        for gap in Self.metadataAttemptGaps {
-            guard !Task.isCancelled else { return }
-            guard state.nowPlaying.mid == startMid, !startMid.isEmpty else { return }
+        for gap in metadataAttemptGaps {
+            guard !Task.isCancelled else { return false }
+            guard !startMid.isEmpty else { return false }
+            guard state.nowPlaying.mid == startMid else { return true }
             let needsFetch = state.trackMetadata == nil || state.trackMetadata?.qualityDescription == nil
-            guard needsFetch else { return }
+            guard needsFetch else { return false }
             // Jittered, so grouped players do not all ask on the same beat.
             let delay = gap + gap * Double.random(in: -0.25...0.25)
             try? await Task.sleep(for: .milliseconds(Int(delay * 1000)))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return false }
             await fetchTrackMetadata()
         }
+        return false
     }
 
     private func fetchTrackMetadata() async {

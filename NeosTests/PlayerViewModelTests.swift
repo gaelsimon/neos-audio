@@ -394,4 +394,65 @@ final class PlayerViewModelTests: XCTestCase {
 
         XCTAssertFalse(mock.calls.contains { $0.hasPrefix("resyncPlaybackState") })
     }
+
+    // MARK: - Track Metadata Retry
+
+    /// Tiny gaps so the schedule runs in milliseconds instead of seconds.
+    private static let fastGaps: [Double] = [0.01, 0.01, 0.01, 0.01]
+
+    @MainActor
+    private func metadataFetchCount(_ mock: MockAudioService) -> Int {
+        mock.calls.filter { $0 == "fetchTrackMetadata" }.count
+    }
+
+    @MainActor
+    func testATrackChangeDuringTheAttemptsIsPickedUpImmediately() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        vm.startTrackMetadataObserver()
+        // Let the first attempt land, then move the track under the running loop.
+        try? await Task.sleep(for: .milliseconds(15))
+        state.setNowPlaying(NowPlayingMedia(song: "B", mid: "B"))
+        try? await Task.sleep(for: .milliseconds(200))
+
+        // Track B gets its own attempts. Waiting for the next mid would have stopped at A's.
+        XCTAssertGreaterThan(metadataFetchCount(mock), 2)
+    }
+
+    @MainActor
+    func testMetadataArrivingLateIsStillApplied() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        vm.startTrackMetadataObserver()
+        // Nothing to report yet, as the amp does for the first seconds of a track.
+        try? await Task.sleep(for: .milliseconds(15))
+        mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitDepth: 24, codec: "FLAC")
+        try? await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(state.trackMetadata?.qualityDescription, "24-bit / 48 kHz FLAC")
+    }
+
+    @MainActor
+    func testTheAttemptsStopOnceTheQualityIsKnown() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        mock.trackMetadata = TrackMetadata(sampleRate: 44_100, bitDepth: 16, codec: "FLAC")
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        vm.startTrackMetadataObserver()
+        try? await Task.sleep(for: .milliseconds(200))
+
+        // One answer is enough; the remaining gaps are not spent.
+        XCTAssertEqual(metadataFetchCount(mock), 1)
+    }
 }
