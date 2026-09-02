@@ -45,20 +45,22 @@ final class PlayerViewModel {
         })
     }
 
-    /// Fetches DIDL-Lite metadata up to 3 times with exponential backoff while the
-    /// current mid still lacks a quality description.
+    /// Waits before each attempt, so the four of them land at roughly 0.15s, 1.5s, 3s and 5s.
+    /// The amp reports sampleFrequency and bitsPerSample either at once or 1.3 to 4.6 seconds
+    /// into a track and never in between, so an exponential backoff spends two attempts inside
+    /// the first second, where the answer is not yet there, and still gives up before it is.
+    private static let metadataAttemptGaps: [Double] = [0.15, 1.35, 1.5, 2.0]
+
+    /// Fetches DIDL-Lite metadata while the current mid still lacks a quality description.
     private func retryMetadataFetch() async {
-        let maxRetries = 3
         let startMid = state.nowPlaying.mid
-        for attempt in 0..<maxRetries {
+        for gap in Self.metadataAttemptGaps {
             guard !Task.isCancelled else { return }
             guard state.nowPlaying.mid == startMid, !startMid.isEmpty else { return }
             let needsFetch = state.trackMetadata == nil || state.trackMetadata?.qualityDescription == nil
             guard needsFetch else { return }
-            // Exponential backoff: 100ms, 200ms, 400ms with +/-25% jitter
-            let baseDelay = 0.1 * pow(2.0, Double(attempt))
-            let jitter = baseDelay * Double.random(in: -0.25...0.25)
-            let delay = baseDelay + jitter
+            // Jittered, so grouped players do not all ask on the same beat.
+            let delay = gap + gap * Double.random(in: -0.25...0.25)
             try? await Task.sleep(for: .milliseconds(Int(delay * 1000)))
             guard !Task.isCancelled else { return }
             await fetchTrackMetadata()
