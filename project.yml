@@ -10,7 +10,7 @@ options:
 packages:
   swift-heos:
     url: https://github.com/gaelsimon/swift-heos
-    minorVersion: 0.1.0
+    minorVersion: 0.2.2
 
 settings:
   base:

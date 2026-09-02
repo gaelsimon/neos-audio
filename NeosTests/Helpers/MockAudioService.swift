@@ -296,9 +296,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         return nil
     }
 
+    var trackMetadata: TrackMetadata?
+
     func fetchTrackMetadata() async throws -> TrackMetadata? {
         calls.append("fetchTrackMetadata")
-        return nil
+        return trackMetadata
     }
 
     func getTransportActions() async throws -> Set<String> {

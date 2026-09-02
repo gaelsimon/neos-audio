@@ -394,4 +394,78 @@ final class PlayerViewModelTests: XCTestCase {
 
         XCTAssertFalse(mock.calls.contains { $0.hasPrefix("resyncPlaybackState") })
     }
+
+    // MARK: - Track Metadata Retry
+
+    /// Tiny gaps so the schedule runs in milliseconds instead of seconds.
+    private static let fastGaps: [Double] = [0.01, 0.01, 0.01, 0.01]
+
+    @MainActor
+    private func metadataFetchCount(_ mock: MockAudioService) -> Int {
+        mock.calls.filter { $0 == "fetchTrackMetadata" }.count
+    }
+
+    /// Waits for a condition instead of a fixed delay, so a loaded machine does not decide the
+    /// outcome. Returns whether it held before giving up.
+    @MainActor
+    private func eventually(_ condition: () -> Bool) async -> Bool {
+        for _ in 0..<200 {
+            if condition() { return true }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return condition()
+    }
+
+    @MainActor
+    func testATrackChangeDuringTheAttemptsIsPickedUpImmediately() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        vm.startTrackMetadataObserver()
+        // Let the first attempt land, then move the track under the running loop.
+        _ = await eventually { metadataFetchCount(mock) >= 1 }
+        state.setNowPlaying(NowPlayingMedia(song: "B", mid: "B"))
+
+        // Track B gets its own attempts. Waiting for the next mid would have stopped at A's.
+        let reachedB = await eventually { metadataFetchCount(mock) > 2 }
+        XCTAssertTrue(reachedB, "only \(metadataFetchCount(mock)) fetches; B never got its own")
+    }
+
+    @MainActor
+    func testMetadataArrivingLateIsStillApplied() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        vm.startTrackMetadataObserver()
+        // Nothing to report yet, as the amp does for the first seconds of a track.
+        _ = await eventually { metadataFetchCount(mock) >= 1 }
+        mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitDepth: 24, codec: "FLAC")
+
+        _ = await eventually { state.trackMetadata?.qualityDescription != nil }
+        XCTAssertEqual(state.trackMetadata?.qualityDescription, "24-bit / 48 kHz FLAC")
+    }
+
+    @MainActor
+    func testTheAttemptsStopOnceTheQualityIsKnown() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        mock.trackMetadata = TrackMetadata(sampleRate: 44_100, bitDepth: 16, codec: "FLAC")
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+
+        state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
+        vm.startTrackMetadataObserver()
+        _ = await eventually { state.trackMetadata?.qualityDescription != nil }
+        // Long enough that further attempts would have landed had the loop kept going.
+        try? await Task.sleep(for: .milliseconds(150))
+
+        // One answer is enough; the remaining gaps are not spent.
+        XCTAssertEqual(metadataFetchCount(mock), 1)
+    }
 }

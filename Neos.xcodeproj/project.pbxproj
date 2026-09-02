@@ -1267,7 +1267,7 @@
 			repositoryURL = "https://github.com/gaelsimon/swift-heos";
 			requirement = {
 				kind = upToNextMinorVersion;
-				minimumVersion = 0.1.0;
+				minimumVersion = 0.2.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
