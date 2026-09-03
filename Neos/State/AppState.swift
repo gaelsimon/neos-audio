@@ -326,8 +326,13 @@ final class AppState: StateUpdater {
             }
         }
 
-        if enrichedMedia.mid != playback.nowPlaying.mid {
+        // A different track, which on a station is a different song under the same mid.
+        if enrichedMedia.isDifferentTrack(from: playback.nowPlaying) {
             playback.trackMetadata = nil
+        }
+        // A different mid is a different stream, and only that restarts the timeline. A station
+        // moving to its next song keeps playing, so the position must not go back to zero.
+        if enrichedMedia.mid != playback.nowPlaying.mid {
             playback.nowPlayingOptions = []
             playback.playbackPosition = 0
             playback.lastProgressUpdate = Date()

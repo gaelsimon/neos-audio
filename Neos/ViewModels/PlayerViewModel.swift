@@ -39,7 +39,7 @@ final class PlayerViewModel {
                 guard !Task.isCancelled else { return }
                 await withCheckedContinuation { continuation in
                     withObservationTracking {
-                        _ = self.state.nowPlaying.mid
+                        _ = self.state.nowPlaying
                     } onChange: {
                         continuation.resume()
                     }
@@ -56,15 +56,15 @@ final class PlayerViewModel {
 
     private let metadataAttemptGaps: [Double]
 
-    /// Fetches DIDL-Lite metadata while the current mid still lacks a quality description.
+    /// Fetches DIDL-Lite metadata while the current track still lacks a quality description.
     /// Returns true when the track changed while it was working, so the caller starts again for
     /// the one now playing instead of waiting for the track after it.
     private func retryMetadataFetch() async -> Bool {
-        let startMid = state.nowPlaying.mid
+        let startTrack = state.nowPlaying
         for gap in metadataAttemptGaps {
             guard !Task.isCancelled else { return false }
-            guard !startMid.isEmpty else { return false }
-            guard state.nowPlaying.mid == startMid else { return true }
+            guard !state.nowPlaying.mid.isEmpty else { return false }
+            guard !state.nowPlaying.isDifferentTrack(from: startTrack) else { return true }
             let needsFetch = state.trackMetadata == nil || state.trackMetadata?.qualityDescription == nil
             guard needsFetch else { return false }
             // Jittered, so grouped players do not all ask on the same beat.

@@ -591,6 +591,44 @@ final class AppStateTests: XCTestCase {
     // MARK: - Progress On Resume
 
     @MainActor
+    func testAStationMovingToItsNextSongDropsTheOldTrackMetadata() {
+        let state = AppState()
+        let station = "http://s-09.wefunkradio.com:81/wefunk64.mp3"
+        state.setNowPlaying(NowPlayingMedia(song: "estrelar", imageURL: "http://art/a.jpg", mid: station))
+        state.setTrackMetadata(TrackMetadata(codec: "MP3", albumArtURI: "http://old/art.png"))
+
+        // Same mid, the station's own URL, and a different song. This is a different track.
+        state.setNowPlaying(NowPlayingMedia(song: "i'll be gone", imageURL: "http://art/b.jpg", mid: station))
+
+        XCTAssertNil(state.trackMetadata)
+    }
+
+    @MainActor
+    func testAStationMovingToItsNextSongKeepsPlayingTheTimeline() {
+        let state = AppState()
+        let station = "http://s-09.wefunkradio.com:81/wefunk64.mp3"
+        state.setNowPlaying(NowPlayingMedia(song: "estrelar", imageURL: "http://art/a.jpg", mid: station))
+        state.setProgress(position: 90_000, duration: 0)
+
+        state.setNowPlaying(NowPlayingMedia(song: "i'll be gone", imageURL: "http://art/b.jpg", mid: station))
+
+        // The stream never stopped, so the position must not go back to the start.
+        XCTAssertEqual(state.playbackPosition, 90_000)
+    }
+
+    @MainActor
+    func testTheSameTrackReportedAgainKeepsItsMetadata() {
+        let state = AppState()
+        state.setNowPlaying(NowPlayingMedia(song: "estrelar", imageURL: "http://art/a.jpg", mid: "s1"))
+        state.setTrackMetadata(TrackMetadata(codec: "MP3"))
+
+        // The amp repeats now-playing events for the track already on screen.
+        state.setNowPlaying(NowPlayingMedia(song: "estrelar", imageURL: "http://art/a.jpg", mid: "s1"))
+
+        XCTAssertNotNil(state.trackMetadata)
+    }
+
+    @MainActor
     func testANewTrackIgnoresTheZeroTheAmpReportsFirst() {
         let state = AppState()
         state.setNowPlaying(NowPlayingMedia(song: "A", mid: "A"))
