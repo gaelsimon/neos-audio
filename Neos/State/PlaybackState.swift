@@ -1,6 +1,17 @@
 import Foundation
 import NeosDomain
 
+extension NowPlayingMedia {
+    /// A station keeps one mid for every song it plays, so the mid alone names the station rather
+    /// than what is on it. A song change only counts once the device has settled, which it signals
+    /// by sending artwork: before that it reports the stream's format, then an empty title, and
+    /// treating either as a new track would throw away metadata that belongs to this one.
+    func isDifferentTrack(from other: NowPlayingMedia) -> Bool {
+        if mid != other.mid { return true }
+        return song != other.song && !imageURL.isEmpty
+    }
+}
+
 @Observable
 @MainActor
 final class PlaybackState {
