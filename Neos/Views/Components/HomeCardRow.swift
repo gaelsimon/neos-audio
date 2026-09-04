@@ -4,6 +4,7 @@ import NeosDomain
 struct HomeCardRow: View {
     let items: [BrowseItem]
     let sid: Int
+    var state: AppState?
     let onTap: (BrowseItem, Int) -> Void
 
     var body: some View {
@@ -13,7 +14,9 @@ struct HomeCardRow: View {
                     HomeCard(
                         imageURL: item.resolvedImageURL,
                         title: item.displayTitle,
-                        subtitle: item.artist
+                        subtitle: item.artist,
+                        externalLink: ExternalLinkMenu.make(for: item, sid: sid, sources: state?.musicSources ?? []),
+                        state: state
                     ) {
                         onTap(item, item.sid ?? sid)
                     }

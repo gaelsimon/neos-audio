@@ -111,7 +111,7 @@ final class QueueViewModelTests: XCTestCase {
         XCTAssertTrue(vm.isLoadingQueue)
 
         await backend.resume(pid: 42, with: [])
-        await yieldForTask()
+        await waitUntil { !vm.isLoadingQueue }
 
         XCTAssertFalse(vm.isLoadingQueue)
     }

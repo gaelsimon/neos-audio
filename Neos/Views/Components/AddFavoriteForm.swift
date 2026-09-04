@@ -136,13 +136,19 @@ struct AddFavoriteForm: View {
 
         guard panel.runModal() == .OK, let sourceURL = panel.url else { return }
         guard let image = NSImage(contentsOf: sourceURL) else { return }
+        storeArtwork(image)
+    }
 
+    /// Each pick writes its own file, so the one it replaces has to go with it.
+    private func storeArtwork(_ image: NSImage) {
         let mid = streamURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = mid.isEmpty ? UUID().uuidString : mid
-        if let dest = StationImageEditor.copyToAppSupport(image: image, forMID: key) {
-            previewImage = image
-            pendingImageFileURL = dest
+        guard let dest = StationImageEditor.copyToAppSupport(image: image, forMID: key) else { return }
+        if let previous = pendingImageFileURL, previous != dest {
+            try? FileManager.default.removeItem(at: previous)
         }
+        previewImage = image
+        pendingImageFileURL = dest
     }
 
     private func downloadImageFromURL() {
@@ -159,12 +165,7 @@ struct AddFavoriteForm: View {
                     isDownloadingImage = false
                     return
                 }
-                let mid = streamURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                let key = mid.isEmpty ? UUID().uuidString : mid
-                if let dest = StationImageEditor.copyToAppSupport(image: image, forMID: key) {
-                    previewImage = image
-                    pendingImageFileURL = dest
-                }
+                storeArtwork(image)
             } catch {
                 // Download failed; user can retry
             }

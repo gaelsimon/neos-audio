@@ -77,7 +77,7 @@ struct HomeView: View {
                 isLoading: homeVM.isLoadingRecents,
                 onSeeAll: { browseVM.selectSource(MusicSource(sid: 1026, name: "History")) }
             ) {
-                HomeCardRow(items: homeVM.recentlyPlayed, sid: 1026) { item, sid in
+                HomeCardRow(items: homeVM.recentlyPlayed, sid: 1026, state: state) { item, sid in
                     homeVM.playItem(item, sid: sid)
                 }
             }
@@ -99,7 +99,7 @@ struct HomeView: View {
                 isLoading: homeVM.isLoadingFavorites,
                 onSeeAll: { browseVM.selectSource(MusicSource(sid: 1028, name: "Stations")) }
             ) {
-                HomeCardRow(items: homeVM.favorites, sid: 1028) { item, sid in
+                HomeCardRow(items: homeVM.favorites, sid: 1028, state: state) { item, sid in
                     homeVM.playItem(item, sid: sid)
                 }
             }
@@ -193,7 +193,7 @@ struct HomeView: View {
                     }
                 }
             ) {
-                HomeCardRow(items: items, sid: source.sid) { item, sid in
+                HomeCardRow(items: items, sid: source.sid, state: state) { item, sid in
                     handleServiceCardTap(item, sid: sid)
                 }
             }

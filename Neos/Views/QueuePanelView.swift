@@ -112,7 +112,9 @@ struct QueuePanelView: View {
                             isStation: false,
                             isNowPlaying: false,
                             showRemoveButton: false,
-                            onTap: { viewModel.playRecentItem(item) }
+                            onTap: { viewModel.playRecentItem(item) },
+                            externalLink: item.externalLink,
+                            state: state
                         )
                     }
                 }
@@ -130,7 +132,9 @@ struct QueuePanelView: View {
                             isStation: true,
                             isNowPlaying: false,
                             showRemoveButton: false,
-                            onTap: { viewModel.playHistoryStation(item) }
+                            onTap: { viewModel.playHistoryStation(item) },
+                            externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
+                            state: state
                         )
                         .accessibilityIdentifier(AccessibilityID.QueuePanel.historyRow(index))
                         .accessibilityLabel("\(item.name), played recently")
@@ -154,7 +158,9 @@ struct QueuePanelView: View {
                         isStation: false,
                         isNowPlaying: true,
                         showRemoveButton: false,
-                        onTap: nil
+                        onTap: nil,
+                        externalLink: ExternalLinkMenu.make(for: queueItem, sourceName: nil),
+                        state: state
                     )
                     .id("now-playing")
                 } else {
@@ -166,7 +172,9 @@ struct QueuePanelView: View {
                         isStation: state.nowPlaying.station != nil,
                         isNowPlaying: true,
                         showRemoveButton: false,
-                        onTap: nil
+                        onTap: nil,
+                        externalLink: ExternalLinkMenu.make(for: state.nowPlaying, sources: state.musicSources),
+                        state: state
                     )
                     .id("now-playing")
                 }
@@ -190,7 +198,9 @@ struct QueuePanelView: View {
                         isNowPlaying: false,
                         showRemoveButton: true,
                         onTap: { viewModel.playQueueItem(item) },
-                        onRemove: { viewModel.removeQueueItem(item) }
+                        onRemove: { viewModel.removeQueueItem(item) },
+                        externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
+                        state: state
                     )
                     .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextRow(item.qid))
                     .accessibilityLabel("\(item.song) by \(item.artist), up next")

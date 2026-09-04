@@ -6,6 +6,8 @@ struct HomeCard: View {
     let title: String
     var subtitle: String?
     var isCircular: Bool = false
+    var externalLink: ExternalLinkMenu?
+    var state: AppState?
     let onTap: () -> Void
 
     var body: some View {
@@ -47,5 +49,8 @@ struct HomeCard: View {
             }
         }
         .buttonStyle(.plain)
+        .contextMenu(externalLink.map { link in
+            ContextMenu { ExternalLinkMenuItems(link: link, state: state) }
+        })
     }
 }
