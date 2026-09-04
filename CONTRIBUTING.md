@@ -47,7 +47,32 @@ git clone https://github.com/gaelsimon/swift-heos && cd swift-heos && swift test
 ./scripts/release.sh 1.6.0
 ```
 
-This produces an **unsigned** DMG in `build/`. CI does the same for tagged releases. Signing/notarization would require an Apple Developer Program subscription ($99/year); happy to wire it up later if someone wants to fund it.
+With no credentials in the environment this produces an ad-hoc signed DMG in `build/`, which shows
+the Gatekeeper warning on first launch. Set `CODE_SIGN_IDENTITY`, `DEVELOPMENT_TEAM` and the
+`NOTARY_*` variables to get a signed, notarised one.
+
+### Signing and notarisation in CI
+
+The Release workflow signs and notarises when the repository holds Developer ID credentials, and
+falls back to an ad-hoc DMG when it does not, so a fork still builds. Enabling it needs an Apple
+Developer Program membership and these repository secrets:
+
+| Secret | What it is |
+|---|---|
+| `MACOS_CERTIFICATE` | Developer ID Application certificate, exported as `.p12`, base64 encoded |
+| `MACOS_CERTIFICATE_PWD` | Password set when exporting the `.p12` |
+| `KEYCHAIN_PASSWORD` | Any string; unlocks the throwaway keychain the runner creates |
+| `APPLE_TEAM_ID` | Ten-character team identifier |
+| `NOTARY_KEY` | App Store Connect API key, the `.p8` file, base64 encoded |
+| `NOTARY_KEY_ID` | Key ID shown next to the key in App Store Connect |
+| `NOTARY_ISSUER_ID` | Issuer ID shown above the key list |
+
+Encode the two files with `base64 -i cert.p12 | pbcopy`. An App Store Connect API key is used rather
+than an Apple ID password because it survives a password change and needs no second factor.
+
+Notarisation is an automated malware scan, not App Review: there are no guidelines to satisfy and
+nothing to submit for approval. It usually takes two to fifteen minutes, which is why the release job
+allows more time than the build needs.
 
 ## Architecture
 
