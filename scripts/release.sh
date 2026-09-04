@@ -19,6 +19,12 @@ CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 CODE_SIGN_STYLE="${CODE_SIGN_STYLE:-Manual}"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-}"
 
+# Notarisation credentials, absent on an ad-hoc build. App Store Connect API key, not an
+# Apple ID password: it survives a password change and needs no second factor in CI.
+NOTARY_KEY_PATH="${NOTARY_KEY_PATH:-}"
+NOTARY_KEY_ID="${NOTARY_KEY_ID:-}"
+NOTARY_ISSUER_ID="${NOTARY_ISSUER_ID:-}"
+
 echo "==> Building Neos v${VERSION} Release archive (signing: ${CODE_SIGN_IDENTITY})..."
 xcodebuild -project "$PROJECT_DIR/Neos.xcodeproj" \
     -scheme Neos \
@@ -36,6 +42,9 @@ if [ ! -d "$APP_PATH" ]; then
     exit 1
 fi
 
+echo "==> Verifying signature..."
+codesign --verify --strict --verbose=1 "$APP_PATH"
+
 echo "==> Creating DMG..."
 rm -rf "$DMG_DIR" "$DMG_PATH"
 mkdir -p "$DMG_DIR"
@@ -49,6 +58,26 @@ hdiutil create -volname "Neos" \
     -quiet
 
 rm -rf "$DMG_DIR"
+
+# Notarising the DMG and stapling the ticket to it means the downloaded file clears Gatekeeper
+# on its own, with no right-click and no quarantine flag to remove.
+if [ "$CODE_SIGN_IDENTITY" = "-" ]; then
+    echo "==> Ad-hoc signed: skipping notarisation. First launch will show the Gatekeeper warning."
+elif [ -z "$NOTARY_KEY_PATH" ] || [ ! -f "$NOTARY_KEY_PATH" ]; then
+    echo "==> No notary credentials: skipping notarisation."
+else
+    echo "==> Notarising (usually 2-15 minutes)..."
+    xcrun notarytool submit "$DMG_PATH" \
+        --key "$NOTARY_KEY_PATH" \
+        --key-id "$NOTARY_KEY_ID" \
+        --issuer "$NOTARY_ISSUER_ID" \
+        --wait
+
+    echo "==> Stapling ticket..."
+    xcrun stapler staple "$DMG_PATH"
+    xcrun stapler validate "$DMG_PATH"
+    spctl --assess --type open --context context:primary-signature -v "$DMG_PATH"
+fi
 
 DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1 | xargs)
 echo ""
