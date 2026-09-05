@@ -36,7 +36,7 @@ final class BrowseViewModelTests: XCTestCase {
             sid: 202,
             with: BrowseResult(items: [BrowseItem(name: "B track", cid: "b-cid", browsable: true)])
         )
-        await yieldForTask()
+        await waitUntil { viewModel.items.map(\.name) == ["B track"] }
 
         XCTAssertEqual(viewModel.items.map(\.name), ["B track"])
         XCTAssertEqual(viewModel.browseStack.last?.sid, 202)

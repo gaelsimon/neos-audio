@@ -67,3 +67,34 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Sonar's own PR comment gives a count and a link. Re-emitting the findings as workflow
+      # annotations puts them on the diff, where the reviewer already is.
+      - name: Annotate SonarCloud findings
+        if: ${{ env.SONAR_TOKEN != '' && github.event_name == 'pull_request' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          set -euo pipefail
+          TASK_FILE=.scannerwork/report-task.txt
+          if [ ! -f "$TASK_FILE" ]; then
+            echo "::notice::No scanner report found; skipping annotations."
+            exit 0
+          fi
+          # The scanner uploads and returns; SonarCloud analyses asynchronously, and issues are
+          # only queryable once the compute-engine task leaves the queue.
+          CE_URL=$(sed -n 's/^ceTaskUrl=//p' "$TASK_FILE")
+          STATUS=UNKNOWN
+          for _ in $(seq 1 60); do
+            STATUS=$(curl -sSf -u "$SONAR_TOKEN:" "$CE_URL" | jq -r '.task.status')
+            case "$STATUS" in
+              PENDING|IN_PROGRESS) sleep 5 ;;
+              *) break ;;
+            esac
+          done
+          echo "Analysis task finished as $STATUS"
+          PROJECT=$(sed -n 's/^sonar.projectKey=//p' sonar-project.properties)
+          curl -sSf -u "$SONAR_TOKEN:" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=$PROJECT&pullRequest=$PR_NUMBER&issueStatuses=OPEN,CONFIRMED&ps=100" \
+            | jq -r '.issues[] | "::warning file=\(.component | sub("^[^:]+:";"")),line=\(.line // 1),title=Sonar \(.rule)::\(.message)"'

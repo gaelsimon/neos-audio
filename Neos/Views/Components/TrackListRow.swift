@@ -28,6 +28,7 @@ struct TrackListRow: View {
     var onAlbumView: (() -> Void)?
     var serviceOptions: [ServiceOption] = []
     var onServiceOption: ((ServiceOption) -> Void)?
+    var externalLink: ExternalLinkMenu?
     var state: AppState?
     var imageKey: String?
     var onSetCustomImage: (() -> Void)?
@@ -78,10 +79,17 @@ struct TrackListRow: View {
 
     // MARK: - Action Menu
 
+    private var hasQueueActions: Bool { onPlayNext != nil || onAddToQueue != nil }
+
+    private var hasNavigationActions: Bool { onArtistView != nil || onAlbumView != nil }
+
+    private var hasArtworkActions: Bool {
+        onSetCustomImage != nil || state?.hasCustomStationImage(forMID: imageKey) == true
+    }
+
     private var hasActions: Bool {
-        onPlayNext != nil || onAddToQueue != nil || onArtistView != nil || onAlbumView != nil
-            || !serviceOptions.isEmpty
-            || onSetCustomImage != nil || state?.hasCustomStationImage(forMID: imageKey) == true
+        hasQueueActions || hasNavigationActions || !serviceOptions.isEmpty
+            || externalLink != nil || hasArtworkActions
     }
 
     @ViewBuilder
@@ -115,7 +123,7 @@ struct TrackListRow: View {
                 }
             }
 
-            if (onPlayNext != nil || onAddToQueue != nil) && (onArtistView != nil || onAlbumView != nil) {
+            if hasQueueActions && hasNavigationActions {
                 Divider()
             }
 
@@ -131,7 +139,7 @@ struct TrackListRow: View {
             }
 
             if !serviceOptions.isEmpty {
-                if onPlayNext != nil || onAddToQueue != nil || onArtistView != nil || onAlbumView != nil {
+                if hasQueueActions || hasNavigationActions {
                     Divider()
                 }
                 ForEach(serviceOptions) { option in
@@ -139,11 +147,28 @@ struct TrackListRow: View {
                 }
             }
 
-            if (onPlayNext != nil || onAddToQueue != nil || onArtistView != nil || onAlbumView != nil || !serviceOptions.isEmpty)
-                && (onSetCustomImage != nil || state?.hasCustomStationImage(forMID: imageKey) == true) {
+            externalLinkItems
+
+            artworkItems
+        }
+    }
+
+    @ViewBuilder
+    private var externalLinkItems: some View {
+        if let externalLink {
+            if hasQueueActions || hasNavigationActions || !serviceOptions.isEmpty {
                 Divider()
             }
+            ExternalLinkMenuItems(link: externalLink, state: state)
+        }
+    }
 
+    @ViewBuilder
+    private var artworkItems: some View {
+        if hasArtworkActions {
+            if hasQueueActions || hasNavigationActions || !serviceOptions.isEmpty || externalLink != nil {
+                Divider()
+            }
             if let onSetCustomImage {
                 Button {
                     onSetCustomImage()
@@ -151,7 +176,6 @@ struct TrackListRow: View {
                     Label("Set Custom Artwork…", systemImage: "photo")
                 }
             }
-
             if let imageKey, let state, state.hasCustomStationImage(forMID: imageKey) {
                 Button(role: .destructive) {
                     state.removeCustomStationImage(forMID: imageKey)

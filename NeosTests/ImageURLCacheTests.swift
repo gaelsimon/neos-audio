@@ -70,13 +70,19 @@ final class ImageURLCacheTests: XCTestCase {
         XCTAssertLessThanOrEqual(all.count, 5000)
     }
 
-    func testPersistsToDisk() throws {
+    /// Non-throwing on purpose: an error escaping here aborts the whole test process
+    /// instead of failing this one test.
+    func testPersistsToDisk() {
         ImageURLCache.cacheEntries([(mid: "s100", imageURL: "https://example.com/a.png")])
 
-        XCTAssertTrue(FileManager.default.fileExists(atPath: Self.fileURL.path))
-
-        let data = try Data(contentsOf: Self.fileURL)
-        let map = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: [String: Any]])
+        guard let data = FileManager.default.contents(atPath: Self.fileURL.path) else {
+            XCTFail("cache file was not written to \(Self.fileURL.path)")
+            return
+        }
+        guard let map = (try? JSONSerialization.jsonObject(with: data)) as? [String: [String: Any]] else {
+            XCTFail("cache file is not a JSON object")
+            return
+        }
         XCTAssertEqual(map["s100"]?["url"] as? String, "https://example.com/a.png")
     }
 

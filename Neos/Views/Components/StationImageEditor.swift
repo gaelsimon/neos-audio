@@ -3,8 +3,8 @@ import AppKit
 import CommonCrypto
 import UniformTypeIdentifiers
 
-/// Popover editor for setting a custom artwork image on a station/track.
-/// Images are always copied to Application Support for offline use.
+/// Editor for setting a custom artwork image on a station/track.
+/// The chosen image is copied to Application Support on save, for offline use.
 struct StationImageEditor: View {
     let mid: String
     let name: String
@@ -13,7 +13,8 @@ struct StationImageEditor: View {
     let onDismiss: () -> Void
 
     @State private var previewImage: NSImage?
-    @State private var pendingFileURL: URL?
+    /// Set once the user picks or fetches an image, and copied to disk only on save.
+    @State private var pendingImage: NSImage?
     @State private var showURLField = false
     @State private var urlText = ""
     @State private var isDownloading = false
@@ -78,7 +79,7 @@ struct StationImageEditor: View {
                 Button("Save") { save() }
                     .buttonStyle(.borderedProminent)
                     .tint(DS.Colors.accent)
-                    .disabled(pendingFileURL == nil)
+                    .disabled(pendingImage == nil)
             }
         }
         .padding(DS.Spacing.xl)
@@ -107,13 +108,12 @@ struct StationImageEditor: View {
 
     // MARK: - Actions
 
+    /// Shows what is already set. Save stays disabled until a new image is chosen.
     private func loadExisting() {
         guard let existing = state.customStationImages[mid],
               let url = URL(string: existing),
-              url.isFileURL,
-              let image = NSImage(contentsOf: url) else { return }
-        previewImage = image
-        pendingFileURL = url
+              url.isFileURL else { return }
+        previewImage = NSImage(contentsOf: url)
     }
 
     private func chooseLocalImage() {
@@ -125,11 +125,8 @@ struct StationImageEditor: View {
 
         guard panel.runModal() == .OK, let sourceURL = panel.url else { return }
         guard let image = NSImage(contentsOf: sourceURL) else { return }
-
-        if let dest = Self.copyToAppSupport(image: image, forMID: mid) {
-            previewImage = image
-            pendingFileURL = dest
-        }
+        previewImage = image
+        pendingImage = image
     }
 
     private func downloadFromURL() {
@@ -146,10 +143,8 @@ struct StationImageEditor: View {
                     isDownloading = false
                     return
                 }
-                if let dest = Self.copyToAppSupport(image: image, forMID: mid) {
-                    previewImage = image
-                    pendingFileURL = dest
-                }
+                previewImage = image
+                pendingImage = image
             } catch {
                 // Download failed; user can retry
             }
@@ -158,33 +153,40 @@ struct StationImageEditor: View {
     }
 
     private func save() {
-        guard let pendingFileURL else { return }
-        state.setCustomStationImage(url: pendingFileURL.absoluteString, forMID: mid)
+        guard let pendingImage, let dest = Self.copyToAppSupport(image: pendingImage, forMID: mid) else { return }
+        deleteStoredFile(keeping: dest)
+        state.setCustomStationImage(url: dest.absoluteString, forMID: mid)
         onDismiss()
     }
 
     private func removeArtwork() {
-        // Delete file from disk
-        if let existing = state.customStationImages[mid],
-           let url = URL(string: existing), url.isFileURL {
-            try? FileManager.default.removeItem(at: url)
-        }
+        deleteStoredFile(keeping: nil)
         state.removeCustomStationImage(forMID: mid)
         onDismiss()
     }
 
+    /// The artwork already on disk is orphaned as soon as a different image takes its place.
+    private func deleteStoredFile(keeping replacement: URL?) {
+        guard let existing = state.customStationImages[mid],
+              let url = URL(string: existing), url.isFileURL, url != replacement else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
     // MARK: - File Helpers
 
+    /// The file name mixes the media id with the image bytes, so a replacement lands on a new URL.
+    /// Reusing one name per station would leave the previous bitmap in the image cache, which is
+    /// keyed by URL, and the row would keep showing the artwork the user just replaced.
     static func copyToAppSupport(image: NSImage, forMID mid: String) -> URL? {
-        let dir = URL.applicationSupportDirectory.appendingPathComponent("Neos/CustomArtwork", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-
-        let hash = sha256Hex(mid)
-        let dest = dir.appendingPathComponent("\(hash).png")
-
         guard let tiff = image.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff),
               let png = rep.representation(using: .png, properties: [:]) else { return nil }
+
+        let dir = URL.applicationSupportDirectory.appendingPathComponent("Neos/CustomArtwork", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        let name = "\(sha256Hex(mid))-\(sha256Hex(png).prefix(16)).png"
+        let dest = dir.appendingPathComponent(name)
 
         do {
             try png.write(to: dest, options: .atomic)
@@ -195,7 +197,10 @@ struct StationImageEditor: View {
     }
 
     private static func sha256Hex(_ string: String) -> String {
-        let data = Data(string.utf8)
+        sha256Hex(Data(string.utf8))
+    }
+
+    private static func sha256Hex(_ data: Data) -> String {
         var hash = [UInt8](repeating: 0, count: 32)
         data.withUnsafeBytes { buffer in
             _ = CC_SHA256(buffer.baseAddress, CC_LONG(buffer.count), &hash)
