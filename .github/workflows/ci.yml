@@ -14,7 +14,7 @@ jobs:
   app-build:
     name: App build & lint
     runs-on: macos-14
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,11 +55,17 @@ jobs:
             -scheme Neos \
             -destination 'platform=macOS' \
             -only-testing:NeosTests \
+            -enableCodeCoverage YES \
+            -resultBundlePath build/Neos.xcresult \
             CODE_SIGN_IDENTITY=- \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGNING_REQUIRED=NO \
             DEVELOPMENT_TEAM= \
             | xcbeautify
+
+      # Must run before the scan: the scanner reads the report from disk.
+      - name: Convert coverage for SonarCloud
+        run: python3 scripts/xccov-to-sonar.py build/Neos.xcresult coverage-sonar.xml Neos/
 
       - name: SonarCloud Scan
         if: ${{ env.SONAR_TOKEN != '' }}
