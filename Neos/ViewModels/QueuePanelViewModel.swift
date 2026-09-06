@@ -33,6 +33,14 @@ enum RecentItem: Identifiable {
         case .history(let b): return b.imageURL
         }
     }
+
+    /// History mixes services under one source, so the link is derived from the item itself.
+    var externalLink: ExternalLinkMenu? {
+        switch self {
+        case .queue(let q): return ExternalLinkMenu.make(for: q, sourceName: nil)
+        case .history(let b): return ExternalLinkMenu.make(for: b, sourceName: nil)
+        }
+    }
 }
 
 @Observable

@@ -36,6 +36,12 @@ struct NowPlayingToolbar: View {
         browseVM.pushArtistSearchNavigate(sid: sid, artistName: state.nowPlaying.artist)
     }
 
+    // MARK: - External Link
+
+    private var externalLink: ExternalLinkMenu? {
+        ExternalLinkMenu.make(for: state.nowPlaying, sources: state.musicSources)
+    }
+
     // MARK: - Service Options
 
     @ViewBuilder private var serviceOptionButtons: some View {
@@ -162,6 +168,10 @@ struct NowPlayingToolbar: View {
             }
         }
         .frame(maxWidth: 220, alignment: .leading)
+        // Optional form, like the rows: an unrecognised source must not open an empty menu.
+        .contextMenu(externalLink.map { link in
+            ContextMenu { ExternalLinkMenuItems(link: link, state: state) }
+        })
     }
 
     // MARK: - Background

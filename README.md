@@ -37,6 +37,7 @@ Using the Tidal desktop app with HEOS isn't great either. It only supports Tidal
 - Search across services with category filters (tracks, artists, albums)
 - Full-screen Now Playing view with album art and queue panel
 - Click an artist or album name to jump to their page
+- Open any track, album, or station in its own service, or copy a shareable link
 - Automatic speaker discovery on your local network
 - Power on/off your receiver
 - HEOS account sign-in for favorites across devices
@@ -79,6 +80,8 @@ Neos talks directly to your speaker over the local network. No cloud, no interne
 | UPnP ACT Denon | HTTP 60006 | Hardware volume limit |
 | AVR Telnet | TCP 23 | Power on/off |
 | SSDP | UDP 1900 | Speaker discovery |
+
+One feature does leave your network. SoundCloud never reports a track's public address over HEOS, so opening or copying a SoundCloud link fetches the track's public embed page to read it, sending the track id and nothing else. No account, no API key. Every other link is built from identifiers the speaker already gave Neos.
 
 ## Built With
 

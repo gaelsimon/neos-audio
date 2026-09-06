@@ -83,7 +83,9 @@ struct QueueView: View {
                             showAlbum: true,
                             onAlbumTap: albumTapHandler(for: item),
                             onArtistTap: artistTapHandler(for: item),
-                            isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist
+                            isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
+                            externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
+                            state: state
                         ) {
                             viewModel.playItem(item)
                         }

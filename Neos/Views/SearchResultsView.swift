@@ -223,6 +223,8 @@ struct SearchResultsView: View {
                         title: item.displayTitle,
                         subtitle: item.artist,
                         isCircular: circular,
+                        externalLink: ExternalLinkMenu.make(for: item, sid: sid, sources: state.musicSources),
+                        state: state,
                         onTap: { handleItemTap(item, sid: sid) }
                     )
                 }
@@ -237,6 +239,8 @@ struct SearchResultsView: View {
                 BrowseItemRow(
                     item: item,
                     isNowPlaying: isNowPlaying(item),
+                    externalLink: ExternalLinkMenu.make(for: item, sourceName: searchVM.musicSource(for: sid)?.name),
+                    state: state,
                     onTap: { handleItemTap(item, sid: sid) },
                     onAddToQueue: { handleAddToQueue(item, sid: sid) }
                 )

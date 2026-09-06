@@ -11,6 +11,7 @@ struct BrowseItemRow: View {
     var onAlbumView: (() -> Void)?
     var serviceOptions: [ServiceOption] = []
     var onServiceOption: ((ServiceOption) -> Void)?
+    var externalLink: ExternalLinkMenu?
     var state: AppState?
     var onSetCustomImage: (() -> Void)?
     let onTap: () -> Void
@@ -79,10 +80,15 @@ struct BrowseItemRow: View {
 
     // MARK: - Action Menu
 
+    private var hasNavigationActions: Bool { onArtistView != nil || onAlbumView != nil }
+
+    private var hasArtworkActions: Bool {
+        onSetCustomImage != nil || state?.hasCustomStationImage(forMID: item.imageKey) == true
+    }
+
     private var hasActions: Bool {
-        onPlayNext != nil || onArtistView != nil || onAlbumView != nil
-            || !serviceOptions.isEmpty
-            || onSetCustomImage != nil || state?.hasCustomStationImage(forMID: item.imageKey) == true
+        onPlayNext != nil || hasNavigationActions || !serviceOptions.isEmpty
+            || externalLink != nil || hasArtworkActions
     }
 
     @ViewBuilder
@@ -111,7 +117,7 @@ struct BrowseItemRow: View {
                 }
             }
 
-            if (onPlayNext != nil) && (onArtistView != nil || onAlbumView != nil) {
+            if onPlayNext != nil && hasNavigationActions {
                 Divider()
             }
 
@@ -127,7 +133,7 @@ struct BrowseItemRow: View {
             }
 
             if !serviceOptions.isEmpty {
-                if onPlayNext != nil || onArtistView != nil || onAlbumView != nil {
+                if onPlayNext != nil || hasNavigationActions {
                     Divider()
                 }
                 ForEach(serviceOptions) { option in
@@ -135,8 +141,15 @@ struct BrowseItemRow: View {
                 }
             }
 
-            if (onPlayNext != nil || onArtistView != nil || onAlbumView != nil || !serviceOptions.isEmpty)
-                && (onSetCustomImage != nil || state?.hasCustomStationImage(forMID: item.imageKey) == true) {
+            if let externalLink {
+                if onPlayNext != nil || hasNavigationActions || !serviceOptions.isEmpty {
+                    Divider()
+                }
+                ExternalLinkMenuItems(link: externalLink, state: state)
+            }
+
+            if (onPlayNext != nil || hasNavigationActions || !serviceOptions.isEmpty || externalLink != nil)
+                && hasArtworkActions {
                 Divider()
             }
 

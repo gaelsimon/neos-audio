@@ -3,6 +3,8 @@ import NeosDomain
 
 struct BrowseGridTile: View {
     let item: BrowseItem
+    var externalLink: ExternalLinkMenu?
+    var state: AppState?
     let onTap: () -> Void
 
     @State private var isHovered = false
@@ -59,6 +61,9 @@ struct BrowseGridTile: View {
             }
         }
         .buttonStyle(.plain)
+        .contextMenu(externalLink.map { link in
+            ContextMenu { ExternalLinkMenuItems(link: link, state: state) }
+        })
         .opacity(isHovered ? 0.8 : 1.0)
         .onHover { isHovered = $0 }
     }

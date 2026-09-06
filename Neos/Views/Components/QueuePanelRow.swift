@@ -11,6 +11,8 @@ struct QueuePanelRow: View {
     /// Nil on display-only rows, such as the standalone now-playing entry.
     var onTap: (() -> Void)?
     var onRemove: (() -> Void)?
+    var externalLink: ExternalLinkMenu?
+    var state: AppState?
 
     @State private var isHovered = false
 
@@ -34,7 +36,7 @@ struct QueuePanelRow: View {
 
     // MARK: - Context Menu
 
-    private var hasActions: Bool { onTap != nil || onRemove != nil }
+    private var hasActions: Bool { onTap != nil || onRemove != nil || externalLink != nil }
 
     @ViewBuilder
     private var menuItems: some View {
@@ -43,7 +45,16 @@ struct QueuePanelRow: View {
                 Label("Play", systemImage: DS.Icons.playing)
             }
         }
+        if let externalLink {
+            if onTap != nil {
+                Divider()
+            }
+            ExternalLinkMenuItems(link: externalLink, state: state)
+        }
         if let onRemove {
+            if onTap != nil || externalLink != nil {
+                Divider()
+            }
             Button(role: .destructive) { onRemove() } label: {
                 Label("Remove from Queue", systemImage: DS.Icons.close)
             }

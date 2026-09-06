@@ -9,6 +9,13 @@ struct BrowseContentView: View {
     @State private var stationImageTarget: BrowseItem?
     @State private var showAddFavorite = false
 
+    // MARK: - External Links
+
+    /// Public link for a row, keyed on the browsed source since items rarely carry their own sid.
+    private func externalLink(for item: BrowseItem) -> ExternalLinkMenu? {
+        ExternalLinkMenu.make(for: item, sourceName: browseVM.selectedSource?.name)
+    }
+
     // MARK: - Input Source Detection
 
     /// True when the browse source is a physical input selector (AUX, Optical, etc.)
@@ -72,7 +79,9 @@ struct BrowseContentView: View {
             }
         }
         .accessibilityIdentifier(AccessibilityID.Browse.view)
-        .popover(item: $stationImageTarget) { item in
+        // A sheet, not a popover: the image picker becomes the key window, which dismisses a
+        // transient popover before its Save button is ever reachable.
+        .sheet(item: $stationImageTarget) { item in
             StationImageEditor(
                 mid: item.imageKey ?? "",
                 name: item.name,
@@ -221,7 +230,7 @@ struct BrowseContentView: View {
             if useGridForBrowsable {
                 LazyVGrid(columns: gridColumns, spacing: DS.Spacing.xl) {
                     ForEach(Array(browsableItems.enumerated()), id: \.element.id) { _, item in
-                        BrowseGridTile(item: item) {
+                        BrowseGridTile(item: item, externalLink: externalLink(for: item), state: state) {
                             if item.browsable {
                                 browseVM.browseItem(item)
                             } else if item.isSubSource {
@@ -246,6 +255,7 @@ struct BrowseContentView: View {
                             isNowPlaying: false,
                             isLoading: false,
                             isAddingToQueue: false,
+                            externalLink: externalLink(for: item),
                             state: state,
                             onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
                         ) {
@@ -307,6 +317,7 @@ struct BrowseContentView: View {
                                 onAlbumView: albumViewHandler(for: item),
                                 serviceOptions: browseContextOptions,
                                 onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
+                                externalLink: externalLink(for: item),
                                 state: state,
                                 imageKey: item.imageKey,
                                 onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
@@ -324,6 +335,7 @@ struct BrowseContentView: View {
                                 onAlbumView: albumViewHandler(for: item),
                                 serviceOptions: browseContextOptions,
                                 onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
+                                externalLink: externalLink(for: item),
                                 state: state,
                                 onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
                             ) {
