@@ -59,6 +59,11 @@ struct BrowseContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Outside scrollableContent, whose .id() rebuilds the whole subtree on every move.
+            BreadcrumbBar(stack: browseVM.browseStack) { index in
+                browseVM.navigateToBreadcrumb(at: index)
+            }
+
             if let source = browseVM.selectedSource, !source.available {
                 unavailableServiceView(source)
             } else if let error = browseVM.errorMessage {

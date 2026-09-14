@@ -1026,6 +1026,131 @@ final class BrowseViewModelTests: XCTestCase {
         // Should restore cached source items
         XCTAssertEqual(vm.items.map(\.name), ["A"])
     }
+
+    // MARK: - Breadcrumb Navigation
+
+    @MainActor
+    private func makeDeepBrowse(
+        service: any AudioService,
+        state: AppState,
+        onSource: @escaping () -> Void = {},
+        onContainer: @escaping () -> Void = {}
+    ) async -> BrowseViewModel {
+        let vm = BrowseViewModel(
+            service: service,
+            state: state,
+            browseSource: { _ in
+                onSource()
+                return BrowseResult(items: [BrowseItem(name: "Album", cid: "c1", browsable: true)])
+            },
+            browseContainer: { _, _, _ in
+                onContainer()
+                return BrowseResult(items: [BrowseItem(name: "Child", cid: "cx", browsable: true)])
+            }
+        )
+
+        vm.selectSource(MusicSource(sid: 1, name: "MinimServer"))
+        await yieldForTask()
+        vm.browseItem(BrowseItem(name: "Album", cid: "c1", browsable: true))
+        await yieldForTask()
+        vm.browseItem(BrowseItem(name: "A-E", cid: "c2", browsable: true))
+        await yieldForTask()
+        vm.browseItem(BrowseItem(name: "Abbey Road", cid: "c3", browsable: true))
+        await yieldForTask()
+        return vm
+    }
+
+    @MainActor
+    func testNavigateToBreadcrumbTruncatesStack() async {
+        let state = AppState()
+        let vm = await makeDeepBrowse(service: HEOSService(stateUpdater: state), state: state)
+
+        XCTAssertEqual(vm.browseStack.map(\.name), ["MinimServer", "Album", "A-E", "Abbey Road"])
+
+        vm.navigateToBreadcrumb(at: 1)
+        await yieldForTask()
+
+        XCTAssertEqual(vm.browseStack.map(\.name), ["MinimServer", "Album"])
+    }
+
+    @MainActor
+    func testNavigateToBreadcrumbIgnoresCurrentLevel() async {
+        var containerFetches = 0
+        let state = AppState()
+        let vm = await makeDeepBrowse(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            onContainer: { containerFetches += 1 }
+        )
+        let fetchesBefore = containerFetches
+
+        vm.navigateToBreadcrumb(at: vm.browseStack.count - 1)
+        await yieldForTask()
+
+        XCTAssertEqual(vm.browseStack.count, 4)
+        XCTAssertEqual(containerFetches, fetchesBefore)
+    }
+
+    @MainActor
+    func testNavigateToBreadcrumbRootBrowsesSourceNotContainer() async {
+        var sourceFetches = 0
+        var containerFetches = 0
+        let state = AppState()
+        let vm = await makeDeepBrowse(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            onSource: { sourceFetches += 1 },
+            onContainer: { containerFetches += 1 }
+        )
+        let containerBefore = containerFetches
+
+        vm.navigateToBreadcrumb(at: 0)
+        await yieldForTask()
+
+        XCTAssertEqual(vm.browseStack.map(\.name), ["MinimServer"])
+        XCTAssertEqual(sourceFetches, 2)
+        XCTAssertEqual(containerFetches, containerBefore)
+        XCTAssertEqual(vm.items.map(\.name), ["Album"])
+    }
+
+    @MainActor
+    func testGoBackAfterBreadcrumbReturnsToDeepLocation() async {
+        let state = AppState()
+        let vm = await makeDeepBrowse(service: HEOSService(stateUpdater: state), state: state)
+
+        vm.navigateToBreadcrumb(at: 0)
+        await yieldForTask()
+        XCTAssertEqual(vm.browseStack.count, 1)
+
+        vm.goBack()
+        await yieldForTask()
+
+        XCTAssertEqual(vm.browseStack.map(\.name), ["MinimServer", "Album", "A-E", "Abbey Road"])
+    }
+
+    @MainActor
+    func testNavigateToBreadcrumbClearsSearchContext() async {
+        let state = AppState()
+        let service = MockAudioService()
+        let vm = BrowseViewModel(
+            service: service,
+            state: state,
+            browseSource: { _ in BrowseResult(items: [BrowseItem(name: "Album", cid: "c1", browsable: true)]) },
+            browseContainer: { _, _, _ in BrowseResult(items: []) }
+        )
+
+        let source = MusicSource(sid: 1, name: "TIDAL")
+        vm.navigateToSearchResults(source: source, categoryName: "Albums", query: "daft", scid: 3)
+        await yieldForTask()
+        XCTAssertNotNil(vm.searchContext)
+
+        vm.navigateToBreadcrumb(at: 0)
+        await yieldForTask()
+
+        XCTAssertNil(vm.searchContext)
+        XCTAssertEqual(vm.browseStack.map(\.name), ["TIDAL"])
+        XCTAssertEqual(vm.items.map(\.name), ["Album"])
+    }
 }
 
 private actor MockBrowseBackend {
