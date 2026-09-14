@@ -4,6 +4,7 @@ struct BrowseScreen: Screen {
     let app: XCUIApplication
 
     var view: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Browse.view] }
+    var addStationButton: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Browse.addStation] }
     var breadcrumb: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Browse.breadcrumb] }
     var containerArt: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Browse.containerArt] }
     var containerTitle: XCUIElement { app.staticTexts[AccessibilityID.Browse.containerTitle] }

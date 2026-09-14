@@ -84,8 +84,15 @@ struct BrowseContentView: View {
             }
         }
         .accessibilityIdentifier(AccessibilityID.Browse.view)
-        // A sheet, not a popover: the image picker becomes the key window, which dismisses a
-        // transient popover before its Save button is ever reachable.
+        // Sheets, not popovers: the image picker becomes the key window, which dismisses a
+        // transient popover before either form can be finished.
+        .sheet(isPresented: $showAddFavorite) {
+            AddFavoriteForm(
+                browseVM: browseVM,
+                state: state,
+                onDismiss: { showAddFavorite = false }
+            )
+        }
         .sheet(item: $stationImageTarget) { item in
             StationImageEditor(
                 mid: item.imageKey ?? "",
@@ -457,19 +464,15 @@ struct BrowseContentView: View {
             Spacer()
 
             if browseVM.isFavoritesSource {
-                HoverButton(action: { showAddFavorite = true }) { hovered in
+                HoverButton(
+                    action: { showAddFavorite = true },
+                    accessibilityID: AccessibilityID.Browse.addStation
+                ) { hovered in
                     Image(systemName: "plus")
                         .font(DS.IconFont.lg)
                         .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
                 }
                 .help("Add Station")
-                .popover(isPresented: $showAddFavorite) {
-                    AddFavoriteForm(
-                        browseVM: browseVM,
-                        state: state,
-                        onDismiss: { showAddFavorite = false }
-                    )
-                }
             }
         }
         .padding(.horizontal, DS.Spacing.xxl)

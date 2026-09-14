@@ -3,7 +3,7 @@ import AppKit
 import NeosDomain
 import UniformTypeIdentifiers
 
-/// Popover form for adding a new favorite station by name and stream URL.
+/// Form for adding a new favorite station by name and stream URL.
 struct AddFavoriteForm: View {
     let browseVM: BrowseViewModel
     let state: AppState
