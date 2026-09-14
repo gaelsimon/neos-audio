@@ -4,6 +4,43 @@ import NeosDomain
 
 final class AccountViewModelTests: XCTestCase {
 
+    // MARK: - Home cache
+
+    @MainActor
+    func testSignInDropsTheCacheOfThePreviousAccount() async {
+        HomeCacheStore.clearAll()
+        HomeCacheStore.saveFavorites([BrowseItem(name: "Someone else's station")])
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = AccountViewModel(service: mock, state: state)
+
+        vm.username = "user"
+        vm.password = "pass"
+        vm.signIn()
+        await yieldForTask()
+
+        XCTAssertEqual(state.signedInUser, "user")
+        XCTAssertTrue(HomeCacheStore.loadFavorites().isEmpty, "favourites belong to the account")
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
+    func testSignOutDropsTheCache() async {
+        HomeCacheStore.clearAll()
+        HomeCacheStore.saveRecents([BrowseItem(name: "Played while signed in")])
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = AccountViewModel(service: mock, state: state)
+        state.signedInUser = "user"
+
+        vm.signOut()
+        await yieldForTask()
+
+        XCTAssertNil(state.signedInUser)
+        XCTAssertTrue(HomeCacheStore.loadRecents().isEmpty)
+        HomeCacheStore.clearAll()
+    }
+
     // MARK: - signIn
 
     @MainActor

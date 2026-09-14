@@ -206,6 +206,7 @@ final class HomeViewModelTests: XCTestCase {
             sid: 5,
             categoryIndex: 0,
             name: "Playlists",
+            cid: "cached-cid",
             items: [BrowseItem(name: "Cached Playlist", cid: "c1", browsable: true)]
         )
         if cacheIsFresh { HomeCacheStore.markUpdated() }
@@ -226,6 +227,21 @@ final class HomeViewModelTests: XCTestCase {
         await yieldForTask()
         XCTAssertFalse(mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }))
         XCTAssertEqual(vm.serviceCategories[ServiceCategoryKey(sid: 5, categoryIndex: 0)]?.count, 1)
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
+    func testCachedCategoryKeepsItsContainerID() async {
+        let (vm, _, _) = makeProbeVM(cacheIsFresh: true)
+
+        vm.loadHome()
+        await yieldForTask()
+
+        XCTAssertEqual(
+            vm.serviceCategoryCIDs[ServiceCategoryKey(sid: 5, categoryIndex: 0)],
+            "cached-cid",
+            "See All would open the service root without it"
+        )
         HomeCacheStore.clearAll()
     }
 

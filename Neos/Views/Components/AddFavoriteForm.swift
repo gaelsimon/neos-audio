@@ -13,9 +13,8 @@ struct AddFavoriteForm: View {
     @State private var streamURL = ""
     @State private var isSaving = false
 
-    // Artwork
+    // Artwork, held in memory until the station is actually added.
     @State private var previewImage: NSImage?
-    @State private var pendingImageFileURL: URL?
     @State private var showURLField = false
     @State private var imageURLText = ""
     @State private var isDownloadingImage = false
@@ -136,19 +135,7 @@ struct AddFavoriteForm: View {
 
         guard panel.runModal() == .OK, let sourceURL = panel.url else { return }
         guard let image = NSImage(contentsOf: sourceURL) else { return }
-        storeArtwork(image)
-    }
-
-    /// Each pick writes its own file, so the one it replaces has to go with it.
-    private func storeArtwork(_ image: NSImage) {
-        let mid = streamURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let key = mid.isEmpty ? UUID().uuidString : mid
-        guard let dest = StationImageEditor.copyToAppSupport(image: image, forMID: key) else { return }
-        if let previous = pendingImageFileURL, previous != dest {
-            try? FileManager.default.removeItem(at: previous)
-        }
         previewImage = image
-        pendingImageFileURL = dest
     }
 
     private func downloadImageFromURL() {
@@ -165,7 +152,7 @@ struct AddFavoriteForm: View {
                     isDownloadingImage = false
                     return
                 }
-                storeArtwork(image)
+                previewImage = image
             } catch {
                 // Download failed; user can retry
             }
@@ -183,9 +170,10 @@ struct AddFavoriteForm: View {
             do {
                 try await browseVM.addFavorite(name: trimmedName, url: trimmedURL)
 
-                // Set custom artwork if provided
-                if let pendingImageFileURL {
-                    state.setCustomStationImage(url: pendingImageFileURL.absoluteString, forMID: trimmedURL)
+                // Written only now: a cancelled or failed add must leave nothing on disk.
+                if let previewImage,
+                   let dest = StationImageEditor.copyToAppSupport(image: previewImage, forMID: trimmedURL) {
+                    state.setCustomStationImage(url: dest.absoluteString, forMID: trimmedURL)
                 }
 
                 onDismiss()

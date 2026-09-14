@@ -89,17 +89,18 @@ final class QueueViewModel {
 
     func removeItem(_ item: QueueItem) {
         guard let pid = state.selectedPlayerID else { return }
-        // Optimistic removal
-        let previousQueue = state.queue
-        state.playback.queue.removeAll { $0.qid == item.qid }
+        // Only this item comes back on failure. Restoring a whole snapshot would undo the
+        // removals that succeeded while this one was in flight.
+        guard let index = state.queue.firstIndex(where: { $0.qid == item.qid }) else { return }
+        state.playback.queue.remove(at: index)
         currentOffset = state.playback.queue.count
         Task {
             do {
                 try await service.removeFromQueue(pid: pid, qids: [item.qid])
             } catch {
                 guard state.selectedPlayerID == pid else { return }
-                state.playback.queue = previousQueue
-                currentOffset = previousQueue.count
+                QueueRollback.reinsert(item, at: index, into: &state.playback.queue)
+                currentOffset = state.playback.queue.count
                 state.error = .queueFailed(error.localizedDescription)
             }
         }

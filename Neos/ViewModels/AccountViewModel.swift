@@ -75,6 +75,8 @@ final class AccountViewModel {
             do {
                 try await service.signIn(username: username, password: password)
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
+                // Favourites, history and service rows belong to the account, not to the app.
+                HomeCacheStore.clearAll()
                 state.signedInUser = username
                 if rememberMe { saveCredentials() }
             } catch {
@@ -94,6 +96,7 @@ final class AccountViewModel {
             do {
                 try await service.signOut()
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
+                HomeCacheStore.clearAll()
                 state.signedInUser = nil
                 deleteCredentials()
             } catch {

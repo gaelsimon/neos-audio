@@ -52,8 +52,9 @@ final class HomeCacheStoreTests: XCTestCase {
     func testSaveAndLoadServiceCategory() {
         let items = [BrowseItem(name: "Playlist", cid: "c1", browsable: true)]
 
-        HomeCacheStore.saveServiceCategory(sid: 5, categoryIndex: 0, name: "Playlists", items: items)
+        HomeCacheStore.saveServiceCategory(sid: 5, categoryIndex: 0, name: "Playlists", cid: "pl-root", items: items)
         let loaded = HomeCacheStore.loadServiceCategory(sid: 5, categoryIndex: 0)
+        XCTAssertEqual(loaded?.cid, "pl-root")
 
         XCTAssertNotNil(loaded)
         XCTAssertEqual(loaded?.name, "Playlists")
@@ -67,8 +68,8 @@ final class HomeCacheStoreTests: XCTestCase {
     }
 
     func testClearServiceCategories() {
-        HomeCacheStore.saveServiceCategory(sid: 5, categoryIndex: 0, name: "Cat", items: [])
-        HomeCacheStore.saveServiceCategory(sid: 5, categoryIndex: 1, name: "Cat2", items: [])
+        HomeCacheStore.saveServiceCategory(sid: 5, categoryIndex: 0, name: "Cat", cid: nil, items: [])
+        HomeCacheStore.saveServiceCategory(sid: 5, categoryIndex: 1, name: "Cat2", cid: nil, items: [])
 
         HomeCacheStore.clearServiceCategories(for: 5)
 
@@ -93,7 +94,7 @@ final class HomeCacheStoreTests: XCTestCase {
     func testClearAllRemovesEverything() {
         HomeCacheStore.saveRecents([BrowseItem(name: "A")])
         HomeCacheStore.saveFavorites([BrowseItem(name: "B")])
-        HomeCacheStore.saveServiceCategory(sid: 5, categoryIndex: 0, name: "C", items: [])
+        HomeCacheStore.saveServiceCategory(sid: 5, categoryIndex: 0, name: "C", cid: nil, items: [])
         HomeCacheStore.markUpdated()
 
         HomeCacheStore.clearAll()

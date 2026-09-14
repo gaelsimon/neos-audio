@@ -338,6 +338,7 @@ final class HomeViewModel {
                     sid: sid,
                     categoryIndex: categoryIndex,
                     name: leafName,
+                    cid: cid,
                     items: displayItems
                 )
                 categoryIndex += 1
@@ -404,6 +405,7 @@ final class HomeViewModel {
             if let cached = HomeCacheStore.loadServiceCategory(sid: sid, categoryIndex: i) {
                 serviceCategories[key] = cached.items
                 serviceCategoryNames[key] = cached.name
+                serviceCategoryCIDs[key] = cached.cid
             }
         }
     }
