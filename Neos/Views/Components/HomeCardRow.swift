@@ -9,7 +9,7 @@ struct HomeCardRow: View {
 
     var body: some View {
         FadingHorizontalScroll {
-            HStack(spacing: DS.Spacing.lg) {
+            HStack(alignment: .top, spacing: DS.Spacing.lg) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HomeCard(
                         imageURL: item.resolvedImageURL,

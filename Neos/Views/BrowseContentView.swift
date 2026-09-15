@@ -59,11 +59,6 @@ struct BrowseContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Outside scrollableContent, whose .id() rebuilds the whole subtree on every move.
-            BreadcrumbBar(stack: browseVM.browseStack) { index in
-                browseVM.navigateToBreadcrumb(at: index)
-            }
-
             if let source = browseVM.selectedSource, !source.available {
                 unavailableServiceView(source)
             } else if let error = browseVM.errorMessage {
@@ -435,11 +430,11 @@ struct BrowseContentView: View {
 
     private var sourceHeader: some View {
         HStack(spacing: DS.Spacing.md) {
-            if isInputSource, browseVM.browseStack.count > 1,
+            if browseVM.browseStack.count > 1,
                let current = browseVM.browseStack.last,
                let root = browseVM.browseStack.first,
                let source = state.musicSources.first(where: { $0.sid == root.sid }) {
-                // Inside an input source sub-level; keep the source icon, show amp name
+                // A sub-level with no cid: an amp input or a DLNA server. Name it, not its source.
                 ServiceBranding.serviceIcon(for: source, size: DS.ImageSize.serviceIcon)
                 Text(current.name)
                     .typography(.pageTitle)
@@ -471,6 +466,8 @@ struct BrowseContentView: View {
                     Image(systemName: "plus")
                         .font(DS.IconFont.lg)
                         .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                        .frame(width: 32, height: 32)
+                        .background(DS.Colors.surfaceElevated.opacity(hovered ? 1 : 0.6), in: Circle())
                 }
                 .help("Add Station")
             }

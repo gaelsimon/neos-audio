@@ -10,6 +10,7 @@ enum DS {
         static let surfaceContainer = Color(white: 0.071)  // #121212; service group containers
         static let textSecondary = Color(white: 0.78)
         static let textTertiary = Color(white: 0.55)
+        static let destructive = Color(red: 0.902, green: 0.298, blue: 0.259) // #e64c42
         static let border = Color.white.opacity(0.06)
     }
 

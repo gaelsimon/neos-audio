@@ -7,22 +7,42 @@ struct BreadcrumbBar: View {
     let stack: [BrowseTarget]
     let onSelect: (Int) -> Void
 
+    private enum Entry {
+        case level(Int)
+        case gap
+    }
+
+    /// A long path keeps its root and its last two levels; the middle collapses.
+    private var shown: [Entry] {
+        guard stack.count > 4 else { return stack.indices.map(Entry.level) }
+        return [.level(0), .gap, .level(stack.count - 2), .level(stack.count - 1)]
+    }
+
+    private var separator: some View {
+        Image(systemName: DS.Icons.forward)
+            .font(DS.IconFont.sm)
+            .foregroundStyle(DS.Colors.textTertiary)
+            .accessibilityHidden(true)
+    }
+
     var body: some View {
         if stack.count > 1 {
             FadingHorizontalScroll {
                 HStack(spacing: DS.Spacing.xs) {
-                    ForEach(Array(stack.enumerated()), id: \.offset) { index, target in
-                        if index > 0 {
-                            Image(systemName: DS.Icons.forward)
-                                .font(DS.IconFont.sm)
-                                .foregroundStyle(DS.Colors.textTertiary)
-                                .accessibilityHidden(true)
+                    ForEach(Array(shown.enumerated()), id: \.offset) { position, entry in
+                        if position > 0 {
+                            separator
                         }
-                        crumb(target, at: index)
+                        switch entry {
+                        case .gap:
+                            Text("…")
+                                .typography(.secondary)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        case .level(let index):
+                            crumb(stack[index], at: index)
+                        }
                     }
                 }
-                .padding(.horizontal, DS.Spacing.xxl)
-                .padding(.vertical, DS.Spacing.sm)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(AccessibilityID.Browse.breadcrumb)
             }

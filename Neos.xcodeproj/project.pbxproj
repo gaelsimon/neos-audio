@@ -57,6 +57,7 @@
 		515D4AB0E2AA97E6E7C1F690 /* ProgressBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC4764A27614CA389BBC822D /* ProgressBarView.swift */; };
 		517821DDEF7414D5B0E4B9FC /* NowPlayingMedia+Display.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C98BC73D0E2BC4DE7BE7387 /* NowPlayingMedia+Display.swift */; };
 		545EE17BFB7BC135E6523EB3 /* HEOSConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14056CD01D2FD18118A48043 /* HEOSConstants.swift */; };
+		55DAAFF5EB4EC9B85CE6EAD0 /* TextActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96567EB51C677E8D0FE8C32D /* TextActionButton.swift */; };
 		57D93E58DDF620F9D134A00D /* LiveTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 253C5F6A29D563813BC4ED2F /* LiveTestCase.swift */; };
 		5861CE7213E54A10DF3C9ABF /* SearchResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAA6BF3C2B997509F25C54B0 /* SearchResultsView.swift */; };
 		58A3AC01111EEA140A02CC0E /* LiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D076663E56C2D7781A497B /* LiveTests.swift */; };
@@ -312,6 +313,7 @@
 		930F5F8AFC73726B3DE5F249 /* LifecycleMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifecycleMonitor.swift; sourceTree = "<group>"; };
 		948DF034A3269DAA849F62A3 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		960C9E8D2FC7212723BAD55C /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
+		96567EB51C677E8D0FE8C32D /* TextActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextActionButton.swift; sourceTree = "<group>"; };
 		967CC43A382B30C89860F293 /* PlaybackRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackRouter.swift; sourceTree = "<group>"; };
 		96A63A7B3B0DD1E69C3C3E84 /* ImageURLUpscalerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageURLUpscalerTests.swift; sourceTree = "<group>"; };
 		98D5CECB2B1F0A16D018ABE2 /* DominantColorExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DominantColorExtractor.swift; sourceTree = "<group>"; };
@@ -515,6 +517,7 @@
 				514E701AC9FEF3C64C56A8B6 /* SignInPromptView.swift */,
 				A371F72930B8AD1568FE8214 /* Spinner.swift */,
 				CAA5B187CE069C085FBB3F3D /* StationImageEditor.swift */,
+				96567EB51C677E8D0FE8C32D /* TextActionButton.swift */,
 				1D57F32FBB067DCA002DCF07 /* ToastView.swift */,
 				87F36904ADF5269BC5C830D2 /* TrackListHeader.swift */,
 				8B5BF2A378AB393273F0E9D4 /* TrackListRow.swift */,
@@ -968,6 +971,7 @@
 				10DCAF48ADA0D6D4F69EA9DA /* Spinner.swift in Sources */,
 				A8493477CF4DAE2D293A4D7A /* StationImageEditor.swift in Sources */,
 				8A50A357A8AB7D6E935E1FBB /* StationImageStore.swift in Sources */,
+				55DAAFF5EB4EC9B85CE6EAD0 /* TextActionButton.swift in Sources */,
 				FA45DD5D3C520A2BA9C586EC /* ToastView.swift in Sources */,
 				F766F8F24926CA73E18AF1D5 /* TrackListHeader.swift in Sources */,
 				88B3EB1856A3E921DE2B767E /* TrackListRow.swift in Sources */,

@@ -8,9 +8,6 @@ struct ServiceConfigView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            Text("Show Services")
-                .typography(.sectionHeader)
-                .padding(.bottom, DS.Spacing.xs)
 
             ForEach(sources) { source in
                 HStack(spacing: DS.Spacing.md) {
@@ -26,6 +23,7 @@ struct ServiceConfigView: View {
                         set: { _ in onToggle(source.sid) }
                     ))
                     .toggleStyle(.switch)
+                    .tint(DS.Colors.accent)
                     .controlSize(.small)
                 }
                 .padding(.vertical, DS.Spacing.xs)

@@ -47,7 +47,7 @@ struct SidebarView: View {
                     }
 
                     sidebarSection("Library") {
-                        libraryRow(sid: 1028, name: "Stations", icon: DS.Icons.radio)
+                        libraryRow(sid: 1028, name: "Favorites", icon: DS.Icons.radio)
                         libraryRow(sid: 1025, name: "Playlists", icon: DS.Icons.playlists)
                         libraryRow(sid: 1026, name: "History", icon: DS.Icons.history)
                         queueRow

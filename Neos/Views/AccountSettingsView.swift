@@ -27,7 +27,7 @@ struct AccountSettingsView: View {
             .padding(.top, DS.Spacing.xxl)
             .padding(.bottom, DS.Spacing.xxxl)
             .frame(maxWidth: 640, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityIdentifier(AccessibilityID.Settings.view)
     }
@@ -79,17 +79,13 @@ struct AccountSettingsView: View {
 
             Spacer()
 
-            Button(action: { showSignOutConfirmation = true }) {
-                if accountVM.isSigningOut {
-                    Spinner(size: 16, lineWidth: 2)
-                } else {
-                    Text("Sign Out")
-                }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            TextActionButton(
+                title: "Sign Out",
+                role: .destructive,
+                isBusy: accountVM.isSigningOut,
+                accessibilityID: AccessibilityID.Settings.signOutButton
+            ) { showSignOutConfirmation = true }
             .disabled(accountVM.isSigningOut)
-            .accessibilityIdentifier(AccessibilityID.Settings.signOutButton)
             .confirmationDialog("Sign Out", isPresented: $showSignOutConfirmation) {
                 Button("Sign Out", role: .destructive) {
                     accountVM.signOut()

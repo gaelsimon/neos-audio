@@ -108,6 +108,8 @@ struct NowPlayingCanvasView: View {
                 Image(systemName: DS.Icons.expandDown)
                     .font(DS.IconFont.lgEmphasis)
                     .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                    .frame(width: 32, height: 32)
+                    .background(DS.Colors.surfaceElevated.opacity(hovered ? 1 : 0.6), in: Circle())
             }
         }
     }

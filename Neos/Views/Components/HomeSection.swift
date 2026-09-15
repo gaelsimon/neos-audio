@@ -19,11 +19,7 @@ struct HomeSection<Content: View>: View {
                 Spacer()
 
                 if let onSeeAll {
-                    HoverButton(action: onSeeAll) { hovered in
-                        Text("See All")
-                            .typography(.secondary)
-                            .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
-                    }
+                    TextActionButton(title: "See All", action: onSeeAll)
                 }
             }
             .padding(.horizontal, DS.Spacing.xl)

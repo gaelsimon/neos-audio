@@ -227,6 +227,14 @@ struct MainWindowView: View {
     // MARK: - Top Bar
 
     private var topBar: some View {
+        GeometryReader { geo in
+            topBarContent(showsPath: geo.size.width >= 820)
+        }
+        .frame(height: 48)
+    }
+
+    /// Below ~820pt the bar cannot hold both at a usable size, so the path is dropped.
+    private func topBarContent(showsPath: Bool) -> some View {
         HStack(spacing: DS.Spacing.md) {
             // Back / Forward arrows
             HStack(spacing: DS.Spacing.xs) {
@@ -245,7 +253,14 @@ struct MainWindowView: View {
                 )
             }
 
-            Spacer()
+            if showsPath, !searchVM.isOverlayVisible {
+                BreadcrumbBar(stack: browseVM.browseStack) { index in
+                    browseVM.navigateToBreadcrumb(at: index)
+                }
+                .frame(minWidth: 150, maxWidth: 460, alignment: .leading)
+            }
+
+            Spacer(minLength: DS.Spacing.sm)
 
             searchField
 
@@ -257,7 +272,7 @@ struct MainWindowView: View {
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.bottom, DS.Spacing.sm)
-        .frame(height: 48)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DS.Colors.background)
     }
 
@@ -291,7 +306,8 @@ struct MainWindowView: View {
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
-        .frame(width: 380, height: 40)
+        .frame(minWidth: 240, maxWidth: 380)
+        .frame(height: 40)
         .contentShape(Capsule())
         // The text field is narrower than the capsule, so clicking the magnifier or the padding
         // used to do nothing. Simultaneous so a click inside the field still places the cursor.

@@ -5,6 +5,8 @@ struct QueueView: View {
     let state: AppState
     let viewModel: QueueViewModel
     let browseVM: BrowseViewModel
+    @State private var showClearConfirmation = false
+    @State private var hoveredQID: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -51,13 +53,18 @@ struct QueueView: View {
 
             Spacer()
             if !state.queue.isEmpty {
-                HoverButton(action: { viewModel.clearQueue() }) { hovered in
-                    Text("Clear")
-                        .typography(.secondary)
-                        .foregroundStyle(hovered ? .red : .red.opacity(0.7))
-                }
+                TextActionButton(
+                    title: "Clear",
+                    role: .destructive,
+                    isBusy: viewModel.isClearing,
+                    accessibilityID: AccessibilityID.Queue.clearButton
+                ) { showClearConfirmation = true }
                 .disabled(viewModel.isClearing)
-                .accessibilityIdentifier(AccessibilityID.Queue.clearButton)
+                .confirmationDialog("Clear Queue", isPresented: $showClearConfirmation) {
+                    Button("Clear Queue", role: .destructive) { viewModel.clearQueue() }
+                } message: {
+                    Text("This removes every track from the queue.")
+                }
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
@@ -96,7 +103,9 @@ struct QueueView: View {
                                 .foregroundStyle(hovered ? DS.Colors.textSecondary : DS.Colors.textTertiary)
                         }
                         .padding(.trailing, DS.Spacing.lg)
+                        .opacity(hoveredQID == item.qid ? 1 : 0)
                     }
+                    .onHover { hoveredQID = $0 ? item.qid : nil }
                     .onAppear {
                         if index >= state.queue.count - 5 {
                             viewModel.loadMoreQueue()

@@ -51,12 +51,14 @@ struct SearchResultsView: View {
                 FilterChip(
                     label: "All",
                     isSelected: searchVM.selectedCategoryFilter == nil,
+                    emphasis: .secondary,
                     action: { searchVM.selectCategoryFilter(nil) }
                 )
                 ForEach(searchVM.allCriteriaNames, id: \.scid) { criterion in
                     FilterChip(
                         label: criterion.name,
                         isSelected: searchVM.selectedCategoryFilter == criterion.scid,
+                        emphasis: .secondary,
                         action: { searchVM.selectCategoryFilter(criterion.scid) }
                     )
                 }
@@ -174,12 +176,8 @@ struct SearchResultsView: View {
                 Spacer()
 
                 if showSeeAll {
-                    HoverButton(action: {
+                    TextActionButton(title: "See All") {
                         seeAll(criteriaName: criteriaName, sid: sid, scid: scid)
-                    }) { hovered in
-                        Text("See All")
-                            .typography(.secondary)
-                            .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
                     }
                 }
             }

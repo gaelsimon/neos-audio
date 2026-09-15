@@ -16,7 +16,7 @@ final class DemoAddStationTests: DemoTestCase {
     }
 
     private func openForm() {
-        let stations = app.buttons.matching(NSPredicate(format: "label == 'Stations'")).firstMatch
+        let stations = app.buttons.matching(NSPredicate(format: "label == 'Favorites'")).firstMatch
         waitForElement(stations)
         stations.click()
         waitForElement(browse.addStationButton)

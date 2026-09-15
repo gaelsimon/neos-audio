@@ -23,7 +23,7 @@ struct AmpSettingsView: View {
             .padding(.top, DS.Spacing.xxl)
             .padding(.bottom, DS.Spacing.xxxl)
             .frame(maxWidth: 640, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityIdentifier(AccessibilityID.AmpSettings.view)
         .task {
@@ -98,16 +98,16 @@ struct AmpSettingsView: View {
             }
             .buttonStyle(.plain)
 
-            Button {
-                speakerVM.togglePower()
-            } label: {
+            // Accent is reserved for the selected player; power reacts to the pointer instead.
+            HoverButton(
+                action: { speakerVM.togglePower() },
+                accessibilityID: AccessibilityID.AmpSettings.powerButton
+            ) { hovered in
                 Image(systemName: DS.Icons.power)
                     .font(DS.IconFont.lg)
-                    .foregroundStyle(state.isPoweredOn ? DS.Colors.accent : DS.Colors.textTertiary)
+                    .foregroundStyle(hovered ? DS.Colors.accent : DS.Colors.textTertiary)
             }
-            .buttonStyle(.plain)
             .help(state.isPoweredOn ? "Turn Off" : "Turn On")
-            .accessibilityIdentifier(AccessibilityID.AmpSettings.powerButton)
         }
         .padding(.vertical, DS.Spacing.md)
         .accessibilityIdentifier(AccessibilityID.AmpSettings.playerRow(player.pid))
@@ -164,20 +164,13 @@ struct AmpSettingsView: View {
 
             HStack {
                 Spacer()
-                Button {
-                    groupVM.ungroup(pid: group.gid)
-                } label: {
-                    if groupVM.isUngrouping {
-                        Spinner(size: 16, lineWidth: 2)
-                    } else {
-                        Text("Ungroup")
-                            .typography(.secondary)
-                            .foregroundStyle(.red)
-                    }
-                }
-                .buttonStyle(.plain)
+                TextActionButton(
+                    title: "Ungroup",
+                    role: .destructive,
+                    isBusy: groupVM.isUngrouping,
+                    accessibilityID: AccessibilityID.Group.ungroupButton(group.gid)
+                ) { groupVM.ungroup(pid: group.gid) }
                 .disabled(groupVM.isUngrouping)
-                .accessibilityIdentifier(AccessibilityID.Group.ungroupButton(group.gid))
             }
         }
         .padding(DS.Spacing.md)
