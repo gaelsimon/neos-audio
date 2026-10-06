@@ -63,8 +63,10 @@ enum AccessibilityID {
         static func breadcrumbItem(_ index: Int) -> String { "browse.breadcrumb.\(index)" }
         static let containerArt = "browse.containerArt"
         static let containerTitle = "browse.containerTitle"
+        static let containerArtist = "browse.containerArtist"
         static let playContainer = "browse.playContainer"
         static let addToQueue = "browse.addToQueue"
+        static let shuffleContainer = "browse.shuffleContainer"
     }
 
     // MARK: - Queue

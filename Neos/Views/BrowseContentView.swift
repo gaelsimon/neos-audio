@@ -47,14 +47,24 @@ struct BrowseContentView: View {
             && playableNonBrowsable.count >= browseVM.items.count / 2
     }
 
-    /// True when at least one item has a non-empty artist string.
     private var showArtistColumn: Bool {
         browseVM.items.contains { $0.artist != nil && !($0.artist?.isEmpty ?? true) }
     }
 
-    /// True when at least one item has a non-empty album string.
+    private var trackRows: [BrowseItem] {
+        browseVM.items.filter { $0.playable && !$0.browsable }
+    }
+
+    private var sharedAlbum: String? {
+        TrackListPresentation.sharedAlbum(in: trackRows)
+    }
+
+    private var sharedArtist: String? {
+        sharedAlbum == nil ? nil : TrackListPresentation.sharedArtist(in: trackRows)
+    }
+
     private var showAlbumColumn: Bool {
-        browseVM.items.contains { $0.album != nil && !($0.album?.isEmpty ?? true) }
+        sharedAlbum == nil && browseVM.items.contains { $0.album != nil && !($0.album?.isEmpty ?? true) }
     }
 
     var body: some View {
@@ -102,11 +112,13 @@ struct BrowseContentView: View {
     // MARK: - Scrollable Content
 
     private var scrollableContent: some View {
-        ScrollView {
+        // Read here, not inside .background: @Observable only tracks browseVM.items from the body.
+        let backdropURL = browseVM.isInContainer ? browseVM.browseStack.last.flatMap(headerBackgroundURL) : nil
+        return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Header (not lazy; GeometryReader stays active during scroll)
                 if browseVM.isInContainer, let current = browseVM.browseStack.last {
-                    containerHeader(current)
+                    containerHeader(current, backdropURL: backdropURL)
                         .overlay(
                             GeometryReader { geo in
                                 let maxY = geo.frame(in: .named("browse_scroll")).maxY
@@ -114,7 +126,7 @@ struct BrowseContentView: View {
                             }
                         )
                         .onPreferenceChange(ScrollOffsetKey.self) { maxY in
-                            showCompactHeader = maxY < 20
+                            showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.TopBar.height) + 20
                         }
                 } else {
                     sourceHeader
@@ -139,6 +151,7 @@ struct BrowseContentView: View {
             }
         }
         .coordinateSpace(name: "browse_scroll")
+        .ignoresSafeArea(edges: backdropURL == nil ? [] : .top)
         .overlay(alignment: .top) {
             if showCompactHeader, browseVM.isInContainer, let current = browseVM.browseStack.last {
                 compactContainerHeader(current)
@@ -301,9 +314,10 @@ struct BrowseContentView: View {
         // List of playable items (songs, stations)
         if !playableItems.isEmpty || (isTrackList && !browseVM.items.isEmpty) {
             LazyVStack(alignment: .leading, spacing: DS.TrackList.rowSpacing) {
-                let listItems = isTrackList
-                    ? browseVM.items.filter { $0.playable && !$0.browsable }
-                    : playableItems
+                let listItems = isTrackList ? trackRows : playableItems
+                let showArtist = showArtistColumn
+                let showAlbum = showAlbumColumn
+                let showArtwork = sharedAlbum == nil
                 ForEach(Array(listItems.enumerated()), id: \.element.id) { index, item in
                     Group {
                         if isTrackList {
@@ -314,8 +328,9 @@ struct BrowseContentView: View {
                                 album: item.album,
                                 imageURL: item.imageURL,
                                 isNowPlaying: isNowPlaying(item),
-                                showArtist: showArtistColumn,
-                                showAlbum: showAlbumColumn,
+                                showArtist: showArtist,
+                                showAlbum: showAlbum,
+                                showArtwork: showArtwork,
                                 onArtistTap: artistViewHandler(for: item),
                                 isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
                                 onPlayNext: playNextHandler(for: item),
@@ -423,7 +438,11 @@ struct BrowseContentView: View {
         .padding(.horizontal, DS.Spacing.xxl)
         .padding(.vertical, DS.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DS.Colors.background)
+        // One glass for the bar and the sub-header: two stacked blurs show a seam where they meet.
+        .padding(.top, DS.TopBar.height)
+        .background(DarkGlass())
+        .overlay(alignment: .bottom) { Divider().foregroundStyle(DS.Colors.border) }
+        .padding(.top, -DS.TopBar.height)
     }
 
     // MARK: - Source Header (root level, scrolls)
@@ -542,11 +561,8 @@ struct BrowseContentView: View {
         return URL(string: raw)
     }
 
-    private func containerHeader(_ target: BrowseTarget) -> some View {
-        // Compute background URL in the main body so @Observable tracks browseVM.items access.
-        // Inside .background {} the observation may not fire, leaving the blur empty on first load.
-        let bgURL = headerBackgroundURL(target)
-        return VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
+    private func containerHeader(_ target: BrowseTarget, backdropURL: URL?) -> some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
             HStack(alignment: .top, spacing: DS.Spacing.xxl) {
                 containerArtwork(target, size: DS.ImageSize.containerArt, cornerRadius: DS.Radius.large)
                     .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 10)
@@ -556,33 +572,40 @@ struct BrowseContentView: View {
                     .frame(maxHeight: DS.ImageSize.containerArt)
             }
         }
-        .padding(.horizontal, DS.Spacing.xxl)
-        .padding(.top, DS.Spacing.xxl + DS.Spacing.lg)
-        .padding(.bottom, DS.Spacing.xxl + DS.Spacing.lg)
+        .padding(.horizontal, DS.Spacing.xxxl)
+        .padding(.top, DS.Spacing.xl)
+        .padding(.bottom, backdropURL == nil ? DS.Spacing.xxl + DS.Spacing.lg : DS.Spacing.xxxl * 2)
+        .padding(.top, backdropURL == nil ? 0 : DS.TopBar.height)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            if let bgURL {
-                Color.clear
-                    .overlay {
-                        CachedAsyncImage(url: bgURL) { Color.clear }
-                            .aspectRatio(contentMode: .fill)
-                            .blur(radius: 60)
-                            .opacity(0.5)
-                    }
-                    .clipped()
-                    .overlay(alignment: .bottom) {
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: DS.Colors.background.opacity(0.3), location: 0.4),
-                                .init(color: DS.Colors.background, location: 1),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
-            }
+            if let backdropURL { headerBackdrop(backdropURL) }
         }
+    }
+
+    // Oversized before the blur, or its edges fade to a dark vignette.
+    private func headerBackdrop(_ url: URL) -> some View {
+        Color.clear
+            .overlay {
+                CachedAsyncImage(url: url) { Color.clear }
+                    .aspectRatio(contentMode: .fill)
+                    .scaleEffect(1.3)
+                    .blur(radius: 60)
+                    .opacity(0.5)
+            }
+            .clipped()
+            .overlay {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .clear, location: 0.3),
+                        .init(color: DS.Colors.background.opacity(0.5), location: 0.65),
+                        .init(color: DS.Colors.background, location: 1),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .allowsHitTesting(false)
     }
 
     // MARK: - Container Header Metadata
@@ -593,6 +616,7 @@ struct BrowseContentView: View {
             Text(target.name)
                 .typography(.pageTitle)
                 .lineLimit(2)
+                .padding(.top, DS.Spacing.xl)
                 .accessibilityIdentifier(AccessibilityID.Browse.containerTitle)
 
             if !browseVM.items.isEmpty || !target.serviceName.isEmpty {
@@ -615,13 +639,16 @@ struct BrowseContentView: View {
     @ViewBuilder
     private func containerSubtitle(_ target: BrowseTarget) -> some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            if let source = serviceSource(for: target) {
-                HStack(spacing: DS.Spacing.sm) {
-                    ServiceBranding.serviceIcon(for: source, size: 24)
+            if let artist = sharedArtist {
+                HeaderArtistLink(artist: artist, onTap: trackRows.first.flatMap(artistViewHandler))
+            }
 
-                    Text(source.name)
-                        .typography(.sectionHeader)
-                        .foregroundStyle(DS.Colors.textSecondary)
+            HStack(spacing: DS.Spacing.sm) {
+                if let source = serviceSource(for: target) {
+                    ServiceBranding.serviceIcon(for: source, size: 20)
+                }
+                BreadcrumbBar(stack: browseVM.browseStack) { index in
+                    browseVM.navigateToBreadcrumb(at: index)
                 }
             }
 
@@ -655,6 +682,15 @@ struct BrowseContentView: View {
             )
             .accessibilityIdentifier(AccessibilityID.Browse.playContainer)
             .help("Play")
+
+            CircularIconButton(
+                icon: DS.Icons.shuffle,
+                size: .medium,
+                style: .secondary,
+                action: { browseVM.shuffleContainer() }
+            )
+            .accessibilityIdentifier(AccessibilityID.Browse.shuffleContainer)
+            .help("Shuffle")
 
             CircularIconButton(
                 icon: DS.Icons.addedToQueue,

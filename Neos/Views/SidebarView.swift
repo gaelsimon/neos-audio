@@ -78,7 +78,7 @@ struct SidebarView: View {
             Spacer()
         }
         .padding(.horizontal, DS.Sidebar.itemPaddingH)
-        .padding(.top, DS.Spacing.sm)
+        .padding(.top, DS.Spacing.xl)
     }
 
     // MARK: - Section Header

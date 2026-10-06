@@ -19,6 +19,7 @@ struct TrackListRow: View {
     let isNowPlaying: Bool
     var showArtist: Bool = true
     var showAlbum: Bool = true
+    var showArtwork: Bool = true
     var onAlbumTap: (() -> Void)?
     var onArtistTap: (() -> Void)?
     var isResolvingArtist: Bool = false
@@ -100,12 +101,12 @@ struct TrackListRow: View {
             Image(systemName: "ellipsis")
                 .typography(.secondary)
                 .foregroundStyle(DS.Colors.textSecondary)
-                .frame(minWidth: 36, minHeight: 36)
+                .frame(minWidth: DS.TrackList.actionWidth, minHeight: DS.TrackList.actionWidth)
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .fixedSize()
+        .frame(width: DS.TrackList.actionWidth, height: DS.TrackList.actionWidth)
     }
 
     /// Shared by the hover "…" button and the right-click context menu.
@@ -211,17 +212,19 @@ struct TrackListRow: View {
 
     private var titleColumn: some View {
         HStack(spacing: DS.Spacing.md) {
-            CachedAsyncImage(url: URL(string: effectiveImageURL)) {
-                RoundedRectangle(cornerRadius: DS.Radius.small)
-                    .fill(DS.Colors.surfaceElevated)
-                    .overlay {
-                        Image(systemName: DS.Icons.musicNote)
-                            .font(DS.IconFont.sm)
-                            .foregroundStyle(DS.Colors.textTertiary)
-                    }
+            if showArtwork {
+                CachedAsyncImage(url: URL(string: effectiveImageURL)) {
+                    RoundedRectangle(cornerRadius: DS.Radius.small)
+                        .fill(DS.Colors.surfaceElevated)
+                        .overlay {
+                            Image(systemName: DS.Icons.musicNote)
+                                .font(DS.IconFont.sm)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                }
+                .frame(width: DS.ImageSize.trackListRow, height: DS.ImageSize.trackListRow)
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
             }
-            .frame(width: DS.ImageSize.trackListRow, height: DS.ImageSize.trackListRow)
-            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
 
             Text(name.displayTitle)
                 .typography(.bodyPrimary)

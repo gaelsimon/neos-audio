@@ -333,22 +333,3 @@ private struct NowPlayingCrossLink: View {
             .accessibilityAddTraits(.isLink)
     }
 }
-
-// MARK: - Backdrop
-
-/// AppKit backdrop, so the blur radius can be chosen: the SwiftUI materials expose no such knob.
-private struct BackdropBlur: NSViewRepresentable {
-    let material: NSVisualEffectView.Material
-
-    func makeNSView(context _: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = material
-        view.blendingMode = .withinWindow
-        view.state = .active
-        return view
-    }
-
-    func updateNSView(_ view: NSVisualEffectView, context _: Context) {
-        view.material = material
-    }
-}

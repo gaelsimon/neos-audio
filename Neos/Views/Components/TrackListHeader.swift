@@ -28,6 +28,9 @@ struct TrackListHeader: View {
                 }
             }
             .frame(maxWidth: .infinity)
+
+            // Matches the rows' trailing action button, or the columns drift.
+            Color.clear.frame(width: DS.TrackList.actionWidth)
         }
         .typography(.sidebarSection)
         .padding(.horizontal, DS.Spacing.lg)

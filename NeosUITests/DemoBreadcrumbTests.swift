@@ -1,6 +1,6 @@
 import XCTest
 
-/// Breadcrumb path in demo mode: absent at a source root, clickable above it.
+/// Breadcrumb path in demo mode: absent at a source root, the parents of the current level above it.
 final class DemoBreadcrumbTests: DemoTestCase {
 
     private var sidebar: SidebarScreen { SidebarScreen(app: app) }
@@ -47,8 +47,7 @@ final class DemoBreadcrumbTests: DemoTestCase {
         openFirstCategory()
 
         XCTAssertEqual(browse.breadcrumbItem(0).label, "Deezer", "First crumb should name the source")
-        XCTAssertTrue(browse.breadcrumbItem(1).exists, "Current level should be the last crumb")
-        XCTAssertFalse(browse.breadcrumbItem(2).exists, "Path should stop at the current level")
+        XCTAssertFalse(browse.breadcrumbItem(1).exists, "The current level is the page title, not a crumb")
     }
 
     func testBreadcrumbRootCrumbReturnsToSourceRoot() {
@@ -65,7 +64,7 @@ final class DemoBreadcrumbTests: DemoTestCase {
 
         clickRow(labelled: "A Night at the Opera, Queen")
 
-        waitForElement(browse.breadcrumbItem(2))
-        XCTAssertTrue(browse.breadcrumbItem(2).exists, "A third level should extend the path")
+        waitForElement(browse.breadcrumbItem(1))
+        XCTAssertFalse(browse.breadcrumbItem(2).exists, "The path stops at the parent of the current level")
     }
 }

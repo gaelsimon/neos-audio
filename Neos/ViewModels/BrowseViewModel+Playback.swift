@@ -24,6 +24,26 @@ extension BrowseViewModel {
         }
     }
 
+    /// Shuffle goes on before the queue is replaced, so the amp picks the first track at random too.
+    func shuffleContainer() {
+        guard let pid = state.selectedPlayerID else {
+            state.showNoPlayerToast()
+            return
+        }
+        guard let last = browseStack.last, let cid = last.cid else { return }
+        let sid = last.sid
+        Task {
+            do {
+                try await service.setPlayMode(pid: pid, repeat: state.repeatMode, shuffle: .on)
+                state.playback.shuffleMode = .on
+                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: nil, criteria: .replaceAndPlay)
+                state.showToast("Shuffling all", icon: DS.Icons.shuffle, style: .success)
+            } catch {
+                state.showToast(error.localizedDescription, icon: DS.Icons.warning, style: .error)
+            }
+        }
+    }
+
     func selectInput(_ item: BrowseItem) {
         guard let pid = state.selectedPlayerID else {
             state.showNoPlayerToast()

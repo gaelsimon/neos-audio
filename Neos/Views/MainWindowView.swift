@@ -182,8 +182,6 @@ struct MainWindowView: View {
 
     private var connectedContent: some View {
         VStack(spacing: 0) {
-            topBar
-
             Group {
                 if searchVM.isOverlayVisible {
                     SearchResultsView(
@@ -217,6 +215,9 @@ struct MainWindowView: View {
             .animation(.easeInOut(duration: DS.Animation.standard), value: state.isQueuePanelOpen)
             .background(DS.Colors.background)
         }
+        // On the container, not on the identity-switching Group: a rebuild there recreated the search field mid-typing.
+        .safeAreaInset(edge: .top, spacing: 0) { topBar }
+        .ignoresSafeArea(edges: .top)
         .overlay(alignment: .bottom) {
             toastOverlay
                 .animation(.easeInOut(duration: DS.Animation.standard), value: state.toast)
@@ -227,17 +228,8 @@ struct MainWindowView: View {
     // MARK: - Top Bar
 
     private var topBar: some View {
-        GeometryReader { geo in
-            topBarContent(showsPath: geo.size.width >= 820)
-        }
-        .frame(height: 48)
-    }
-
-    /// Below ~820pt the bar cannot hold both at a usable size, so the path is dropped.
-    private func topBarContent(showsPath: Bool) -> some View {
         HStack(spacing: DS.Spacing.md) {
-            // Back / Forward arrows
-            HStack(spacing: DS.Spacing.xs) {
+            HStack(spacing: 0) {
                 navArrowButton(
                     icon: DS.Icons.back,
                     enabled: container.canGoBack,
@@ -252,28 +244,20 @@ struct MainWindowView: View {
                     action: { container.goForward() }
                 )
             }
-
-            if showsPath, !searchVM.isOverlayVisible {
-                BreadcrumbBar(stack: browseVM.browseStack) { index in
-                    browseVM.navigateToBreadcrumb(at: index)
-                }
-                .frame(minWidth: 150, maxWidth: 460, alignment: .leading)
-            }
+            .background { GlassCapsule() }
 
             Spacer(minLength: DS.Spacing.sm)
 
             searchField
 
-            // Speaker indicator
             speakerIndicator
 
-            // Profile button
             profileButton
         }
         .padding(.horizontal, DS.Spacing.lg)
-        .padding(.bottom, DS.Spacing.sm)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DS.Colors.background)
+        .padding(.top, DS.Spacing.sm)
+        .frame(maxWidth: .infinity)
+        .frame(height: DS.TopBar.height)
     }
 
     // MARK: - Search Field
@@ -306,16 +290,15 @@ struct MainWindowView: View {
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
-        .frame(minWidth: 240, maxWidth: 380)
-        .frame(height: 40)
+        .frame(width: DS.TopBar.searchWidth, height: DS.TopBar.controlHeight)
         .contentShape(Capsule())
         // The text field is narrower than the capsule, so clicking the magnifier or the padding
         // used to do nothing. Simultaneous so a click inside the field still places the cursor.
         .simultaneousGesture(TapGesture().onEnded { state.isSearchFieldFocused = true })
-        .background(DS.Colors.surfaceElevated, in: Capsule())
+        .background { GlassCapsule(tint: state.isSearchFieldFocused ? .white.opacity(0.08) : .clear) }
         .overlay(
             Capsule()
-                .strokeBorder(Color.white.opacity(state.isSearchFieldFocused ? 0.6 : 0), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(state.isSearchFieldFocused ? 0.9 : 0), lineWidth: 1)
                 .allowsHitTesting(false)
         )
         .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
@@ -357,29 +340,21 @@ struct MainWindowView: View {
                 browseVM.navigateToAmpSettings()
             }
         }) { hovered in
-            HStack(spacing: 6) {
-                Image(systemName: DS.Icons.speakerFill)
-                    .font(DS.IconFont.sm)
-                    .foregroundStyle(DS.Colors.accent)
+            HStack(spacing: DS.Spacing.sm) {
+                Circle()
+                    .fill(state.connectionState == .connected ? Color.green : DS.Colors.textTertiary)
+                    .frame(width: 7, height: 7)
 
                 Text(state.selectedPlayerDisplayName ?? "No Player")
                     .typography(.secondary)
-                    .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : .white.opacity(0.8))
+                    .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : DS.Colors.textSecondary)
                     .lineLimit(1)
+                    .frame(maxWidth: 160)
+                    .fixedSize(horizontal: true, vertical: false)
             }
-            .padding(.horizontal, 10)
-            .frame(maxWidth: 180, minHeight: 32, alignment: .leading)
-            .background(
-                isActive ? DS.Colors.accent.opacity(0.12) : .clear,
-                in: Capsule()
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(
-                        isActive ? DS.Colors.accent : hovered ? DS.Colors.accent.opacity(0.6) : DS.Colors.accent.opacity(0.4),
-                        lineWidth: 1
-                    )
-            )
+            .padding(.horizontal, DS.Spacing.md)
+            .frame(height: DS.TopBar.controlHeight)
+            .background { GlassCapsule(tint: isActive ? DS.Colors.accent.opacity(0.15) : .clear) }
         }
         .accessibilityIdentifier(AccessibilityID.Sidebar.ampCard)
     }
@@ -394,9 +369,11 @@ struct MainWindowView: View {
                 browseVM.navigateToSettings()
             }
         }) { hovered in
-            Image(systemName: DS.Icons.personCircle)
-                .font(DS.IconFont.hero)
+            Image(systemName: DS.Icons.person)
+                .font(DS.IconFont.lgEmphasis)
                 .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : Color.white.opacity(0.7))
+                .frame(width: DS.TopBar.controlHeight, height: DS.TopBar.controlHeight)
+                .background { GlassCapsule() }
         }
         .accessibilityIdentifier(AccessibilityID.TopBar.profileButton)
     }
@@ -406,15 +383,13 @@ struct MainWindowView: View {
     private func navArrowButton(icon: String, enabled: Bool, accessibilityID: String, action: @escaping () -> Void) -> some View {
         HoverButton(action: action) { hovered in
             Image(systemName: icon)
-                .font(DS.IconFont.lgEmphasis)
-                .foregroundStyle(
-                    !enabled ? Color.gray.opacity(0.3) :
-                    hovered ? Color.white : Color.secondary
-                )
-                .frame(width: 28, height: 28)
+                .font(DS.TopBar.arrowFont)
+                .foregroundStyle(!enabled ? Color.white.opacity(0.25) : .white)
+                .frame(width: DS.TopBar.controlHeight, height: DS.TopBar.controlHeight)
                 .background(
                     Circle()
-                        .fill(hovered && enabled ? Color.white.opacity(0.1) : .clear)
+                        .fill(Color.white.opacity(enabled && hovered ? 0.15 : 0))
+                        .padding(2)
                 )
         }
         .disabled(!enabled)
@@ -440,6 +415,8 @@ struct MainWindowView: View {
 
 /// Makes the NSWindow titlebar transparent so canvas background fills edge-to-edge.
 private struct WindowAccessor: NSViewRepresentable {
+    func makeCoordinator() -> TrafficLightInset { TrafficLightInset() }
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
@@ -448,10 +425,52 @@ private struct WindowAccessor: NSViewRepresentable {
                 window.styleMask.insert(.fullSizeContentView)
                 window.isOpaque = false
                 window.backgroundColor = .clear
+                context.coordinator.attach(to: window)
             }
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+/// Moves the traffic lights in from the corner; a SwiftUI toolbar would too, but it swallows every click in the title strip.
+final class TrafficLightInset {
+    private let offset = CGSize(width: 8, height: 10)
+    private var defaultOrigins: [NSWindow.ButtonType: NSPoint] = [:]
+    private var defaultBarHeight: CGFloat = 0
+    private var observers: [NSObjectProtocol] = []
+
+    func attach(to window: NSWindow) {
+        guard observers.isEmpty else { return }
+        apply(to: window)
+        // AppKit lays the buttons out again on every resize and on leaving full screen.
+        let names = [NSWindow.didResizeNotification, NSWindow.didEndLiveResizeNotification, NSWindow.didExitFullScreenNotification]
+        observers = names.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self, weak window] _ in
+                DispatchQueue.main.async {
+                    if let window { self?.apply(to: window) }
+                }
+            }
+        }
+    }
+
+    deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    private func apply(to window: NSWindow) {
+        let types: [NSWindow.ButtonType] = [.closeButton, .miniaturizeButton, .zoomButton]
+        let buttons = types.compactMap { type in window.standardWindowButton(type).map { (type, $0) } }
+        guard let bar = buttons.first?.1.superview else { return }
+        if defaultOrigins.isEmpty {
+            buttons.forEach { defaultOrigins[$0.0] = $0.1.frame.origin }
+            defaultBarHeight = bar.frame.height
+        }
+        for (type, button) in buttons {
+            guard let origin = defaultOrigins[type] else { continue }
+            button.setFrameOrigin(NSPoint(x: origin.x + offset.width, y: origin.y - offset.height))
+        }
+        bar.frame.size.height = defaultBarHeight + offset.height
+    }
 }

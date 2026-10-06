@@ -98,7 +98,6 @@ struct AmpSettingsView: View {
             }
             .buttonStyle(.plain)
 
-            // Accent is reserved for the selected player; power reacts to the pointer instead.
             HoverButton(
                 action: { speakerVM.togglePower() },
                 accessibilityID: AccessibilityID.AmpSettings.powerButton

@@ -867,6 +867,41 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testShuffleContainerTurnsShuffleOnBeforeReplacingTheQueue() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        state.selectedPlayerID = 123
+        let vm = BrowseViewModel(
+            service: mock,
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, _, _ in BrowseResult(items: []) }
+        )
+        vm.navigateToContainer(source: MusicSource(sid: 1, name: "TIDAL"), containerName: "Album", cid: "c1", mediaType: .album)
+        await yieldForTask()
+
+        vm.shuffleContainer()
+        await yieldForTask()
+
+        let relevant = mock.calls.filter { $0.hasPrefix("setPlayMode") || $0.hasPrefix("addToQueue") }
+        XCTAssertEqual(relevant, ["setPlayMode:123:\(state.repeatMode):on", "addToQueue:123"])
+        XCTAssertEqual(state.shuffleMode, .on)
+    }
+
+    @MainActor
+    func testShuffleContainerRequiresPlayerSelected() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        state.selectedPlayerID = nil
+        let vm = BrowseViewModel(service: mock, state: state)
+
+        vm.shuffleContainer()
+        await yieldForTask()
+
+        XCTAssertEqual(state.toast?.text, "No player selected")
+    }
+
+    @MainActor
     func testAddContainerToQueueRequiresPlayerSelected() async {
         let state = AppState()
         let mock = MockAudioService()

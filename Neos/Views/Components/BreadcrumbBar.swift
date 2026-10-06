@@ -2,10 +2,12 @@ import AppKit
 import SwiftUI
 import NeosDomain
 
-/// Clickable path back up the browse stack.
+/// Clickable path to the parents of the current level, which the page title names.
 struct BreadcrumbBar: View {
     let stack: [BrowseTarget]
     let onSelect: (Int) -> Void
+
+    private var levels: Int { stack.count - 1 }
 
     private enum Entry {
         case level(Int)
@@ -14,8 +16,8 @@ struct BreadcrumbBar: View {
 
     /// A long path keeps its root and its last two levels; the middle collapses.
     private var shown: [Entry] {
-        guard stack.count > 4 else { return stack.indices.map(Entry.level) }
-        return [.level(0), .gap, .level(stack.count - 2), .level(stack.count - 1)]
+        guard levels > 4 else { return (0..<levels).map(Entry.level) }
+        return [.level(0), .gap, .level(levels - 2), .level(levels - 1)]
     }
 
     private var separator: some View {
@@ -26,7 +28,7 @@ struct BreadcrumbBar: View {
     }
 
     var body: some View {
-        if stack.count > 1 {
+        if levels > 0 {
             FadingHorizontalScroll {
                 HStack(spacing: DS.Spacing.xs) {
                     ForEach(Array(shown.enumerated()), id: \.offset) { position, entry in
@@ -49,17 +51,9 @@ struct BreadcrumbBar: View {
         }
     }
 
-    @ViewBuilder
     private func crumb(_ target: BrowseTarget, at index: Int) -> some View {
-        if index == stack.count - 1 {
-            Text(target.name)
-                .typography(.secondaryEmphasis)
-                .lineLimit(1)
-                .accessibilityIdentifier(AccessibilityID.Browse.breadcrumbItem(index))
-        } else {
-            BreadcrumbLink(title: target.name) { onSelect(index) }
-                .accessibilityIdentifier(AccessibilityID.Browse.breadcrumbItem(index))
-        }
+        BreadcrumbLink(title: target.name) { onSelect(index) }
+            .accessibilityIdentifier(AccessibilityID.Browse.breadcrumbItem(index))
     }
 }
 
