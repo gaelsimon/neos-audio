@@ -33,6 +33,7 @@ struct TrackListRow: View {
     var state: AppState?
     var imageKey: String?
     var onSetCustomImage: (() -> Void)?
+    var onRemove: (() -> Void)?
     let onTap: () -> Void
 
     @State private var isHovered = false
@@ -67,6 +68,16 @@ struct TrackListRow: View {
 
             actionMenu
                 .opacity(isHovered && hasActions ? 1 : 0)
+
+            if let onRemove {
+                HoverButton(action: onRemove) { hovered in
+                    Image(systemName: DS.Icons.dismiss)
+                        .typography(.secondary)
+                        .foregroundStyle(hovered ? DS.Colors.textSecondary : DS.Colors.textTertiary)
+                        .frame(width: DS.TrackList.actionWidth, height: DS.TrackList.actionWidth)
+                }
+                .opacity(isHovered ? 1 : 0)
+            }
         }
         .padding(.horizontal, DS.Spacing.lg)
         .frame(height: DS.TrackList.rowHeight)

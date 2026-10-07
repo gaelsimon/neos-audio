@@ -4,6 +4,7 @@ struct HomeSection<Content: View>: View {
     let title: String
     var isLoading: Bool = false
     var onSeeAll: (() -> Void)?
+    var inset: CGFloat = DS.Layout.pageMargin
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -22,7 +23,7 @@ struct HomeSection<Content: View>: View {
                     TextActionButton(title: "See All", action: onSeeAll)
                 }
             }
-            .padding(.horizontal, DS.Spacing.xxl)
+            .padding(.horizontal, inset)
 
             content
         }

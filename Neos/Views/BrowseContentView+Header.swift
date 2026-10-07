@@ -8,13 +8,7 @@ extension BrowseContentView {
         HStack(spacing: DS.Spacing.sm) {
             containerArtwork(target, size: 40, cornerRadius: DS.Radius.small)
 
-            Text(target.name)
-                .typography(.secondaryEmphasis)
-                .lineLimit(1)
-
-            if let source = serviceSource(for: target) {
-                ServiceBranding.serviceIcon(for: source, size: 20)
-            }
+            compactTitle(target.name, pathIcon: serviceSource(for: target))
 
             Spacer()
 
@@ -118,7 +112,7 @@ extension BrowseContentView {
                     .frame(maxHeight: DS.ImageSize.containerArt)
             }
         }
-        .padding(.horizontal, DS.Spacing.xxxl)
+        .padding(.horizontal, DS.Layout.pageMargin)
         .padding(.top, DS.Spacing.xl)
         .padding(.bottom, backdropURL == nil ? DS.Spacing.xxl + DS.Spacing.lg : DS.Spacing.xxxl * 2)
         .padding(.top, backdropURL == nil ? 0 : DS.TopBar.height)
@@ -252,7 +246,7 @@ extension BrowseContentView {
     // MARK: - Source Header (root level, scrolls)
 
     var sourceHeader: some View {
-        HStack(spacing: DS.Spacing.md) {
+        HStack(spacing: DS.Spacing.sm) {
             if browseVM.browseStack.count > 1,
                let current = browseVM.browseStack.last,
                let root = browseVM.browseStack.first,
@@ -300,17 +294,34 @@ extension BrowseContentView {
         .padding(.bottom, DS.Spacing.xl)
     }
 
+    // The big header in miniature: the title, then the path to its parents.
+    private func compactTitle(_ title: String, pathIcon: MusicSource?) -> some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+            Text(title)
+                .typography(.secondaryEmphasis)
+                .lineLimit(1)
+            if browseVM.browseStack.count > 1 {
+                HStack(spacing: DS.Spacing.xs) {
+                    if let pathIcon {
+                        ServiceBranding.serviceIcon(for: pathIcon, size: 14)
+                    }
+                    BreadcrumbBar(stack: browseVM.browseStack) { index in
+                        browseVM.navigateToBreadcrumb(at: index)
+                    }
+                }
+            }
+        }
+    }
+
     var compactSourceHeader: some View {
         let stack = browseVM.browseStack
         let source = stack.first.flatMap { root in state.musicSources.first { $0.sid == root.sid } }
         let title = stack.count > 1 ? stack.last?.name : (source?.name ?? stack.last?.name)
         return HStack(spacing: DS.Spacing.sm) {
             if let source {
-                ServiceBranding.serviceIcon(for: source, size: 28)
+                ServiceBranding.serviceIcon(for: source, size: 40)
             }
-            Text(title ?? "Browse")
-                .typography(.secondaryEmphasis)
-                .lineLimit(1)
+            compactTitle(title ?? "Browse", pathIcon: nil)
             Spacer()
         }
         .frame(height: 40)

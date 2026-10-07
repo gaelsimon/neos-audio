@@ -304,7 +304,7 @@ struct BrowseContentView: View {
 
                         Divider()
                             .foregroundStyle(DS.Colors.border)
-                            .padding(.leading, 54)
+                            .padding(.leading, DS.Spacing.lg + DS.ImageSize.listRow + DS.Spacing.md)
                     }
                 }
                 .padding(.horizontal, DS.Spacing.xxl)
@@ -415,7 +415,7 @@ struct BrowseContentView: View {
 
         Divider()
             .foregroundStyle(DS.Colors.border)
-            .padding(.leading, 54)
+            .padding(.leading, DS.Spacing.lg + DS.ImageSize.listRow + DS.Spacing.md)
     }
 
     private func isNowPlaying(_ item: BrowseItem) -> Bool {

@@ -10,7 +10,7 @@ struct AmpSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 40) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
                 Text("Amp Settings")
                     .typography(.pageTitle)
                     .padding(.bottom, DS.Spacing.sm)

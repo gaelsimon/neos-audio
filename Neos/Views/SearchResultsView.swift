@@ -94,7 +94,7 @@ struct SearchResultsView: View {
         let isLoading = searchVM.loadingServiceSIDs.contains(sid)
         let results = searchVM.filteredResults(for: sid)
 
-        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+        VStack(alignment: .leading, spacing: DS.Spacing.xl) {
             if let source {
                 serviceHeader(for: source, isLoading: isLoading)
             }
@@ -124,7 +124,7 @@ struct SearchResultsView: View {
             RoundedRectangle(cornerRadius: DS.Radius.large)
                 .fill(DS.Colors.surfaceContainer)
         )
-        .padding(.horizontal, DS.Spacing.md)
+        .padding(.horizontal, DS.Layout.pageMargin)
     }
 
     // MARK: - Service Header
@@ -142,7 +142,7 @@ struct SearchResultsView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, DS.Spacing.xxl)
+        .padding(.horizontal, DS.Layout.surfaceInset)
     }
 
     // MARK: - Category Section
@@ -171,7 +171,7 @@ struct SearchResultsView: View {
             && items.count >= searchVM.previewCount
             && !searchVM.expandedCategories.contains(key)
 
-        VStack(alignment: .leading, spacing: cardLayout ? DS.Spacing.md : DS.Spacing.sm) {
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
             HStack {
                 Text(criteriaName)
                     .typography(.sectionHeader)
@@ -184,7 +184,7 @@ struct SearchResultsView: View {
                     }
                 }
             }
-            .padding(.horizontal, DS.Spacing.xxl)
+            .padding(.horizontal, DS.Layout.surfaceInset)
 
             if isServiceLoading {
                 if cardLayout {
@@ -230,7 +230,7 @@ struct SearchResultsView: View {
                     )
                 }
             }
-            .padding(.horizontal, DS.Spacing.xxl)
+            .padding(.horizontal, DS.Layout.surfaceInset)
         }
     }
 
@@ -245,7 +245,7 @@ struct SearchResultsView: View {
                     onTap: { handleItemTap(item, sid: sid) },
                     onAddToQueue: { handleAddToQueue(item, sid: sid) }
                 )
-                .padding(.horizontal, DS.Spacing.lg)
+                
             }
         }
     }

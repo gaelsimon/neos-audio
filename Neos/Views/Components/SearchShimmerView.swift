@@ -26,7 +26,7 @@ struct SearchShimmerView: View {
 
                 Spacer()
             }
-            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.horizontal, DS.Layout.surfaceInset)
 
             // Card category (artists/albums)
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
@@ -34,7 +34,7 @@ struct SearchShimmerView: View {
                     .fill(.quaternary)
                     .frame(width: 80, height: 14)
                     .shimmer()
-                    .padding(.horizontal, DS.Spacing.xl)
+                    .padding(.horizontal, DS.Layout.surfaceInset)
 
                 ShimmerCardRow(cardCount: 3)
             }
@@ -45,7 +45,7 @@ struct SearchShimmerView: View {
                     .fill(.quaternary)
                     .frame(width: 60, height: 14)
                     .shimmer()
-                    .padding(.horizontal, DS.Spacing.xl)
+                    .padding(.horizontal, DS.Layout.surfaceInset)
 
                 ForEach(0..<4, id: \.self) { _ in
                     ShimmerListRow()
@@ -57,6 +57,6 @@ struct SearchShimmerView: View {
             RoundedRectangle(cornerRadius: DS.Radius.large)
                 .fill(DS.Colors.surfaceContainer)
         )
-        .padding(.horizontal, DS.Spacing.md)
+        .padding(.horizontal, DS.Layout.pageMargin)
     }
 }

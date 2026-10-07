@@ -6,7 +6,6 @@ struct QueueView: View {
     let viewModel: QueueViewModel
     let browseVM: BrowseViewModel
     @State private var showClearConfirmation = false
-    @State private var hoveredQID: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -20,7 +19,7 @@ struct QueueView: View {
             } else {
                 // MARK: - Column Header
 
-                TrackListHeader(showArtist: true, showAlbum: true)
+                TrackListHeader(showArtist: true, showAlbum: true, trailingSlots: 2)
                     .padding(.horizontal, DS.Spacing.xxl)
                 Divider()
                     .foregroundStyle(DS.Colors.border)
@@ -70,7 +69,7 @@ struct QueueView: View {
             }
         }
         .padding(.horizontal, DS.Spacing.xxl)
-        .padding(.top, DS.Spacing.md)
+        .padding(.top, DS.Spacing.xxl)
         .padding(.bottom, DS.Spacing.md)
     }
 
@@ -94,20 +93,12 @@ struct QueueView: View {
                             onArtistTap: artistTapHandler(for: item),
                             isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
                             externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
-                            state: state
+                            state: state,
+                            onRemove: { viewModel.removeItem(item) }
                         ) {
                             viewModel.playItem(item)
                         }
-
-                        HoverButton(action: { viewModel.removeItem(item) }) { hovered in
-                            Image(systemName: DS.Icons.dismiss)
-                                .typography(.secondary)
-                                .foregroundStyle(hovered ? DS.Colors.textSecondary : DS.Colors.textTertiary)
-                        }
-                        .padding(.trailing, DS.Spacing.lg)
-                        .opacity(hoveredQID == item.qid ? 1 : 0)
                     }
-                    .onHover { hoveredQID = $0 ? item.qid : nil }
                     .onAppear {
                         if index >= state.queue.count - 5 {
                             viewModel.loadMoreQueue()

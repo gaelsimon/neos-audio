@@ -27,13 +27,19 @@ enum DS {
 
     // MARK: - Image Sizes
     enum ImageSize {
-        static let listRow: CGFloat = 36
+        static let listRow: CGFloat = 44
         static let trackListRow: CGFloat = 44
         static let sidebarIcon: CGFloat = 36
         static let containerArt: CGFloat = 240
         static let homeCard: CGFloat = 160
         static let serviceIcon: CGFloat = 40
         static let serviceIconLarge: CGFloat = 48
+    }
+
+    // MARK: - Layout
+    enum Layout {
+        static let pageMargin: CGFloat = Spacing.xxl
+        static let surfaceInset: CGFloat = Spacing.lg
     }
 
     // MARK: - Top Bar

@@ -5,6 +5,7 @@ struct HomeCardRow: View {
     let items: [BrowseItem]
     let sid: Int
     var state: AppState?
+    var inset: CGFloat = DS.Layout.pageMargin
     let onTap: (BrowseItem, Int) -> Void
 
     var body: some View {
@@ -23,6 +24,6 @@ struct HomeCardRow: View {
                 }
             }
         }
-        .padding(.horizontal, DS.Spacing.xxl)
+        .padding(.horizontal, inset)
     }
 }
