@@ -64,6 +64,7 @@ struct SidebarView: View {
             Rectangle()
                 .fill(DS.Colors.border)
                 .frame(width: 1)
+                .ignoresSafeArea(edges: .top)
         }
     }
 

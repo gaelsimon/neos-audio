@@ -21,11 +21,13 @@ struct QueueView: View {
                 // MARK: - Column Header
 
                 TrackListHeader(showArtist: true, showAlbum: true)
+                    .padding(.horizontal, DS.Spacing.xxl)
                 Divider()
                     .foregroundStyle(DS.Colors.border)
-                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.horizontal, DS.Spacing.xxl)
 
                 queueList
+                    .contentMargins(.horizontal, DS.Spacing.xxl, for: .scrollContent)
             }
         }
         .task(id: state.selectedPlayerID) {
@@ -67,7 +69,7 @@ struct QueueView: View {
                 }
             }
         }
-        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.horizontal, DS.Spacing.xxl)
         .padding(.top, DS.Spacing.md)
         .padding(.bottom, DS.Spacing.md)
     }

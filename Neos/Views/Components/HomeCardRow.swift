@@ -22,7 +22,7 @@ struct HomeCardRow: View {
                     }
                 }
             }
-            .padding(.horizontal, DS.Spacing.xl)
         }
+        .padding(.horizontal, DS.Spacing.xxl)
     }
 }

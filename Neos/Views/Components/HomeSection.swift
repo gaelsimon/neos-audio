@@ -22,7 +22,7 @@ struct HomeSection<Content: View>: View {
                     TextActionButton(title: "See All", action: onSeeAll)
                 }
             }
-            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.horizontal, DS.Spacing.xxl)
 
             content
         }

@@ -39,3 +39,13 @@ struct GlassCapsule: View {
         .clipShape(Capsule())
     }
 }
+
+extension View {
+    /// A sub-header pinned under the top bar: one glass reaches up behind the bar, so the two never show a seam.
+    func stickyHeaderGlass() -> some View {
+        padding(.top, DS.TopBar.height)
+            .background(DarkGlass())
+            .overlay(alignment: .bottom) { Divider().foregroundStyle(DS.Colors.border) }
+            .padding(.top, -DS.TopBar.height)
+    }
+}

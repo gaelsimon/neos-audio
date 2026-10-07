@@ -27,7 +27,7 @@ struct AccountSettingsView: View {
             .padding(.top, DS.Spacing.xxl)
             .padding(.bottom, DS.Spacing.xxxl)
             .frame(maxWidth: 640, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .accessibilityIdentifier(AccessibilityID.Settings.view)
     }

@@ -9,12 +9,15 @@ struct SearchResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-                filterChipsSection
-                resultsContent
-            }
-            .padding(.top, DS.Spacing.lg)
-            .padding(.bottom, DS.Spacing.xxl)
+            resultsContent
+                .padding(.top, DS.Spacing.xl)
+                .padding(.bottom, DS.Spacing.xxl)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            filterChipsSection
+                .padding(.top, DS.Spacing.lg)
+                .padding(.bottom, DS.Spacing.md)
+                .stickyHeaderGlass()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DS.Colors.background)
@@ -63,7 +66,7 @@ struct SearchResultsView: View {
                     )
                 }
             }
-            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.horizontal, DS.Spacing.xxl)
         }
     }
 
@@ -139,7 +142,7 @@ struct SearchResultsView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.horizontal, DS.Spacing.xxl)
     }
 
     // MARK: - Category Section
@@ -181,7 +184,7 @@ struct SearchResultsView: View {
                     }
                 }
             }
-            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.horizontal, DS.Spacing.xxl)
 
             if isServiceLoading {
                 if cardLayout {
@@ -227,7 +230,7 @@ struct SearchResultsView: View {
                     )
                 }
             }
-            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.horizontal, DS.Spacing.xxl)
         }
     }
 

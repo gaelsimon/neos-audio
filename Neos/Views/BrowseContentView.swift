@@ -7,7 +7,7 @@ struct BrowseContentView: View {
 
     @State private var showCompactHeader = false
     @State private var stationImageTarget: BrowseItem?
-    @State private var showAddFavorite = false
+    @State var showAddFavorite = false
 
     // MARK: - External Links
 
@@ -51,7 +51,7 @@ struct BrowseContentView: View {
         browseVM.items.contains { $0.artist != nil && !($0.artist?.isEmpty ?? true) }
     }
 
-    private var trackRows: [BrowseItem] {
+    var trackRows: [BrowseItem] {
         browseVM.items.filter { $0.playable && !$0.browsable }
     }
 
@@ -59,8 +59,12 @@ struct BrowseContentView: View {
         TrackListPresentation.sharedAlbum(in: trackRows)
     }
 
-    private var sharedArtist: String? {
+    var sharedArtist: String? {
         sharedAlbum == nil ? nil : TrackListPresentation.sharedArtist(in: trackRows)
+    }
+
+    private var trackColumns: (artist: Bool, album: Bool, artwork: Bool) {
+        (showArtistColumn, showAlbumColumn, sharedAlbum == nil)
     }
 
     private var showAlbumColumn: Bool {
@@ -117,19 +121,21 @@ struct BrowseContentView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Header (not lazy; GeometryReader stays active during scroll)
-                if browseVM.isInContainer, let current = browseVM.browseStack.last {
-                    containerHeader(current, backdropURL: backdropURL)
-                        .overlay(
-                            GeometryReader { geo in
-                                let maxY = geo.frame(in: .named("browse_scroll")).maxY
-                                Color.clear.preference(key: ScrollOffsetKey.self, value: maxY)
-                            }
-                        )
-                        .onPreferenceChange(ScrollOffsetKey.self) { maxY in
-                            showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.TopBar.height) + 20
-                        }
-                } else {
-                    sourceHeader
+                Group {
+                    if browseVM.isInContainer, let current = browseVM.browseStack.last {
+                        containerHeader(current, backdropURL: backdropURL)
+                    } else {
+                        sourceHeader
+                    }
+                }
+                .overlay(
+                    GeometryReader { geo in
+                        let maxY = geo.frame(in: .named("browse_scroll")).maxY
+                        Color.clear.preference(key: ScrollOffsetKey.self, value: maxY)
+                    }
+                )
+                .onPreferenceChange(ScrollOffsetKey.self) { maxY in
+                    showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.TopBar.height) + 20
                 }
 
                 if isInputSource {
@@ -153,8 +159,12 @@ struct BrowseContentView: View {
         .coordinateSpace(name: "browse_scroll")
         .ignoresSafeArea(edges: backdropURL == nil ? [] : .top)
         .overlay(alignment: .top) {
-            if showCompactHeader, browseVM.isInContainer, let current = browseVM.browseStack.last {
-                compactContainerHeader(current)
+            if showCompactHeader {
+                if browseVM.isInContainer, let current = browseVM.browseStack.last {
+                    compactContainerHeader(current)
+                } else {
+                    compactSourceHeader
+                }
             }
         }
         .animation(.easeInOut(duration: 0.15), value: showCompactHeader)
@@ -177,7 +187,7 @@ struct BrowseContentView: View {
         return { browseVM.addToQueue(item, criteria: .addToEnd) }
     }
 
-    private func artistViewHandler(for item: BrowseItem) -> (() -> Void)? {
+    func artistViewHandler(for item: BrowseItem) -> (() -> Void)? {
         let sid = currentSID
         guard let artistName = item.artist,
               isLinkableArtist(artistName),
@@ -225,7 +235,7 @@ struct BrowseContentView: View {
     ]
 
     /// Human-friendly noun for the dominant item type in the current container.
-    private var itemNoun: String {
+    var itemNoun: String {
         let items = browseVM.items
         guard !items.isEmpty else { return "items" }
         let dominant = items.first?.type ?? .container
@@ -315,62 +325,13 @@ struct BrowseContentView: View {
         if !playableItems.isEmpty || (isTrackList && !browseVM.items.isEmpty) {
             LazyVStack(alignment: .leading, spacing: DS.TrackList.rowSpacing) {
                 let listItems = isTrackList ? trackRows : playableItems
-                let showArtist = showArtistColumn
-                let showAlbum = showAlbumColumn
-                let showArtwork = sharedAlbum == nil
+                let columns = trackColumns
                 ForEach(Array(listItems.enumerated()), id: \.element.id) { index, item in
                     Group {
                         if isTrackList {
-                            TrackListRow(
-                                index: index + 1,
-                                name: item.name,
-                                artist: item.artist,
-                                album: item.album,
-                                imageURL: item.imageURL,
-                                isNowPlaying: isNowPlaying(item),
-                                showArtist: showArtist,
-                                showAlbum: showAlbum,
-                                showArtwork: showArtwork,
-                                onArtistTap: artistViewHandler(for: item),
-                                isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
-                                onPlayNext: playNextHandler(for: item),
-                                onAddToQueue: addToQueueHandler(for: item),
-                                onArtistView: artistViewHandler(for: item),
-                                onAlbumView: albumViewHandler(for: item),
-                                serviceOptions: browseContextOptions,
-                                onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
-                                externalLink: externalLink(for: item),
-                                state: state,
-                                imageKey: item.imageKey,
-                                onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
-                            ) {
-                                browseVM.playItem(item)
-                            }
+                            trackRow(item, at: index, columns: columns)
                         } else {
-                            BrowseItemRow(
-                                item: item,
-                                isNowPlaying: isNowPlaying(item),
-                                isLoading: browseVM.playingItemID == item.id,
-                                isAddingToQueue: browseVM.addingToQueueItemID == item.id,
-                                onPlayNext: playNextHandler(for: item),
-                                onArtistView: artistViewHandler(for: item),
-                                onAlbumView: albumViewHandler(for: item),
-                                serviceOptions: browseContextOptions,
-                                onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
-                                externalLink: externalLink(for: item),
-                                state: state,
-                                onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
-                            ) {
-                                if item.playable {
-                                    browseVM.playItem(item)
-                                }
-                            } onAddToQueue: {
-                                browseVM.addToQueue(item)
-                            }
-
-                            Divider()
-                                .foregroundStyle(DS.Colors.border)
-                                .padding(.leading, 54)
+                            browseRow(item)
                         }
                     }
                     .onAppear {
@@ -401,347 +362,60 @@ struct BrowseContentView: View {
         }
     }
 
-    // MARK: - Compact Sticky Header
-
-    private func compactContainerHeader(_ target: BrowseTarget) -> some View {
-        HStack(spacing: DS.Spacing.sm) {
-            containerArtwork(target, size: 40, cornerRadius: DS.Radius.small)
-
-            Text(target.name)
-                .typography(.secondaryEmphasis)
-                .lineLimit(1)
-
-            if let source = serviceSource(for: target) {
-                ServiceBranding.serviceIcon(for: source, size: 20)
-            }
-
-            Spacer()
-
-            if hasPlayableItems {
-                CircularIconButton(
-                    icon: DS.Icons.playing,
-                    size: .small,
-                    style: .primary,
-                    action: { browseVM.playContainer() }
-                )
-                .help("Play")
-
-                CircularIconButton(
-                    icon: DS.Icons.addedToQueue,
-                    size: .small,
-                    style: .secondary,
-                    action: { browseVM.addContainerToQueue() }
-                )
-                .help("Add to Queue")
-            }
+    private func trackRow(_ item: BrowseItem, at index: Int, columns: (artist: Bool, album: Bool, artwork: Bool)) -> some View {
+        TrackListRow(
+            index: index + 1,
+            name: item.name,
+            artist: item.artist,
+            album: item.album,
+            imageURL: item.imageURL,
+            isNowPlaying: isNowPlaying(item),
+            showArtist: columns.artist,
+            showAlbum: columns.album,
+            showArtwork: columns.artwork,
+            onArtistTap: artistViewHandler(for: item),
+            isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
+            onPlayNext: playNextHandler(for: item),
+            onAddToQueue: addToQueueHandler(for: item),
+            onArtistView: artistViewHandler(for: item),
+            onAlbumView: albumViewHandler(for: item),
+            serviceOptions: browseContextOptions,
+            onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
+            externalLink: externalLink(for: item),
+            state: state,
+            imageKey: item.imageKey,
+            onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
+        ) {
+            browseVM.playItem(item)
         }
-        .padding(.horizontal, DS.Spacing.xxl)
-        .padding(.vertical, DS.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // One glass for the bar and the sub-header: two stacked blurs show a seam where they meet.
-        .padding(.top, DS.TopBar.height)
-        .background(DarkGlass())
-        .overlay(alignment: .bottom) { Divider().foregroundStyle(DS.Colors.border) }
-        .padding(.top, -DS.TopBar.height)
     }
-
-    // MARK: - Source Header (root level, scrolls)
-
-    private var sourceHeader: some View {
-        HStack(spacing: DS.Spacing.md) {
-            if browseVM.browseStack.count > 1,
-               let current = browseVM.browseStack.last,
-               let root = browseVM.browseStack.first,
-               let source = state.musicSources.first(where: { $0.sid == root.sid }) {
-                // A sub-level with no cid: an amp input or a DLNA server. Name it, not its source.
-                ServiceBranding.serviceIcon(for: source, size: DS.ImageSize.serviceIcon)
-                Text(current.name)
-                    .typography(.pageTitle)
-                    .lineLimit(1)
-            } else if let target = browseVM.browseStack.first,
-               let source = state.musicSources.first(where: { $0.sid == target.sid }) {
-                ServiceBranding.serviceLabel(
-                    for: source,
-                    iconSize: DS.ImageSize.serviceIcon,
-                    style: .pageTitle
-                )
-            } else {
-                Text(browseVM.browseStack.last?.name ?? "Browse")
-                    .typography(.pageTitle)
-                    .lineLimit(1)
-            }
-
-            if browseVM.isLoading {
-                Spinner(size: 16, lineWidth: 2)
-            }
-
-            Spacer()
-
-            if browseVM.isFavoritesSource {
-                HoverButton(
-                    action: { showAddFavorite = true },
-                    accessibilityID: AccessibilityID.Browse.addStation
-                ) { hovered in
-                    Image(systemName: "plus")
-                        .font(DS.IconFont.lg)
-                        .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
-                        .frame(width: 32, height: 32)
-                        .background(DS.Colors.surfaceElevated.opacity(hovered ? 1 : 0.6), in: Circle())
-                }
-                .help("Add Station")
-            }
-        }
-        .padding(.horizontal, DS.Spacing.xxl)
-        .padding(.top, DS.Spacing.xxl)
-        .padding(.bottom, DS.Spacing.xl)
-    }
-
-    // MARK: - Container Artwork (patchwork or single image)
 
     @ViewBuilder
-    private func containerArtwork(_ target: BrowseTarget, size: CGFloat, cornerRadius: CGFloat) -> some View {
-        if !target.imageURL.isEmpty {
-            CachedAsyncImage(
-                url: URL(string: target.imageURL),
-                highResURL: ImageURLUpscaler.highResURL(from: target.imageURL).flatMap(URL.init(string:))
-            ) {
-                artworkPlaceholder(size: size, cornerRadius: cornerRadius)
+    private func browseRow(_ item: BrowseItem) -> some View {
+        BrowseItemRow(
+            item: item,
+            isNowPlaying: isNowPlaying(item),
+            isLoading: browseVM.playingItemID == item.id,
+            isAddingToQueue: browseVM.addingToQueueItemID == item.id,
+            onPlayNext: playNextHandler(for: item),
+            onArtistView: artistViewHandler(for: item),
+            onAlbumView: albumViewHandler(for: item),
+            serviceOptions: browseContextOptions,
+            onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
+            externalLink: externalLink(for: item),
+            state: state,
+            onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
+        ) {
+            if item.playable {
+                browseVM.playItem(item)
             }
-            .frame(width: size, height: size)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        } else {
-            let itemImages = browseVM.items
-                .map(\.imageURL)
-                .filter { !$0.isEmpty }
-            let albums = Set(browseVM.items.compactMap(\.album).filter { !$0.isEmpty })
-            if albums.count == 1, let firstImage = itemImages.first {
-                CachedAsyncImage(
-                    url: URL(string: firstImage),
-                    highResURL: ImageURLUpscaler.highResURL(from: firstImage).flatMap(URL.init(string:))
-                ) {
-                    artworkPlaceholder(size: size, cornerRadius: cornerRadius)
-                }
-                .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-            } else {
-                PatchworkArtView(imageURLs: itemImages, size: size, cornerRadius: cornerRadius)
-            }
+        } onAddToQueue: {
+            browseVM.addToQueue(item)
         }
-    }
 
-    private func artworkPlaceholder(size: CGFloat, cornerRadius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(DS.Colors.surfaceElevated)
-            .frame(width: size, height: size)
-            .overlay {
-                Image(systemName: DS.Icons.musicNote)
-                    .font(size > 60 ? DS.IconFont.xxxl : DS.IconFont.body)
-                    .foregroundStyle(DS.Colors.textTertiary)
-            }
-    }
-
-    // MARK: - Container Header (album/playlist, scrolls)
-
-    private var hasPlayableItems: Bool {
-        browseVM.items.contains { $0.playable }
-    }
-
-    /// Primary artwork URL for blur background (container image or first item image).
-    /// Uses the original (low-res) URL; high-res is wasteful for a radius-60 blur.
-    /// Returns nil only if both container and items have no images.
-    private func headerBackgroundURL(_ target: BrowseTarget) -> URL? {
-        let raw: String
-        if !target.imageURL.isEmpty {
-            raw = target.imageURL
-        } else {
-            let itemImages = browseVM.items.map(\.imageURL).filter { !$0.isEmpty }
-            guard let first = itemImages.first else { return nil }
-            raw = first
-        }
-        return URL(string: raw)
-    }
-
-    private func containerHeader(_ target: BrowseTarget, backdropURL: URL?) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-            HStack(alignment: .top, spacing: DS.Spacing.xxl) {
-                containerArtwork(target, size: DS.ImageSize.containerArt, cornerRadius: DS.Radius.large)
-                    .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 10)
-                    .accessibilityIdentifier(AccessibilityID.Browse.containerArt)
-
-                containerHeaderMetadata(target)
-                    .frame(maxHeight: DS.ImageSize.containerArt)
-            }
-        }
-        .padding(.horizontal, DS.Spacing.xxxl)
-        .padding(.top, DS.Spacing.xl)
-        .padding(.bottom, backdropURL == nil ? DS.Spacing.xxl + DS.Spacing.lg : DS.Spacing.xxxl * 2)
-        .padding(.top, backdropURL == nil ? 0 : DS.TopBar.height)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            if let backdropURL { headerBackdrop(backdropURL) }
-        }
-    }
-
-    // Oversized before the blur, or its edges fade to a dark vignette.
-    private func headerBackdrop(_ url: URL) -> some View {
-        Color.clear
-            .overlay {
-                CachedAsyncImage(url: url) { Color.clear }
-                    .aspectRatio(contentMode: .fill)
-                    .scaleEffect(1.3)
-                    .blur(radius: 60)
-                    .opacity(0.5)
-            }
-            .clipped()
-            .overlay {
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .clear, location: 0.3),
-                        .init(color: DS.Colors.background.opacity(0.5), location: 0.65),
-                        .init(color: DS.Colors.background, location: 1),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-            .allowsHitTesting(false)
-    }
-
-    // MARK: - Container Header Metadata
-
-    @ViewBuilder
-    private func containerHeaderMetadata(_ target: BrowseTarget) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            Text(target.name)
-                .typography(.pageTitle)
-                .lineLimit(2)
-                .padding(.top, DS.Spacing.xl)
-                .accessibilityIdentifier(AccessibilityID.Browse.containerTitle)
-
-            if !browseVM.items.isEmpty || !target.serviceName.isEmpty {
-                containerSubtitle(target)
-            }
-
-            if browseVM.isLoading {
-                Spinner(size: 16, lineWidth: 2)
-            }
-
-            Spacer(minLength: 0)
-
-            if hasPlayableItems {
-                containerActionButtons
-            }
-        }
-    }
-
-    /// Subtitle: service branding first (available immediately), item count second (loads later).
-    @ViewBuilder
-    private func containerSubtitle(_ target: BrowseTarget) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            if let artist = sharedArtist {
-                HeaderArtistLink(artist: artist, onTap: trackRows.first.flatMap(artistViewHandler))
-            }
-
-            HStack(spacing: DS.Spacing.sm) {
-                if let source = serviceSource(for: target) {
-                    ServiceBranding.serviceIcon(for: source, size: 20)
-                }
-                BreadcrumbBar(stack: browseVM.browseStack) { index in
-                    browseVM.navigateToBreadcrumb(at: index)
-                }
-            }
-
-            if !browseVM.items.isEmpty {
-                Text("\(browseVM.items.count)\(browseVM.hasMore ? "+" : "") \(itemNoun)")
-                    .typography(.bodyMedium)
-                    .foregroundStyle(DS.Colors.textTertiary)
-            }
-        }
-        .padding(.top, DS.Spacing.xs)
-    }
-
-    /// Resolve the MusicSource for the current browse context.
-    private func serviceSource(for target: BrowseTarget) -> MusicSource? {
-        guard let root = browseVM.browseStack.first else { return nil }
-        let source = state.musicSources.first { $0.sid == root.sid }
-        // Only show for streaming services, not local/built-in sources
-        guard let source, ServiceBranding.hasBrandIdentity(for: source.name) else { return nil }
-        return source
-    }
-
-    // MARK: - Container Action Buttons
-
-    private var containerActionButtons: some View {
-        HStack(spacing: DS.Spacing.md) {
-            CircularIconButton(
-                icon: DS.Icons.playing,
-                size: .large,
-                style: .primary,
-                action: { browseVM.playContainer() }
-            )
-            .accessibilityIdentifier(AccessibilityID.Browse.playContainer)
-            .help("Play")
-
-            CircularIconButton(
-                icon: DS.Icons.shuffle,
-                size: .medium,
-                style: .secondary,
-                action: { browseVM.shuffleContainer() }
-            )
-            .accessibilityIdentifier(AccessibilityID.Browse.shuffleContainer)
-            .help("Shuffle")
-
-            CircularIconButton(
-                icon: DS.Icons.addedToQueue,
-                size: .medium,
-                style: .secondary,
-                action: { browseVM.addContainerToQueue() }
-            )
-            .accessibilityIdentifier(AccessibilityID.Browse.addToQueue)
-            .help("Add to Queue")
-        }
-    }
-
-    // MARK: - Unavailable Service View
-
-    private func unavailableServiceView(_ source: MusicSource) -> some View {
-        VStack(spacing: DS.Spacing.lg) {
-            Spacer()
-            ServiceBranding.serviceIcon(for: source, size: 80)
-            Text(source.name)
-                .typography(.pageTitle)
-            Text("This service requires a HEOS account.")
-                .typography(.bodyPrimary).foregroundStyle(DS.Colors.textSecondary)
-
-            Button(action: { browseVM.navigateToSettings() }) {
-                Text("Sign In")
-                    .typography(.bodyEmphasis)
-            }
-            .buttonStyle(.bordered)
-            .tint(DS.Colors.accent)
-            .controlSize(.large)
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Sign In Prompt (browse error)
-
-    private func isAuthError(_ error: String) -> Bool {
-        let lower = error.lowercased()
-        return lower.contains("not logged in") || lower.contains("not signed in")
-    }
-
-    // MARK: - Error View
-
-    private func errorView(_ error: String) -> some View {
-        ErrorStateView(
-            message: error,
-            actionLabel: "Retry",
-            action: { browseVM.retry() }
-        )
+        Divider()
+            .foregroundStyle(DS.Colors.border)
+            .padding(.leading, 54)
     }
 
     private func isNowPlaying(_ item: BrowseItem) -> Bool {

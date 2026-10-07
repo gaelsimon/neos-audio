@@ -52,7 +52,7 @@ struct HomeView: View {
             .help("Refresh")
             .accessibilityIdentifier(AccessibilityID.Home.refreshButton)
         }
-        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.horizontal, DS.Spacing.xxl)
         .accessibilityIdentifier(AccessibilityID.Home.header)
     }
 
@@ -142,7 +142,7 @@ struct HomeView: View {
 
                     Spacer()
                 }
-                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.xxl)
 
                 if hasContent {
                     ForEach(categoryIndices, id: \.self) { index in
