@@ -38,10 +38,7 @@ struct NeosApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 700, height: 500)
-        .commands {
-            playbackCommands
-            demoCommands
-        }
+        .commands { playbackCommands }
 
         // Menu bar quick controls
         MenuBarExtra {
@@ -72,14 +69,6 @@ struct NeosApp: App {
 
     // MARK: - Menu Commands
 
-    @CommandsBuilder
-    private var demoCommands: some Commands {
-        CommandGroup(after: .appInfo) {
-            if DemoSession.isActive {
-                Button("Leave Demo") { DemoSession.leave() }
-            }
-        }
-    }
 
     /// Play/Pause carries no shortcut: `SpaceKeyMonitor` owns Space so typing still works.
     @CommandsBuilder
@@ -149,7 +138,6 @@ struct NeosApp: App {
             return
         }
 
-        DemoSession.restoreIfNeeded()
 
         let skipDiscovery = CommandLine.arguments.contains("--skip-discovery")
 

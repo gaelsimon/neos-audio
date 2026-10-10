@@ -51,8 +51,6 @@ struct DiscoveryView: View {
                 .foregroundStyle(DS.Colors.textTertiary)
 
             manualConnectToggle
-
-            demoButton
         }
     }
 
@@ -120,20 +118,8 @@ struct DiscoveryView: View {
                 .foregroundStyle(DS.Colors.textSecondary)
 
             manualConnectToggle
-
-            demoButton
         }
         .frame(maxWidth: 500)
-    }
-
-    // MARK: - Demo
-
-    private var demoButton: some View {
-        Button("No speaker? Try the demo") { DemoSession.start() }
-            .buttonStyle(.plain)
-            .typography(.secondary)
-            .foregroundStyle(DS.Colors.accent)
-            .accessibilityIdentifier(AccessibilityID.Discovery.demoButton)
     }
 
     // MARK: - Scan
