@@ -33,5 +33,9 @@
     <array>
         <string>_heos-audio._tcp</string>
     </array>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.music</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>

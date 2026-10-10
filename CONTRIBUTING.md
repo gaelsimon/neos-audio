@@ -51,6 +51,17 @@ With no credentials in the environment this produces an ad-hoc signed DMG in `bu
 the Gatekeeper warning on first launch. Set `CODE_SIGN_IDENTITY`, `DEVELOPMENT_TEAM` and the
 `NOTARY_*` variables to get a signed, notarised one.
 
+### Uploading to the Mac App Store
+
+```bash
+DEVELOPMENT_TEAM=XXXXXXXXXX NOTARY_KEY_PATH=... NOTARY_KEY_ID=... NOTARY_ISSUER_ID=... ./scripts/appstore.sh 1.6.0
+```
+
+The App Store build compiles with `APP_STORE`, which swaps the Ko-fi link in About for one to this
+repository, and gets a timestamp build number unless one is passed as the second argument. It uses
+the same App Store Connect API key as notarisation; `DESTINATION=export` keeps the package local
+instead of uploading it.
+
 ### Signing and notarisation in CI
 
 The Release workflow signs and notarises when the repository holds Developer ID credentials, and

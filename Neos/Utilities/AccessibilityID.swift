@@ -114,6 +114,7 @@ enum AccessibilityID {
         static let aboutCopyright = "settings.aboutCopyright"
         // Support
         static let supportButton = "settings.supportButton"
+        static let githubButton = "settings.githubButton"
         // Diagnostics
         static let diagnosticsList = "settings.diagnosticsList"
         static let copyDiagnosticsButton = "settings.copyDiagnosticsButton"
