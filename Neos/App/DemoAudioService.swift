@@ -65,6 +65,9 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
         case 2:
             let categories = DemoDataProvider.deezerCategories
             return BrowseResult(items: categories, returned: categories.count, count: categories.count)
+        case 10:
+            let categories = DemoDataProvider.tidalCategories
+            return BrowseResult(items: categories, returned: categories.count, count: categories.count)
         default:
             return BrowseResult(items: [])
         }
@@ -75,6 +78,8 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
         switch cid {
         case "cat-albums": items = DemoDataProvider.deezerAlbums
         case "album-opera": items = DemoDataProvider.deezerAlbumTracks
+        case "td-albums": items = DemoDataProvider.tidalAlbums
+        case "td-album-blue": items = DemoDataProvider.tidalAlbumTracks
         default: items = []
         }
         return BrowseResult(items: items, returned: items.count, count: items.count)

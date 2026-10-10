@@ -159,14 +159,16 @@ enum DemoDataProvider {
     }
 
     private static func setupSearchAndAccount(_ state: AppState) {
-        let deezerCriteria = [
+        let criteria = [
             SearchCriteria(scid: 1, name: "Artist"),
             SearchCriteria(scid: 2, name: "Album"),
             SearchCriteria(scid: 3, name: "Track"),
             SearchCriteria(scid: 4, name: "Playlist")
         ]
-        state.browse.searchCriteria[2] = deezerCriteria
-        state.setServiceCapabilities(sid: 2, capabilities: ServiceCapabilities(from: deezerCriteria))
+        for sid in [2, 10] {
+            state.browse.searchCriteria[sid] = criteria
+            state.setServiceCapabilities(sid: sid, capabilities: ServiceCapabilities(from: criteria))
+        }
         state.setSignedInUser("user@example.com")
     }
 
@@ -223,7 +225,7 @@ enum DemoDataProvider {
         ),
         MusicSource(
             sid: 10, name: "TIDAL",
-            type: "music_service", available: false
+            type: "music_service", available: true, serviceUsername: "user@example.com"
         ),
         MusicSource(
             sid: 13, name: "Amazon Music",
@@ -261,6 +263,35 @@ enum DemoDataProvider {
         BrowseItem(
             name: "Slow Orbit", type: .song, mid: "dz-12346", sid: 2,
             playable: true, artist: "The Velvet Hours", album: "Midnight Opera"
+        )
+    ]
+
+    /// TIDAL (sid 10) browse tree, a second signed-in service beside Deezer.
+    static let tidalCategories: [BrowseItem] = [
+        BrowseItem(name: "Albums", type: .container, cid: "td-albums", sid: 10, browsable: true),
+        BrowseItem(name: "Artists", type: .container, cid: "td-artists", sid: 10, browsable: true),
+        BrowseItem(name: "Playlists", type: .container, cid: "td-playlists", sid: 10, browsable: true)
+    ]
+
+    static let tidalAlbums: [BrowseItem] = [
+        BrowseItem(
+            name: "Blue Hour", imageURL: DemoArtwork.url("midnights"),
+            type: .album, cid: "td-album-blue", sid: 10, browsable: true, artist: "Mila Rae"
+        ),
+        BrowseItem(
+            name: "Coastline IV", imageURL: DemoArtwork.url("toto"),
+            type: .album, cid: "td-album-coast", sid: 10, browsable: true, artist: "Coastline"
+        )
+    ]
+
+    static let tidalAlbumTracks: [BrowseItem] = [
+        BrowseItem(
+            name: "Paper Hearts", type: .song, mid: "td-1896030", sid: 10,
+            playable: true, artist: "Mila Rae", album: "Blue Hour"
+        ),
+        BrowseItem(
+            name: "Harbour Lights", type: .song, mid: "td-1896031", sid: 10,
+            playable: true, artist: "Mila Rae", album: "Blue Hour"
         )
     ]
 
