@@ -1,6 +1,7 @@
 import Foundation
 import NeosDomain
 
+#if DEBUG
 /// No-op AudioService that returns canned data for demo mode.
 /// All mutating commands (play, pause, etc.) are silently accepted
 /// so ViewModels can execute without errors.
@@ -141,3 +142,4 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
 
     func resyncPlaybackState(pid: Int) async {}
 }
+#endif

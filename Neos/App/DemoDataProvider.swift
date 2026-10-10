@@ -1,6 +1,7 @@
 import Foundation
 import NeosDomain
 
+#if DEBUG
 /// Populates AppState with realistic sample data for UI tests and demo mode.
 /// Driven by the `--demo-mode` launch argument; no network required.
 @MainActor
@@ -314,3 +315,4 @@ enum DemoArtwork {
         Bundle.main.url(forResource: "demo-\(name)", withExtension: "jpg")?.absoluteString ?? ""
     }
 }
+#endif
