@@ -151,6 +151,7 @@
 		ABC08035FE5F09B270830981 /* CircularIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 679EF2086801994AE1C64F6F /* CircularIconButton.swift */; };
 		ABF1939660BBF2E464534EB0 /* InterpolatedPositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 416B6B4CFF107C8E0CC47932 /* InterpolatedPositionTests.swift */; };
 		AD1ABDD45574B55F6D6642DE /* BrowseViewModel+Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF4E162B8B6095F8005C2A3C /* BrowseViewModel+Playback.swift */; };
+		ADEB89F2F6A816DE5FA84479 /* CREDITS.md in Resources */ = {isa = PBXBuildFile; fileRef = 28F9D3183818234149815CC3 /* CREDITS.md */; };
 		AE353E1FEAAAB600B9892A2D /* AccessibilityID.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE02BCFA68F3A7A667FE7E94 /* AccessibilityID.swift */; };
 		AEB4C0FBE40E0E7815BCB14A /* MockAudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8798A6946B687FC3FBFC9928 /* MockAudioService.swift */; };
 		AF3B280EFFA4E5A49C84BBE1 /* Screen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B1772FA1BB9F66D335D5188 /* Screen.swift */; };
@@ -277,6 +278,7 @@
 		253C5F6A29D563813BC4ED2F /* LiveTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTestCase.swift; sourceTree = "<group>"; };
 		262D75E2DDEA9A43C2FB817F /* NeosUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NeosUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		273D79415E28F115DE532CF1 /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
+		28F9D3183818234149815CC3 /* CREDITS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CREDITS.md; sourceTree = "<group>"; };
 		2A71AE06B854D7908BE310F3 /* NeosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeosApp.swift; sourceTree = "<group>"; };
 		2AE1A2C489F22A75A60D5672 /* PlayerPickerPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerPickerPopover.swift; sourceTree = "<group>"; };
 		2B30CB321FB38AC626149023 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
@@ -657,6 +659,7 @@
 		90638CE9981C92848C0FD458 /* DemoArtwork */ = {
 			isa = PBXGroup;
 			children = (
+				28F9D3183818234149815CC3 /* CREDITS.md */,
 				7C945BCCB63D1ABBC09EF87E /* demo-abc123.jpg */,
 				F16F1E2D2FD541F5F504D3C2 /* demo-best.jpg */,
 				7CA26DFBE1573DCABFCC8208 /* demo-def456.jpg */,
@@ -930,6 +933,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D5E5D55C33C3689BB67F81EC /* Assets.xcassets in Resources */,
+				ADEB89F2F6A816DE5FA84479 /* CREDITS.md in Resources */,
 				06A1E8B61DAE062D13E19CAC /* PrivacyInfo.xcprivacy in Resources */,
 				11279871F5DF02A7B6A2F2DF /* demo-abc123.jpg in Resources */,
 				496B89E60EE928DD3218A350 /* demo-best.jpg in Resources */,
