@@ -191,9 +191,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         return []
     }
 
+    var browseResultsBySID: [Int: BrowseResult] = [:]
+
     func browseSource(sid: Int, range: ClosedRange<Int>?) async throws -> BrowseResult {
         calls.append("browseSource:\(sid)")
-        return browseResult
+        return browseResultsBySID[sid] ?? browseResult
     }
 
     func browseContainer(sid: Int, cid: String, range: ClosedRange<Int>?) async throws -> BrowseResult {
@@ -246,9 +248,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
 
     // MARK: - Search Actions
 
+    var searchCriteriaBySID: [Int: [SearchCriteria]] = [:]
+
     func getSearchCriteria(sid: Int) async throws -> [SearchCriteria] {
         calls.append("getSearchCriteria:\(sid)")
-        return searchCriteria
+        return searchCriteriaBySID[sid] ?? searchCriteria
     }
 
     func search(sid: Int, query: String, scid: Int, range: ClosedRange<Int>?) async throws -> BrowseResult {

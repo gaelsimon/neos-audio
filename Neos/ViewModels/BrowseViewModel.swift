@@ -42,6 +42,7 @@ final class BrowseViewModel {
     let fetchMusicSources: () async throws -> [MusicSource]
     let fetchSource: (_ sid: Int) async throws -> BrowseResult
     let fetchContainer: (_ sid: Int, _ cid: String, _ range: ClosedRange<Int>?) async throws -> BrowseResult
+    let serverPreferences: LocalServerPreferences
 
     var items: [BrowseItem] = []
     var browseOptions: [ServiceOption] = []
@@ -106,10 +107,12 @@ final class BrowseViewModel {
         state: AppState,
         getMusicSources: (() async throws -> [MusicSource])? = nil,
         browseSource: ((_ sid: Int) async throws -> BrowseResult)? = nil,
-        browseContainer: ((_ sid: Int, _ cid: String, _ range: ClosedRange<Int>?) async throws -> BrowseResult)? = nil
+        browseContainer: ((_ sid: Int, _ cid: String, _ range: ClosedRange<Int>?) async throws -> BrowseResult)? = nil,
+        serverPreferences: LocalServerPreferences? = nil
     ) {
         self.service = service
         self.state = state
+        self.serverPreferences = serverPreferences ?? LocalServerPreferences()
         self.fetchMusicSources = getMusicSources ?? { try await service.getMusicSources() }
         self.fetchSource = browseSource ?? { sid in try await service.browseSource(sid: sid) }
         self.fetchContainer = browseContainer ?? { sid, cid, range in

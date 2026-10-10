@@ -183,7 +183,7 @@ extension BrowseViewModel {
             do {
                 let result = try await fetchSource(source.sid)
                 guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                items = pagination.recordInitialPage(result.items, serverCount: nil)
+                items = pagination.recordInitialPage(result.items.filter(serverPreferences.shows), serverCount: nil)
                 browseOptions = result.options
                 state.cacheImageURLs(from: items)
 
@@ -243,7 +243,7 @@ extension BrowseViewModel {
     @discardableResult
     private func applyBrowseResult(_ result: BrowseResult, requestID: Int, serverCount: Int?) -> Bool {
         guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return false }
-        items = pagination.recordInitialPage(result.items, serverCount: serverCount)
+        items = pagination.recordInitialPage(result.items.filter(serverPreferences.shows), serverCount: serverCount)
         browseOptions = result.options
         state.cacheImageURLs(from: items)
         return true

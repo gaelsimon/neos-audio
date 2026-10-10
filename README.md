@@ -35,6 +35,7 @@ Using the Tidal desktop app with HEOS isn't great either. It only supports Tidal
 - Home screen with recently played, favorites, and quick access to your services
 - Browse music sources with infinite scroll
 - Search across services with category filters (tracks, artists, albums)
+- Hide a local music server, or keep it out of search, from Settings
 - Full-screen Now Playing view with album art and queue panel
 - Click an artist or album name to jump to their page
 - Open any track, album, or station in its own service, or copy a shareable link

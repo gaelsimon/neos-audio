@@ -13,7 +13,7 @@ struct BrowseGridTile: View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                 GeometryReader { geo in
-                    if item.type == .heosServer || item.type == .dlnaServer {
+                    if item.isMediaServer {
                         Rectangle()
                             .fill(DS.Colors.surfaceElevated)
                             .overlay {

@@ -105,6 +105,9 @@ enum AccessibilityID {
         // Cache
         static let cacheSizeLabel = "settings.cacheSizeLabel"
         static let clearCacheButton = "settings.clearCacheButton"
+        // Local Music Servers
+        static func localServerShow(_ name: String) -> String { "settings.localServer.show.\(name)" }
+        static func localServerSearch(_ name: String) -> String { "settings.localServer.search.\(name)" }
         // About
         static let aboutVersion = "settings.aboutVersion"
         static let aboutBuild = "settings.aboutBuild"

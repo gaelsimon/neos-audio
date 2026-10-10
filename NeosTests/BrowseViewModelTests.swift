@@ -1186,6 +1186,34 @@ final class BrowseViewModelTests: XCTestCase {
         XCTAssertEqual(vm.browseStack.map(\.name), ["TIDAL"])
         XCTAssertEqual(vm.items.map(\.name), ["Album"])
     }
+
+    // MARK: - Local server preferences
+
+    @MainActor
+    func testHiddenServerIsLeftOutOfLocalMusic() async {
+        let suiteName = "BrowseViewModelTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let prefs = LocalServerPreferences(defaults: defaults)
+        prefs.setShown(false, for: "NAS")
+        let vm = BrowseViewModel(
+            service: MockAudioService(),
+            state: AppState(),
+            getMusicSources: { [] },
+            browseSource: { _ in
+                BrowseResult(items: [
+                    BrowseItem(name: "NAS", type: .heosServer, sid: -1),
+                    BrowseItem(name: "Kantele NAS", type: .heosServer, sid: -2),
+                ])
+            },
+            serverPreferences: prefs
+        )
+
+        vm.selectSource(MusicSource(sid: HEOSConstants.localMusicSID, name: "Local Music", type: "heos_server"))
+        await waitUntil { !vm.items.isEmpty }
+
+        XCTAssertEqual(vm.items.map(\.name), ["Kantele NAS"])
+    }
 }
 
 private actor MockBrowseBackend {

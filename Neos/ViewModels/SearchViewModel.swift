@@ -18,6 +18,7 @@ enum SearchOverlayPhase: Equatable {
 final class SearchViewModel {
     let service: any AudioService
     private let state: AppState
+    private let serverPreferences: LocalServerPreferences
     private let logger = Logger(subsystem: "com.galela.neos", category: "Search")
 
     // MARK: - Search State
@@ -61,9 +62,10 @@ final class SearchViewModel {
     private let searchTracker = RequestTracker()
     let previewCount = 5
 
-    init(service: any AudioService, state: AppState) {
+    init(service: any AudioService, state: AppState, serverPreferences: LocalServerPreferences? = nil) {
         self.service = service
         self.state = state
+        self.serverPreferences = serverPreferences ?? LocalServerPreferences()
     }
 
     // MARK: - Overlay Lifecycle
@@ -122,7 +124,7 @@ final class SearchViewModel {
     var allSearchableServices: [MusicSource] {
         var result = searchableServices.filter { state.searchCriteria[$0.sid] != nil }
         let sortedSubs = discoveredSubSources.values
-            .filter { state.searchCriteria[$0.sid] != nil }
+            .filter { state.searchCriteria[$0.sid] != nil && serverPreferences.isSearchable($0.name) }
             .sorted { $0.sid < $1.sid }
         result.append(contentsOf: sortedSubs)
         return result
@@ -260,6 +262,10 @@ final class SearchViewModel {
         // Target services: the filtered one, or all when no filter is set.
         // Includes top-level services and discovered sub-sources.
         let allSIDs = Set(allSearchableServices.map(\.sid))
+        // A filter on a server taken out of search since would match nothing.
+        if let filteredSID = selectedServiceFilter, !allSIDs.contains(filteredSID) {
+            selectedServiceFilter = nil
+        }
         let targetSIDs: Set<Int>
         if let filteredSID = selectedServiceFilter {
             targetSIDs = allSIDs.intersection([filteredSID])
@@ -410,7 +416,7 @@ final class SearchViewModel {
             return []
         }
 
-        let subSourceItems = items.filter { $0.sid != nil }
+        let subSourceItems = items.filter { $0.sid != nil && serverPreferences.isSearchable($0.name) }
         guard !subSourceItems.isEmpty else {
             logger.info("No sub-sources found under \(parent.name)")
             return []

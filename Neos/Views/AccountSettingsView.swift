@@ -6,6 +6,7 @@ struct AccountSettingsView: View {
     @Bindable var accountVM: AccountViewModel
     let settingsVM: SettingsViewModel
     let homeVM: HomeViewModel
+    let localServersVM: LocalServersViewModel
 
     @State private var showSignOutConfirmation = false
 
@@ -18,6 +19,7 @@ struct AccountSettingsView: View {
 
                 accountSection
                 servicesSection
+                localServersSection
                 playbackSection
                 cacheSection
                 aboutSection
@@ -168,6 +170,20 @@ struct AccountSettingsView: View {
                 )
             }
         }
+    }
+
+    // MARK: - Local Music Servers Section
+
+    private var localServersSection: some View {
+        sectionCard(header: "Local Music Servers") {
+            if localServersVM.servers.isEmpty {
+                Text("No local music servers found.")
+                    .typography(.secondary)
+            } else {
+                LocalServerSettingsView(servers: localServersVM.servers, preferences: localServersVM.preferences)
+            }
+        }
+        .task { await localServersVM.load() }
     }
 
     // MARK: - Playback Section

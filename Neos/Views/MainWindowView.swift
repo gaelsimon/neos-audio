@@ -200,7 +200,10 @@ struct MainWindowView: View {
                     case .queue:
                         QueueView(state: state, viewModel: queueVM, browseVM: browseVM)
                     case .settings:
-                        AccountSettingsView(state: state, accountVM: accountVM, settingsVM: settingsVM, homeVM: homeVM)
+                        AccountSettingsView(
+                            state: state, accountVM: accountVM, settingsVM: settingsVM,
+                            homeVM: homeVM, localServersVM: container.localServersVM
+                        )
                     case .ampSettings:
                         AmpSettingsView(state: state, speakerVM: speakerVM, groupVM: groupVM)
                     }

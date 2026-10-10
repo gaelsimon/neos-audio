@@ -25,18 +25,21 @@ final class ViewModelContainer {
     let queuePanelVM: QueuePanelViewModel
     let settingsVM: SettingsViewModel
     let groupVM: GroupViewModel
+    let localServersVM: LocalServersViewModel
 
     init(service: any AudioService, state: AppState) {
         self.playerVM = PlayerViewModel(service: service, state: state)
         self.speakerVM = SpeakerListViewModel(service: service, state: state)
         self.queueVM = QueueViewModel(service: service, state: state)
-        self.browseVM = BrowseViewModel(service: service, state: state)
+        let serverPreferences = LocalServerPreferences()
+        self.browseVM = BrowseViewModel(service: service, state: state, serverPreferences: serverPreferences)
         self.homeVM = HomeViewModel(service: service, state: state)
         self.accountVM = AccountViewModel(service: service, state: state)
-        self.searchVM = SearchViewModel(service: service, state: state)
+        self.searchVM = SearchViewModel(service: service, state: state, serverPreferences: serverPreferences)
         self.queuePanelVM = QueuePanelViewModel(service: service, state: state)
         self.settingsVM = SettingsViewModel(state: state)
         self.groupVM = GroupViewModel(service: service, state: state)
+        self.localServersVM = LocalServersViewModel(service: service, preferences: serverPreferences)
 
         playerVM.startTrackMetadataObserver()
 
