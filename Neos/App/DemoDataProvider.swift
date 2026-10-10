@@ -69,7 +69,7 @@ enum DemoDataProvider {
         ),
         Player(
             pid: home150PID,
-            name: "Home 150 Pair",
+            name: "Living Room",
             model: "HEOS Home 150",
             version: "3.34.510",
             ip: "192.0.2.20",
@@ -130,9 +130,9 @@ enum DemoDataProvider {
         state.setPlayState(.play)
         state.setNowPlaying(NowPlayingMedia(
             type: .song,
-            song: "Bohemian Rhapsody",
-            album: "A Night at the Opera",
-            artist: "Queen",
+            song: "Paper Lanterns",
+            album: "Midnight Opera",
+            artist: "The Velvet Hours",
             imageURL: DemoArtwork.url("abc123"),
             albumID: "alb-67890",
             mid: "dz-12345",
@@ -174,36 +174,36 @@ enum DemoDataProvider {
     static let queue: [QueueItem] = [
         QueueItem(
             qid: 1,
-            song: "Somebody to Love",
-            album: "A Day at the Races",
-            artist: "Queen",
+            song: "Someone Like Summer",
+            album: "Daylight Races",
+            artist: "The Velvet Hours",
             imageURL: DemoArtwork.url("races"),
             mid: "dz-11111",
             albumID: "alb-aaaaa"
         ),
         QueueItem(
             qid: 2,
-            song: "Don't Stop Me Now",
+            song: "Keep the Lights On",
             album: "Jazz",
-            artist: "Queen",
+            artist: "The Velvet Hours",
             imageURL: DemoArtwork.url("jazz"),
             mid: "dz-22222",
             albumID: "alb-bbbbb"
         ),
         QueueItem(
             qid: 3,
-            song: "Bohemian Rhapsody",
-            album: "A Night at the Opera",
-            artist: "Queen",
+            song: "Paper Lanterns",
+            album: "Midnight Opera",
+            artist: "The Velvet Hours",
             imageURL: DemoArtwork.url("opera"),
             mid: "dz-12345",
             albumID: "alb-67890"
         ),
         QueueItem(
             qid: 4,
-            song: "Under Pressure",
-            album: "Hot Space",
-            artist: "Queen & David Bowie",
+            song: "Glass Weather",
+            album: "Warm Rooms",
+            artist: "The Velvet Hours & Nova Lane",
             imageURL: DemoArtwork.url("hot"),
             mid: "dz-33333",
             albumID: "alb-ccccc"
@@ -219,10 +219,6 @@ enum DemoDataProvider {
         MusicSource(
             sid: 3, name: "TuneIn",
             type: "music_service", available: true
-        ),
-        MusicSource(
-            sid: 9, name: "Spotify",
-            type: "music_service", available: true, serviceUsername: "spotify_user"
         ),
         MusicSource(
             sid: 10, name: "TIDAL",
@@ -247,67 +243,68 @@ enum DemoDataProvider {
 
     static let deezerAlbums: [BrowseItem] = [
         BrowseItem(
-            name: "A Night at the Opera", imageURL: DemoArtwork.url("abc123"),
-            type: .album, cid: "album-opera", sid: 2, browsable: true, artist: "Queen"
+            name: "Midnight Opera", imageURL: DemoArtwork.url("abc123"),
+            type: .album, cid: "album-opera", sid: 2, browsable: true, artist: "The Velvet Hours"
         ),
         BrowseItem(
-            name: "Random Access Memories", imageURL: DemoArtwork.url("def456"),
-            type: .album, cid: "album-ram", sid: 2, browsable: true, artist: "Daft Punk"
+            name: "Analog Dreams", imageURL: DemoArtwork.url("def456"),
+            type: .album, cid: "album-ram", sid: 2, browsable: true, artist: "Neon Harbor"
         )
     ]
 
     static let deezerAlbumTracks: [BrowseItem] = [
         BrowseItem(
-            name: "Bohemian Rhapsody", type: .song, mid: "dz-12345", sid: 2,
-            playable: true, artist: "Queen", album: "A Night at the Opera"
+            name: "Paper Lanterns", type: .song, mid: "dz-12345", sid: 2,
+            playable: true, artist: "The Velvet Hours", album: "Midnight Opera"
         ),
         BrowseItem(
-            name: "Love of My Life", type: .song, mid: "dz-12346", sid: 2,
-            playable: true, artist: "Queen", album: "A Night at the Opera"
+            name: "Slow Orbit", type: .song, mid: "dz-12346", sid: 2,
+            playable: true, artist: "The Velvet Hours", album: "Midnight Opera"
         )
     ]
 
     static let favorites: [BrowseItem] = [
-        BrowseItem(name: "BBC Radio 1", imageURL: DemoArtwork.url("s24939"), type: .station, cid: "1028", mid: "s/24939", sid: 3, playable: true),
-        BrowseItem(name: "FIP", imageURL: DemoArtwork.url("s15200"), type: .station, cid: "1028", mid: "s/15200", sid: 3, playable: true),
-        BrowseItem(name: "Flow", imageURL: DemoArtwork.url("flow"), type: .station, cid: "1028", mid: "dz-flow", sid: 2, playable: true)
+        BrowseItem(name: "Pulse FM", imageURL: DemoArtwork.url("s24939"), type: .station, cid: "1028", mid: "s/24939", sid: 3, playable: true),
+        BrowseItem(name: "Eclectic FM", imageURL: DemoArtwork.url("s15200"), type: .station, cid: "1028", mid: "s/15200", sid: 3, playable: true),
+        BrowseItem(name: "Daily Mix", imageURL: DemoArtwork.url("flow"), type: .station, cid: "1028", mid: "dz-flow", sid: 2, playable: true)
     ]
 
     static let history: [BrowseItem] = [
         BrowseItem(
-            name: "Bohemian Rhapsody", imageURL: DemoArtwork.url("abc123"),
-            type: .song, mid: "dz-12345", sid: 2, playable: true, artist: "Queen", album: "A Night at the Opera"
+            name: "Paper Lanterns", imageURL: DemoArtwork.url("abc123"),
+            type: .song, mid: "dz-12345", sid: 2, playable: true, artist: "The Velvet Hours", album: "Midnight Opera"
         ),
-        BrowseItem(name: "Jazz Radio", imageURL: DemoArtwork.url("s12345"),
+        BrowseItem(name: "Late Night Jazz", imageURL: DemoArtwork.url("s12345"),
                    type: .station, mid: "s/12345", sid: 3, playable: true),
         BrowseItem(
-            name: "Discovery", imageURL: DemoArtwork.url("def456"),
+            name: "Night Drive", imageURL: DemoArtwork.url("def456"),
             type: .album, cid: "dz-album-7890", mid: "dz-album-7890", sid: 2,
-            playable: true, browsable: true, artist: "Daft Punk"
+            playable: true, browsable: true, artist: "Neon Harbor"
         ),
         BrowseItem(
             name: "Chill Vibes", imageURL: DemoArtwork.url("ghi789"),
             type: .playlist, cid: "dz-playlist-555", mid: "dz-playlist-555", sid: 2, playable: true, browsable: true
         ),
-        BrowseItem(name: "BBC Radio 6 Music", imageURL: DemoArtwork.url("s44491"),
+        BrowseItem(name: "Northern Sounds", imageURL: DemoArtwork.url("s44491"),
                    type: .station, mid: "s/44491", sid: 3, playable: true),
         BrowseItem(
-            name: "Random Access Memories", imageURL: DemoArtwork.url("jkl012"),
+            name: "Analog Dreams", imageURL: DemoArtwork.url("jkl012"),
             type: .album, cid: "dz-album-1234", mid: "dz-album-1234", sid: 2,
-            playable: true, browsable: true, artist: "Daft Punk"
+            playable: true, browsable: true, artist: "Neon Harbor"
         ),
     ]
 
     static let searchTracks: [BrowseItem] = [
-        BrowseItem(name: "Anti-Hero", imageURL: DemoArtwork.url("midnights"),
-            type: .song, mid: "dz-1896030", playable: true, artist: "Taylor Swift", album: "Midnights"),
-        BrowseItem(name: "All of Me", imageURL: DemoArtwork.url("love"),
-            type: .song, mid: "dz-6848228", playable: true, artist: "John Legend", album: "Love in the Future"),
-        BrowseItem(name: "As It Was", imageURL: DemoArtwork.url("harrys"),
-            type: .song, mid: "dz-1711080", playable: true, artist: "Harry Styles", album: "Harry's House"),
-        BrowseItem(name: "Aint No Sunshine", imageURL: DemoArtwork.url("best"),
-            type: .song, mid: "dz-5324880", playable: true, artist: "Bill Withers", album: "Just As I Am"),
-        BrowseItem(name: "Africa", imageURL: DemoArtwork.url("toto"), type: .song, mid: "dz-668810", playable: true, artist: "Toto", album: "Toto IV")
+        BrowseItem(name: "Paper Hearts", imageURL: DemoArtwork.url("midnights"),
+            type: .song, mid: "dz-1896030", playable: true, artist: "Mila Rae", album: "Blue Hour"),
+        BrowseItem(name: "All the Way", imageURL: DemoArtwork.url("love"),
+            type: .song, mid: "dz-6848228", playable: true, artist: "Owen Marsh", album: "Tomorrow's Light"),
+        BrowseItem(name: "As We Were", imageURL: DemoArtwork.url("harrys"),
+            type: .song, mid: "dz-1711080", playable: true, artist: "June Avery", album: "June's Garden"),
+        BrowseItem(name: "After the Rain", imageURL: DemoArtwork.url("best"),
+            type: .song, mid: "dz-5324880", playable: true, artist: "Elias Grant", album: "Plain and Simple"),
+        BrowseItem(name: "Savanna Light", imageURL: DemoArtwork.url("toto"),
+            type: .song, mid: "dz-668810", playable: true, artist: "Coastline", album: "Coastline IV")
     ]
 }
 

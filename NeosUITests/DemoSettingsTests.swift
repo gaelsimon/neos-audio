@@ -126,7 +126,7 @@ final class DemoSettingsTests: DemoTestCase {
         waitForElement(avrMain)
         XCTAssertTrue(avrMain.exists, "AVR main zone row should exist")
         XCTAssertTrue(avrZone2.exists, "AVR Zone 2 row should exist")
-        XCTAssertTrue(home150.exists, "Home 150 Pair row should exist")
+        XCTAssertTrue(home150.exists, "Living Room row should exist")
     }
 
     func testAmpSettingsHome150IsSelected() {
@@ -134,7 +134,7 @@ final class DemoSettingsTests: DemoTestCase {
         // The standalone speaker (Home 150) should be the selected player,
         // not an AVR zone; verifies the preferredPlayer selection logic.
         let home150Button = app.buttons.matching(identifier: AccessibilityID.AmpSettings.playerRow(927_361_084))
-            .matching(NSPredicate(format: "label == %@", "Home 150 Pair")).firstMatch
+            .matching(NSPredicate(format: "label == %@", "Living Room")).firstMatch
         let avrMainButton = app.buttons.matching(identifier: AccessibilityID.AmpSettings.playerRow(1_845_498_270))
             .matching(NSPredicate(format: "label == %@", "Denon AVR-X2800H")).firstMatch
         waitForElement(home150Button)
@@ -167,7 +167,7 @@ final class DemoSettingsTests: DemoTestCase {
     func testSelectAVRMainZoneSwitchesSelectedPlayer() {
         navigateToAmpSettings()
         let avrButton = ampSettings.playerButton(avrMainPID, label: "Denon AVR-X2800H")
-        let home150Button = ampSettings.playerButton(home150PID, label: "Home 150 Pair")
+        let home150Button = ampSettings.playerButton(home150PID, label: "Living Room")
         waitForElement(avrButton)
 
         // Precondition: Home 150 is selected
@@ -205,7 +205,7 @@ final class DemoSettingsTests: DemoTestCase {
     func testReselectHome150AfterSwitching() {
         navigateToAmpSettings()
         let avrButton = ampSettings.playerButton(avrMainPID, label: "Denon AVR-X2800H")
-        let home150Button = ampSettings.playerButton(home150PID, label: "Home 150 Pair")
+        let home150Button = ampSettings.playerButton(home150PID, label: "Living Room")
         waitForElement(avrButton)
 
         // Switch to AVR, then back to Home 150

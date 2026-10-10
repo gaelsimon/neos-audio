@@ -62,7 +62,7 @@ final class DemoBreadcrumbTests: DemoTestCase {
     func testBreadcrumbGrowsWithDepth() {
         openFirstCategory()
 
-        clickRow(labelled: "A Night at the Opera, Queen")
+        clickRow(labelled: "Midnight Opera, The Velvet Hours")
 
         waitForElement(browse.breadcrumbItem(1))
         XCTAssertFalse(browse.breadcrumbItem(2).exists, "The path stops at the parent of the current level")
