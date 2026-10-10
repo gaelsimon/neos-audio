@@ -140,6 +140,7 @@ enum AccessibilityID {
     // MARK: - Discovery
 
     enum Discovery {
+        static let demoButton = "discovery.demoButton"
         static let view = "discovery.view"
         static let deviceGrid = "discovery.deviceGrid"
         static let manualConnectSection = "discovery.manualConnectSection"

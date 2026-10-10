@@ -133,7 +133,7 @@ enum DemoDataProvider {
             song: "Bohemian Rhapsody",
             album: "A Night at the Opera",
             artist: "Queen",
-            imageURL: "https://e-cdns-images.dzcdn.net/images/cover/abc123/500x500.jpg",
+            imageURL: DemoArtwork.url("abc123"),
             albumID: "alb-67890",
             mid: "dz-12345",
             qid: 3,
@@ -177,7 +177,7 @@ enum DemoDataProvider {
             song: "Somebody to Love",
             album: "A Day at the Races",
             artist: "Queen",
-            imageURL: "https://e-cdns-images.dzcdn.net/images/cover/races/250x250.jpg",
+            imageURL: DemoArtwork.url("races"),
             mid: "dz-11111",
             albumID: "alb-aaaaa"
         ),
@@ -186,7 +186,7 @@ enum DemoDataProvider {
             song: "Don't Stop Me Now",
             album: "Jazz",
             artist: "Queen",
-            imageURL: "https://e-cdns-images.dzcdn.net/images/cover/jazz/250x250.jpg",
+            imageURL: DemoArtwork.url("jazz"),
             mid: "dz-22222",
             albumID: "alb-bbbbb"
         ),
@@ -195,7 +195,7 @@ enum DemoDataProvider {
             song: "Bohemian Rhapsody",
             album: "A Night at the Opera",
             artist: "Queen",
-            imageURL: "https://e-cdns-images.dzcdn.net/images/cover/opera/250x250.jpg",
+            imageURL: DemoArtwork.url("opera"),
             mid: "dz-12345",
             albumID: "alb-67890"
         ),
@@ -204,7 +204,7 @@ enum DemoDataProvider {
             song: "Under Pressure",
             album: "Hot Space",
             artist: "Queen & David Bowie",
-            imageURL: "https://e-cdns-images.dzcdn.net/images/cover/hot/250x250.jpg",
+            imageURL: DemoArtwork.url("hot"),
             mid: "dz-33333",
             albumID: "alb-ccccc"
         )
@@ -247,11 +247,11 @@ enum DemoDataProvider {
 
     static let deezerAlbums: [BrowseItem] = [
         BrowseItem(
-            name: "A Night at the Opera", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/abc123/250x250.jpg",
+            name: "A Night at the Opera", imageURL: DemoArtwork.url("abc123"),
             type: .album, cid: "album-opera", sid: 2, browsable: true, artist: "Queen"
         ),
         BrowseItem(
-            name: "Random Access Memories", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/def456/250x250.jpg",
+            name: "Random Access Memories", imageURL: DemoArtwork.url("def456"),
             type: .album, cid: "album-ram", sid: 2, browsable: true, artist: "Daft Punk"
         )
     ]
@@ -268,41 +268,52 @@ enum DemoDataProvider {
     ]
 
     static let favorites: [BrowseItem] = [
-        BrowseItem(name: "BBC Radio 1", imageURL: "https://cdn-radiotime-logos.tunein.com/s24939.png", type: .station, cid: "1028", mid: "s/24939", sid: 3, playable: true),
-        BrowseItem(name: "FIP", imageURL: "https://cdn-radiotime-logos.tunein.com/s15200.png", type: .station, cid: "1028", mid: "s/15200", sid: 3, playable: true),
-        BrowseItem(name: "Flow", imageURL: "https://e-cdns-images.dzcdn.net/images/misc/flow.png", type: .station, cid: "1028", mid: "dz-flow", sid: 2, playable: true)
+        BrowseItem(name: "BBC Radio 1", imageURL: DemoArtwork.url("s24939"), type: .station, cid: "1028", mid: "s/24939", sid: 3, playable: true),
+        BrowseItem(name: "FIP", imageURL: DemoArtwork.url("s15200"), type: .station, cid: "1028", mid: "s/15200", sid: 3, playable: true),
+        BrowseItem(name: "Flow", imageURL: DemoArtwork.url("flow"), type: .station, cid: "1028", mid: "dz-flow", sid: 2, playable: true)
     ]
 
     static let history: [BrowseItem] = [
         BrowseItem(
-            name: "Bohemian Rhapsody", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/abc123/250x250.jpg",
+            name: "Bohemian Rhapsody", imageURL: DemoArtwork.url("abc123"),
             type: .song, mid: "dz-12345", sid: 2, playable: true, artist: "Queen", album: "A Night at the Opera"
         ),
-        BrowseItem(name: "Jazz Radio", imageURL: "https://cdn-radiotime-logos.tunein.com/s12345.png",
+        BrowseItem(name: "Jazz Radio", imageURL: DemoArtwork.url("s12345"),
                    type: .station, mid: "s/12345", sid: 3, playable: true),
         BrowseItem(
-            name: "Discovery", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/def456/250x250.jpg",
+            name: "Discovery", imageURL: DemoArtwork.url("def456"),
             type: .album, cid: "dz-album-7890", mid: "dz-album-7890", sid: 2,
             playable: true, browsable: true, artist: "Daft Punk"
         ),
         BrowseItem(
-            name: "Chill Vibes", imageURL: "https://e-cdns-images.dzcdn.net/images/playlist/ghi789/250x250.jpg",
+            name: "Chill Vibes", imageURL: DemoArtwork.url("ghi789"),
             type: .playlist, cid: "dz-playlist-555", mid: "dz-playlist-555", sid: 2, playable: true, browsable: true
         ),
-        BrowseItem(name: "BBC Radio 6 Music", imageURL: "https://cdn-radiotime-logos.tunein.com/s44491.png",
+        BrowseItem(name: "BBC Radio 6 Music", imageURL: DemoArtwork.url("s44491"),
                    type: .station, mid: "s/44491", sid: 3, playable: true),
         BrowseItem(
-            name: "Random Access Memories", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/jkl012/250x250.jpg",
+            name: "Random Access Memories", imageURL: DemoArtwork.url("jkl012"),
             type: .album, cid: "dz-album-1234", mid: "dz-album-1234", sid: 2,
             playable: true, browsable: true, artist: "Daft Punk"
         ),
     ]
 
     static let searchTracks: [BrowseItem] = [
-        BrowseItem(name: "Anti-Hero", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/midnights/250x250.jpg", type: .song, mid: "dz-1896030", playable: true, artist: "Taylor Swift", album: "Midnights"),
-        BrowseItem(name: "All of Me", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/love/250x250.jpg", type: .song, mid: "dz-6848228", playable: true, artist: "John Legend", album: "Love in the Future"),
-        BrowseItem(name: "As It Was", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/harrys/250x250.jpg", type: .song, mid: "dz-1711080", playable: true, artist: "Harry Styles", album: "Harry's House"),
-        BrowseItem(name: "Aint No Sunshine", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/best/250x250.jpg", type: .song, mid: "dz-5324880", playable: true, artist: "Bill Withers", album: "Just As I Am"),
-        BrowseItem(name: "Africa", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/toto/250x250.jpg", type: .song, mid: "dz-668810", playable: true, artist: "Toto", album: "Toto IV")
+        BrowseItem(name: "Anti-Hero", imageURL: DemoArtwork.url("midnights"),
+            type: .song, mid: "dz-1896030", playable: true, artist: "Taylor Swift", album: "Midnights"),
+        BrowseItem(name: "All of Me", imageURL: DemoArtwork.url("love"),
+            type: .song, mid: "dz-6848228", playable: true, artist: "John Legend", album: "Love in the Future"),
+        BrowseItem(name: "As It Was", imageURL: DemoArtwork.url("harrys"),
+            type: .song, mid: "dz-1711080", playable: true, artist: "Harry Styles", album: "Harry's House"),
+        BrowseItem(name: "Aint No Sunshine", imageURL: DemoArtwork.url("best"),
+            type: .song, mid: "dz-5324880", playable: true, artist: "Bill Withers", album: "Just As I Am"),
+        BrowseItem(name: "Africa", imageURL: DemoArtwork.url("toto"), type: .song, mid: "dz-668810", playable: true, artist: "Toto", album: "Toto IV")
     ]
+}
+
+/// Covers drawn for the demo, so it shows artwork without borrowing anyone's.
+enum DemoArtwork {
+    static func url(_ name: String) -> String {
+        Bundle.main.url(forResource: "demo-\(name)", withExtension: "jpg")?.absoluteString ?? ""
+    }
 }

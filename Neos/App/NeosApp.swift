@@ -38,7 +38,10 @@ struct NeosApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 700, height: 500)
-        .commands { playbackCommands }
+        .commands {
+            playbackCommands
+            demoCommands
+        }
 
         // Menu bar quick controls
         MenuBarExtra {
@@ -68,6 +71,15 @@ struct NeosApp: App {
     }
 
     // MARK: - Menu Commands
+
+    @CommandsBuilder
+    private var demoCommands: some Commands {
+        CommandGroup(after: .appInfo) {
+            if DemoSession.isActive {
+                Button("Leave Demo") { DemoSession.leave() }
+            }
+        }
+    }
 
     /// Play/Pause carries no shortcut: `SpaceKeyMonitor` owns Space so typing still works.
     @CommandsBuilder
@@ -116,7 +128,7 @@ struct NeosApp: App {
     /// Idempotent: whichever scene appears first boots the services.
     private func initializeServices() {
         guard container == nil else { return }
-        let isDemoMode = CommandLine.arguments.contains("--demo-mode")
+        let isDemoMode = DemoSession.isActive
 
         // Demo mode takes priority; always initialize even when hosted by XCTest
         if isDemoMode {
@@ -136,6 +148,8 @@ struct NeosApp: App {
         if isUnitTestHost {
             return
         }
+
+        DemoSession.restoreIfNeeded()
 
         let skipDiscovery = CommandLine.arguments.contains("--skip-discovery")
 
