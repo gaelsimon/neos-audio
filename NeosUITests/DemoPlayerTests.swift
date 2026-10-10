@@ -7,7 +7,7 @@ final class DemoPlayerTests: DemoTestCase {
 
     // MARK: - Now Playing Info
 
-    func testSongTitleDisplaysBohemianRhapsody() {
+    func testSongTitleDisplaysPaperLanterns() {
         let player = PlayerScreen(app: app)
         waitForElement(player.songTitle)
         XCTAssertEqual(player.songTitle.value as? String, "Paper Lanterns")

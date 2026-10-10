@@ -69,7 +69,6 @@ struct NeosApp: App {
 
     // MARK: - Menu Commands
 
-
     /// Play/Pause carries no shortcut: `SpaceKeyMonitor` owns Space so typing still works.
     @CommandsBuilder
     private var playbackCommands: some Commands {
@@ -139,7 +138,6 @@ struct NeosApp: App {
         if isUnitTestHost {
             return
         }
-
 
         let skipDiscovery = CommandLine.arguments.contains("--skip-discovery")
 

@@ -118,7 +118,7 @@ final class DemoSettingsTests: DemoTestCase {
 
     func testAmpSettingsShowsAllPlayerRows() {
         navigateToAmpSettings()
-        // Demo has 3 players: AVR main zone, AVR Zone 2, Home 150 Pair
+        // Demo has 3 players: AVR main zone, AVR Zone 2, Living Room
         let avrMain = ampSettings.playerRow(1_845_498_270)
         let avrZone2 = ampSettings.playerRow(1_845_498_271)
         let home150 = ampSettings.playerRow(927_361_084)
