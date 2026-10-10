@@ -13,6 +13,7 @@ final class LocalServersViewModel {
     let preferences: LocalServerPreferences
     private let service: any AudioService
     private(set) var servers: [Server] = []
+    private(set) var hasLoaded = false
 
     init(service: any AudioService, preferences: LocalServerPreferences) {
         self.service = service
@@ -27,5 +28,6 @@ final class LocalServersViewModel {
         let offline = preferences.rememberedNames.subtracting(online).sorted()
         servers = online.map { Server(name: $0, isOnline: true) }
             + offline.map { Server(name: $0, isOnline: false) }
+        hasLoaded = true
     }
 }

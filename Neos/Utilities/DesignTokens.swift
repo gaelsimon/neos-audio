@@ -46,6 +46,7 @@ enum DS {
     enum TopBar {
         static let height: CGFloat = 56
         static let searchWidth: CGFloat = 280
+        static let searchMinWidth: CGFloat = 120
         static let controlHeight: CGFloat = 36
         static let arrowFont: SwiftUI.Font = .system(size: 15, weight: .semibold)
     }

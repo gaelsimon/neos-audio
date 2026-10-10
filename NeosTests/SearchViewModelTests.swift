@@ -489,7 +489,7 @@ final class SearchViewModelTests: XCTestCase {
     private func makeLocalMusicSearch(
         unsearchable: String,
         defaults: UserDefaults
-    ) -> (SearchViewModel, MockAudioService) {
+    ) -> (SearchViewModel, MockAudioService, LocalServerPreferences) {
         let prefs = LocalServerPreferences(defaults: defaults)
         prefs.setSearchable(false, for: unsearchable)
         let state = AppState()
@@ -500,7 +500,7 @@ final class SearchViewModelTests: XCTestCase {
             BrowseItem(name: "Kantele NAS", type: .heosServer, sid: -1),
             BrowseItem(name: "NASPERES", type: .heosServer, sid: -2),
         ])]
-        return (SearchViewModel(service: mock, state: state, serverPreferences: prefs), mock)
+        return (SearchViewModel(service: mock, state: state, serverPreferences: prefs), mock, prefs)
     }
 
     @MainActor
@@ -517,7 +517,7 @@ final class SearchViewModelTests: XCTestCase {
     @MainActor
     func testUnsearchableServerIsNeverQueried() async {
         await withIsolatedStores { defaults in
-            let (vm, mock) = makeLocalMusicSearch(unsearchable: "NASPERES", defaults: defaults)
+            let (vm, mock, _) = makeLocalMusicSearch(unsearchable: "NASPERES", defaults: defaults)
 
             vm.onQueryChanged("paris")
             await waitUntil { mock.calls.contains { $0.hasPrefix("search:-1:") } && !vm.isSearching }
@@ -529,13 +529,29 @@ final class SearchViewModelTests: XCTestCase {
     @MainActor
     func testFilterOnAServerTakenOutOfSearchFallsBackToAll() async {
         await withIsolatedStores { defaults in
-            let (vm, mock) = makeLocalMusicSearch(unsearchable: "NASPERES", defaults: defaults)
+            let (vm, mock, _) = makeLocalMusicSearch(unsearchable: "NASPERES", defaults: defaults)
             vm.selectedServiceFilter = -2
 
             vm.onQueryChanged("paris")
             await waitUntil { mock.calls.contains { $0.hasPrefix("search:-1:") } && !vm.isSearching }
 
             XCTAssertNil(vm.selectedServiceFilter)
+        }
+    }
+
+    @MainActor
+    func testTurningSearchOffAfterDiscoveryStopsQueryingTheServer() async {
+        await withIsolatedStores { defaults in
+            let (vm, mock, prefs) = makeLocalMusicSearch(unsearchable: "none", defaults: defaults)
+            vm.onQueryChanged("paris")
+            await waitUntil { mock.calls.contains { $0.hasPrefix("search:-2:") } && !vm.isSearching }
+
+            prefs.setSearchable(false, for: "NASPERES")
+            mock.calls = []
+            vm.onQueryChanged("rock")
+            await waitUntil { mock.calls.contains { $0.hasPrefix("search:-1:") } && !vm.isSearching }
+
+            XCTAssertEqual(mock.calls.filter { $0.hasPrefix("search:-2:") }, [])
         }
     }
 }

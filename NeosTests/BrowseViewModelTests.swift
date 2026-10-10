@@ -1214,6 +1214,37 @@ final class BrowseViewModelTests: XCTestCase {
 
         XCTAssertEqual(vm.items.map(\.name), ["Kantele NAS"])
     }
+
+    @MainActor
+    func testGoingBackLeavesOutAServerHiddenSince() async {
+        let suiteName = "BrowseViewModelTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let prefs = LocalServerPreferences(defaults: defaults)
+        let localMusic = MusicSource(sid: HEOSConstants.localMusicSID, name: "Local Music", type: "heos_server")
+        let vm = BrowseViewModel(
+            service: MockAudioService(),
+            state: AppState(),
+            getMusicSources: { [] },
+            browseSource: { _ in
+                BrowseResult(items: [
+                    BrowseItem(name: "NAS", type: .heosServer, sid: -1),
+                    BrowseItem(name: "Kantele NAS", type: .heosServer, sid: -2),
+                ])
+            },
+            browseContainer: { _, _, _ in BrowseResult(items: [BrowseItem(name: "Album", type: .album, cid: "a", browsable: true)]) },
+            serverPreferences: prefs
+        )
+        vm.selectSource(localMusic)
+        await waitUntil { vm.items.count == 2 }
+        vm.navigateToContainer(source: localMusic, containerName: "Folder", cid: "folder")
+        await waitUntil { vm.items.map(\.name) == ["Album"] }
+
+        prefs.setShown(false, for: "NAS")
+        vm.goBack()
+
+        XCTAssertEqual(vm.items.map(\.name), ["Kantele NAS"])
+    }
 }
 
 private actor MockBrowseBackend {

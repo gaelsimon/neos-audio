@@ -75,9 +75,6 @@ private struct BreadcrumbLink: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hovering in
-            isHovered = hovering
-            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-        }
+        .pointingHandCursor(isHovered: $isHovered)
     }
 }

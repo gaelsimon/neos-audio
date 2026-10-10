@@ -29,9 +29,12 @@ struct TopBarView: View {
 
             Spacer(minLength: DS.Spacing.sm)
 
+            // Narrow windows give up the spacer, then search width, then the speaker name.
             searchField
+                .layoutPriority(1)
 
             speakerIndicator
+                .layoutPriority(2)
 
             profileButton
         }
@@ -71,7 +74,8 @@ struct TopBarView: View {
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
-        .frame(width: DS.TopBar.searchWidth, height: DS.TopBar.controlHeight)
+        .frame(minWidth: DS.TopBar.searchMinWidth, maxWidth: DS.TopBar.searchWidth)
+        .frame(height: DS.TopBar.controlHeight)
         .contentShape(Capsule())
         // The text field is narrower than the capsule, so clicking the magnifier or the padding
         // used to do nothing. Simultaneous so a click inside the field still places the cursor.
@@ -100,7 +104,7 @@ struct TopBarView: View {
                         searchVM.clearHistory()
                     }
                 )
-                .frame(width: 380)
+                .frame(width: DS.TopBar.searchWidth)
                 .offset(y: 48)
                 .zIndex(10)
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -121,23 +125,35 @@ struct TopBarView: View {
                 browseVM.navigateToAmpSettings()
             }
         }) { hovered in
-            HStack(spacing: DS.Spacing.sm) {
-                Circle()
-                    .fill(state.connectionState == .connected ? Color.green : DS.Colors.textTertiary)
-                    .frame(width: 7, height: 7)
-
-                Text(state.selectedPlayerDisplayName ?? "No Player")
-                    .typography(.secondary)
-                    .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : DS.Colors.textSecondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: 160)
-                    .fixedSize(horizontal: true, vertical: false)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DS.Spacing.sm) {
+                    statusDot
+                    Text(playerName)
+                        .typography(.secondary)
+                        .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : DS.Colors.textSecondary)
+                        .lineLimit(1)
+                        .frame(maxWidth: 160)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                statusDot
             }
             .padding(.horizontal, DS.Spacing.md)
             .frame(height: DS.TopBar.controlHeight)
             .background { GlassCapsule(tint: isActive ? DS.Colors.accent.opacity(0.15) : .clear) }
         }
+        .help(playerName)
+        .accessibilityLabel(playerName)
         .accessibilityIdentifier(AccessibilityID.Sidebar.ampCard)
+    }
+
+    private var playerName: String {
+        state.selectedPlayerDisplayName ?? "No Player"
+    }
+
+    private var statusDot: some View {
+        Circle()
+            .fill(state.connectionState == .connected ? Color.green : DS.Colors.textTertiary)
+            .frame(width: 7, height: 7)
     }
 
     private var profileButton: some View {

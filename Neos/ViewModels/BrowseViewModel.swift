@@ -163,7 +163,7 @@ final class BrowseViewModel {
         case .home, .queue, .settings, .ampSettings:
             items = []
         case .browse:
-            if let cached = entry.cachedItems {
+            if let cached = entry.cachedItems?.filter(serverPreferences.shows) {
                 items = cached
                 if let p = entry.cachedPagination {
                     pagination.restore(totalCount: p.totalCount, currentOffset: p.currentOffset, items: cached)

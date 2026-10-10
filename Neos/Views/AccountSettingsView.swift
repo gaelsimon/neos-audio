@@ -177,8 +177,10 @@ struct AccountSettingsView: View {
     private var localServersSection: some View {
         sectionCard(header: "Local Music Servers") {
             if localServersVM.servers.isEmpty {
-                Text("No local music servers found.")
-                    .typography(.secondary)
+                if localServersVM.hasLoaded {
+                    Text("No local music servers found.")
+                        .typography(.secondary)
+                }
             } else {
                 LocalServerSettingsView(servers: localServersVM.servers, preferences: localServersVM.preferences)
             }

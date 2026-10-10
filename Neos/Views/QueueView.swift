@@ -79,25 +79,23 @@ struct QueueView: View {
         ScrollView {
             VStack(spacing: DS.TrackList.rowSpacing) {
                 ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
-                    HStack(spacing: 0) {
-                        TrackListRow(
-                            index: index + 1,
-                            name: item.song,
-                            artist: item.artist,
-                            album: item.album,
-                            imageURL: item.imageURL,
-                            isNowPlaying: state.nowPlaying.station == nil && item.qid == state.nowPlaying.qid,
-                            showArtist: true,
-                            showAlbum: true,
-                            onAlbumTap: albumTapHandler(for: item),
-                            onArtistTap: artistTapHandler(for: item),
-                            isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
-                            externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
-                            state: state,
-                            onRemove: { viewModel.removeItem(item) }
-                        ) {
-                            viewModel.playItem(item)
-                        }
+                    TrackListRow(
+                        index: index + 1,
+                        name: item.song,
+                        artist: item.artist,
+                        album: item.album,
+                        imageURL: item.imageURL,
+                        isNowPlaying: state.nowPlaying.station == nil && item.qid == state.nowPlaying.qid,
+                        showArtist: true,
+                        showAlbum: true,
+                        onAlbumTap: albumTapHandler(for: item),
+                        onArtistTap: artistTapHandler(for: item),
+                        isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
+                        externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
+                        state: state,
+                        onRemove: { viewModel.removeItem(item) }
+                    ) {
+                        viewModel.playItem(item)
                     }
                     .onAppear {
                         if index >= state.queue.count - 5 {

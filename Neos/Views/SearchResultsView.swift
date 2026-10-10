@@ -245,7 +245,6 @@ struct SearchResultsView: View {
                     onTap: { handleItemTap(item, sid: sid) },
                     onAddToQueue: { handleAddToQueue(item, sid: sid) }
                 )
-                
             }
         }
     }
