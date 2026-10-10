@@ -13,7 +13,6 @@ final class BrowseViewModelTests: XCTestCase {
         let viewModel = BrowseViewModel(
             service: service,
             state: state,
-            getMusicSources: { [] },
             browseSource: { sid in
                 try await backend.browseSource(sid: sid)
             },
@@ -487,47 +486,6 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     // MARK: - Content Loading Tests
-
-    @MainActor
-    func testLoadSourcesPopulatesMusicSources() async {
-        let state = AppState()
-        let mock = MockAudioService()
-        let sources = [MusicSource(sid: 1, name: "Tidal"), MusicSource(sid: 2, name: "Spotify")]
-        let vm = BrowseViewModel(
-            service: mock,
-            state: state,
-            getMusicSources: { sources }
-        )
-
-        vm.loadSources()
-        await yieldForTask()
-
-        XCTAssertEqual(state.musicSources.count, 2)
-        XCTAssertEqual(state.musicSources[0].name, "Tidal")
-        XCTAssertEqual(state.musicSources[1].name, "Spotify")
-    }
-
-    @MainActor
-    func testLoadSourcesSetsIsLoading() async {
-        let state = AppState()
-        let mock = MockAudioService()
-        let vm = BrowseViewModel(
-            service: mock,
-            state: state,
-            getMusicSources: {
-                try? await Task.sleep(for: .milliseconds(10))
-                return [MusicSource(sid: 1, name: "Tidal")]
-            }
-        )
-
-        vm.loadSources()
-
-        XCTAssertTrue(vm.isLoading)
-
-        try? await Task.sleep(for: .milliseconds(50))
-
-        XCTAssertFalse(vm.isLoading)
-    }
 
     @MainActor
     func testNavigatingAwayMidLoadClearsLoadingState() async {
@@ -1199,7 +1157,6 @@ final class BrowseViewModelTests: XCTestCase {
         let vm = BrowseViewModel(
             service: MockAudioService(),
             state: AppState(),
-            getMusicSources: { [] },
             browseSource: { _ in
                 BrowseResult(items: [
                     BrowseItem(name: "NAS", type: .heosServer, sid: -1),
@@ -1225,7 +1182,6 @@ final class BrowseViewModelTests: XCTestCase {
         let vm = BrowseViewModel(
             service: MockAudioService(),
             state: AppState(),
-            getMusicSources: { [] },
             browseSource: { _ in
                 BrowseResult(items: [
                     BrowseItem(name: "NAS", type: .heosServer, sid: -1),
