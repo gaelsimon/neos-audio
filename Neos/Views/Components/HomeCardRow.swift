@@ -5,11 +5,12 @@ struct HomeCardRow: View {
     let items: [BrowseItem]
     let sid: Int
     var state: AppState?
+    var inset: CGFloat = DS.Layout.pageMargin
     let onTap: (BrowseItem, Int) -> Void
 
     var body: some View {
         FadingHorizontalScroll {
-            HStack(spacing: DS.Spacing.lg) {
+            HStack(alignment: .top, spacing: DS.Spacing.lg) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HomeCard(
                         imageURL: item.resolvedImageURL,
@@ -22,7 +23,7 @@ struct HomeCardRow: View {
                     }
                 }
             }
-            .padding(.horizontal, DS.Spacing.xl)
         }
+        .padding(.horizontal, inset)
     }
 }

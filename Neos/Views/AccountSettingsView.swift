@@ -6,18 +6,20 @@ struct AccountSettingsView: View {
     @Bindable var accountVM: AccountViewModel
     let settingsVM: SettingsViewModel
     let homeVM: HomeViewModel
+    let localServersVM: LocalServersViewModel
 
     @State private var showSignOutConfirmation = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 40) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
                 Text("Settings")
                     .typography(.pageTitle)
                     .padding(.bottom, DS.Spacing.sm)
 
                 accountSection
                 servicesSection
+                localServersSection
                 playbackSection
                 cacheSection
                 aboutSection
@@ -79,17 +81,13 @@ struct AccountSettingsView: View {
 
             Spacer()
 
-            Button(action: { showSignOutConfirmation = true }) {
-                if accountVM.isSigningOut {
-                    Spinner(size: 16, lineWidth: 2)
-                } else {
-                    Text("Sign Out")
-                }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            TextActionButton(
+                title: "Sign Out",
+                role: .destructive,
+                isBusy: accountVM.isSigningOut,
+                accessibilityID: AccessibilityID.Settings.signOutButton
+            ) { showSignOutConfirmation = true }
             .disabled(accountVM.isSigningOut)
-            .accessibilityIdentifier(AccessibilityID.Settings.signOutButton)
             .confirmationDialog("Sign Out", isPresented: $showSignOutConfirmation) {
                 Button("Sign Out", role: .destructive) {
                     accountVM.signOut()
@@ -172,6 +170,22 @@ struct AccountSettingsView: View {
                 )
             }
         }
+    }
+
+    // MARK: - Local Music Servers Section
+
+    private var localServersSection: some View {
+        sectionCard(header: "Local Music Servers") {
+            if localServersVM.servers.isEmpty {
+                if localServersVM.hasLoaded {
+                    Text("No local music servers found.")
+                        .typography(.secondary)
+                }
+            } else {
+                LocalServerSettingsView(servers: localServersVM.servers, preferences: localServersVM.preferences)
+            }
+        }
+        .task { await localServersVM.load() }
     }
 
     // MARK: - Playback Section

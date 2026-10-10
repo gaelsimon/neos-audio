@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ShimmerCardRow: View {
     var cardCount: Int = 4
+    var inset: CGFloat = DS.Layout.pageMargin
 
     var body: some View {
         FadingHorizontalScroll {
@@ -25,7 +26,7 @@ struct ShimmerCardRow: View {
                     }
                 }
             }
-            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.horizontal, inset)
         }
     }
 }

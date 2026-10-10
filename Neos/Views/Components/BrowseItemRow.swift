@@ -182,7 +182,7 @@ struct BrowseItemRow: View {
 
     private var artworkThumbnail: some View {
         ZStack {
-            if item.type == .heosServer || item.type == .dlnaServer {
+            if item.isMediaServer {
                 Image(systemName: DS.Icons.server)
                     .font(DS.IconFont.body)
                     .foregroundStyle(DS.Colors.textSecondary)

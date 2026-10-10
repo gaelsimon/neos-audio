@@ -7,9 +7,12 @@ enum DS {
         static let background = Color(white: 0.04)       // Near-black; main content
         static let surface = Color(white: 0.075)          // Sidebar, bottom bar
         static let surfaceElevated = Color(white: 0.12)   // Cards, amp card, hover
+        static let glassFill = Color(white: 40 / 255).opacity(0.75) // Top bar pills, Tidal's value
+        static let glassShade = Color.black.opacity(0.6)            // Bar and sub-header backdrop
         static let surfaceContainer = Color(white: 0.071)  // #121212; service group containers
         static let textSecondary = Color(white: 0.78)
         static let textTertiary = Color(white: 0.55)
+        static let destructive = Color(red: 0.902, green: 0.298, blue: 0.259) // #e64c42
         static let border = Color.white.opacity(0.06)
     }
 
@@ -24,7 +27,7 @@ enum DS {
 
     // MARK: - Image Sizes
     enum ImageSize {
-        static let listRow: CGFloat = 36
+        static let listRow: CGFloat = 44
         static let trackListRow: CGFloat = 44
         static let sidebarIcon: CGFloat = 36
         static let containerArt: CGFloat = 240
@@ -33,10 +36,26 @@ enum DS {
         static let serviceIconLarge: CGFloat = 48
     }
 
+    // MARK: - Layout
+    enum Layout {
+        static let pageMargin: CGFloat = Spacing.xxl
+        static let surfaceInset: CGFloat = Spacing.lg
+    }
+
+    // MARK: - Top Bar
+    enum TopBar {
+        static let height: CGFloat = 56
+        static let searchWidth: CGFloat = 280
+        static let searchMinWidth: CGFloat = 120
+        static let controlHeight: CGFloat = 36
+        static let arrowFont: SwiftUI.Font = .system(size: 15, weight: .semibold)
+    }
+
     // MARK: - Track List
     enum TrackList {
         static let numberWidth: CGFloat = 28
         static let rowHeight: CGFloat = 60
+        static let actionWidth: CGFloat = 36
         static let rowSpacing: CGFloat = 0
     }
 

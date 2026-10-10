@@ -224,16 +224,15 @@ final class QueuePanelViewModel {
 
     func removeQueueItem(_ item: QueueItem) {
         guard let pid = state.selectedPlayerID else { return }
-        // Optimistic removal
-        let previousQueue = state.queue
-        state.playback.queue.removeAll { $0.qid == item.qid }
+        guard let index = state.queue.firstIndex(where: { $0.qid == item.qid }) else { return }
+        state.playback.queue.remove(at: index)
         refreshDisplayData()
         Task {
             do {
                 try await service.removeFromQueue(pid: pid, qids: [item.qid])
             } catch {
                 guard state.selectedPlayerID == pid else { return }
-                state.playback.queue = previousQueue
+                QueueRollback.reinsert(item, into: &state.playback.queue)
                 refreshDisplayData()
                 state.error = .queueFailed(error.localizedDescription)
             }

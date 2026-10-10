@@ -17,7 +17,7 @@ struct HomeView: View {
                 header
                 sections
             }
-            .padding(.top, DS.Spacing.lg)
+            .padding(.top, DS.Spacing.xxl)
             .padding(.bottom, DS.Spacing.xxl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -52,7 +52,7 @@ struct HomeView: View {
             .help("Refresh")
             .accessibilityIdentifier(AccessibilityID.Home.refreshButton)
         }
-        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.horizontal, DS.Spacing.xxl)
         .accessibilityIdentifier(AccessibilityID.Home.header)
     }
 
@@ -142,14 +142,14 @@ struct HomeView: View {
 
                     Spacer()
                 }
-                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.horizontal, DS.Layout.surfaceInset)
 
                 if hasContent {
                     ForEach(categoryIndices, id: \.self) { index in
                         serviceCategoryRow(source: source, categoryIndex: index)
                     }
                 } else {
-                    ShimmerCardRow()
+                    ShimmerCardRow(inset: DS.Layout.surfaceInset)
                 }
             }
             .padding(.vertical, DS.Spacing.xl)
@@ -157,7 +157,7 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: DS.Radius.large)
                     .fill(DS.Colors.surfaceContainer)
             )
-            .padding(.horizontal, DS.Spacing.md)
+            .padding(.horizontal, DS.Layout.pageMargin)
         }
     }
 
@@ -191,9 +191,10 @@ struct HomeView: View {
                     } else {
                         browseVM.selectSource(source)
                     }
-                }
+                },
+                inset: DS.Layout.surfaceInset
             ) {
-                HomeCardRow(items: items, sid: source.sid, state: state) { item, sid in
+                HomeCardRow(items: items, sid: source.sid, state: state, inset: DS.Layout.surfaceInset) { item, sid in
                     handleServiceCardTap(item, sid: sid)
                 }
             }

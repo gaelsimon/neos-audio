@@ -238,6 +238,35 @@ enum DemoDataProvider {
         MusicSource(sid: 1026, name: "History", type: "heos_service", available: true)
     ]
 
+    /// Deezer (sid 2) browse tree, so demo mode can be driven past a source root.
+    static let deezerCategories: [BrowseItem] = [
+        BrowseItem(name: "Albums", type: .container, cid: "cat-albums", sid: 2, browsable: true),
+        BrowseItem(name: "Artists", type: .container, cid: "cat-artists", sid: 2, browsable: true),
+        BrowseItem(name: "Playlists", type: .container, cid: "cat-playlists", sid: 2, browsable: true)
+    ]
+
+    static let deezerAlbums: [BrowseItem] = [
+        BrowseItem(
+            name: "A Night at the Opera", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/abc123/250x250.jpg",
+            type: .album, cid: "album-opera", sid: 2, browsable: true, artist: "Queen"
+        ),
+        BrowseItem(
+            name: "Random Access Memories", imageURL: "https://e-cdns-images.dzcdn.net/images/cover/def456/250x250.jpg",
+            type: .album, cid: "album-ram", sid: 2, browsable: true, artist: "Daft Punk"
+        )
+    ]
+
+    static let deezerAlbumTracks: [BrowseItem] = [
+        BrowseItem(
+            name: "Bohemian Rhapsody", type: .song, mid: "dz-12345", sid: 2,
+            playable: true, artist: "Queen", album: "A Night at the Opera"
+        ),
+        BrowseItem(
+            name: "Love of My Life", type: .song, mid: "dz-12346", sid: 2,
+            playable: true, artist: "Queen", album: "A Night at the Opera"
+        )
+    ]
+
     static let favorites: [BrowseItem] = [
         BrowseItem(name: "BBC Radio 1", imageURL: "https://cdn-radiotime-logos.tunein.com/s24939.png", type: .station, cid: "1028", mid: "s/24939", sid: 3, playable: true),
         BrowseItem(name: "FIP", imageURL: "https://cdn-radiotime-logos.tunein.com/s15200.png", type: .station, cid: "1028", mid: "s/15200", sid: 3, playable: true),

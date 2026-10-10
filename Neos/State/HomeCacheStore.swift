@@ -38,9 +38,9 @@ enum HomeCacheStore {
 
     // MARK: - Service Categories
 
-    static func saveServiceCategory(sid: Int, categoryIndex: Int, name: String, items: [BrowseItem]) {
+    static func saveServiceCategory(sid: Int, categoryIndex: Int, name: String, cid: String?, items: [BrowseItem]) {
         let key = "\(serviceCategoryPrefix)\(sid)_\(categoryIndex)"
-        let entry = CachedCategory(name: name, items: items.map { CachedBrowseItem(from: $0) })
+        let entry = CachedCategory(name: name, cid: cid, items: items.map { CachedBrowseItem(from: $0) })
         do {
             let data = try JSONEncoder().encode(entry)
             UserDefaults.standard.set(data, forKey: key)
@@ -49,12 +49,12 @@ enum HomeCacheStore {
         }
     }
 
-    static func loadServiceCategory(sid: Int, categoryIndex: Int) -> (name: String, items: [BrowseItem])? {
+    static func loadServiceCategory(sid: Int, categoryIndex: Int) -> (name: String, cid: String?, items: [BrowseItem])? {
         let key = "\(serviceCategoryPrefix)\(sid)_\(categoryIndex)"
         guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
         do {
             let entry = try JSONDecoder().decode(CachedCategory.self, from: data)
-            return (entry.name, entry.items.map { $0.toBrowseItem() })
+            return (entry.name, entry.cid, entry.items.map { $0.toBrowseItem() })
         } catch {
             cacheLogger.warning("Failed to decode service category \(sid)/\(categoryIndex): \(error.localizedDescription)")
             return nil
@@ -167,5 +167,7 @@ private struct CachedBrowseItem: Codable {
 
 private struct CachedCategory: Codable {
     let name: String
+    /// Optional so an entry written before the container was cached still decodes.
+    let cid: String?
     let items: [CachedBrowseItem]
 }

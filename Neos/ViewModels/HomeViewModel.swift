@@ -89,6 +89,17 @@ final class HomeViewModel {
         loadAllServiceContent()
     }
 
+    func resetForAccountChange() {
+        HomeCacheStore.clearAll()
+        recentlyPlayed = []
+        favorites = []
+        serviceCategories = [:]
+        serviceCategoryNames = [:]
+        serviceCategoryCIDs = [:]
+        hasLoadedPersonal = true
+        refresh()
+    }
+
     /// Loads personal content (recents + favorites) exactly once.
     private func loadPersonalContentIfNeeded() {
         guard !hasLoadedPersonal else { return }
@@ -338,6 +349,7 @@ final class HomeViewModel {
                     sid: sid,
                     categoryIndex: categoryIndex,
                     name: leafName,
+                    cid: cid,
                     items: displayItems
                 )
                 categoryIndex += 1
@@ -404,6 +416,7 @@ final class HomeViewModel {
             if let cached = HomeCacheStore.loadServiceCategory(sid: sid, categoryIndex: i) {
                 serviceCategories[key] = cached.items
                 serviceCategoryNames[key] = cached.name
+                serviceCategoryCIDs[key] = cached.cid
             }
         }
     }

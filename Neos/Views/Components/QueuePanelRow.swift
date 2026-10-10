@@ -83,6 +83,11 @@ struct QueuePanelRow: View {
             height: DS.ImageSize.trackListRow
         )
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
+        // The placeholder shares its fill with the panel behind it; the hairline keeps it visible.
+        .overlay {
+            RoundedRectangle(cornerRadius: DS.Radius.small)
+                .strokeBorder(DS.Colors.border, lineWidth: 1)
+        }
         .overlay {
             if isNowPlaying {
                 RoundedRectangle(cornerRadius: DS.Radius.small)

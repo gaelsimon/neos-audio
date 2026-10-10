@@ -4,6 +4,36 @@ import NeosDomain
 
 final class AccountViewModelTests: XCTestCase {
 
+    // MARK: - Account change
+
+    @MainActor
+    func testSignInReportsTheAccountChange() async {
+        let vm = AccountViewModel(service: MockAudioService(), state: AppState())
+        var changes = 0
+        vm.onAccountChanged = { changes += 1 }
+
+        vm.username = "user"
+        vm.password = "pass"
+        vm.signIn()
+        await waitUntil { !vm.isSigningIn }
+
+        XCTAssertEqual(changes, 1)
+    }
+
+    @MainActor
+    func testSignOutReportsTheAccountChange() async {
+        let state = AppState()
+        state.signedInUser = "user"
+        let vm = AccountViewModel(service: MockAudioService(), state: state)
+        var changes = 0
+        vm.onAccountChanged = { changes += 1 }
+
+        vm.signOut()
+        await waitUntil { state.signedInUser == nil }
+
+        XCTAssertEqual(changes, 1)
+    }
+
     // MARK: - signIn
 
     @MainActor

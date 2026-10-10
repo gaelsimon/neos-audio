@@ -47,7 +47,7 @@ struct SidebarView: View {
                     }
 
                     sidebarSection("Library") {
-                        libraryRow(sid: 1028, name: "Stations", icon: DS.Icons.radio)
+                        libraryRow(sid: 1028, name: "Favorites", icon: DS.Icons.radio)
                         libraryRow(sid: 1025, name: "Playlists", icon: DS.Icons.playlists)
                         libraryRow(sid: 1026, name: "History", icon: DS.Icons.history)
                         queueRow
@@ -64,6 +64,7 @@ struct SidebarView: View {
             Rectangle()
                 .fill(DS.Colors.border)
                 .frame(width: 1)
+                .ignoresSafeArea(edges: .top)
         }
     }
 
@@ -78,7 +79,7 @@ struct SidebarView: View {
             Spacer()
         }
         .padding(.horizontal, DS.Sidebar.itemPaddingH)
-        .padding(.top, DS.Spacing.sm)
+        .padding(.top, DS.Spacing.xl)
     }
 
     // MARK: - Section Header

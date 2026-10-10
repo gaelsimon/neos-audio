@@ -182,8 +182,6 @@ struct MainWindowView: View {
 
     private var connectedContent: some View {
         VStack(spacing: 0) {
-            topBar
-
             Group {
                 if searchVM.isOverlayVisible {
                     SearchResultsView(
@@ -202,7 +200,10 @@ struct MainWindowView: View {
                     case .queue:
                         QueueView(state: state, viewModel: queueVM, browseVM: browseVM)
                     case .settings:
-                        AccountSettingsView(state: state, accountVM: accountVM, settingsVM: settingsVM, homeVM: homeVM)
+                        AccountSettingsView(
+                            state: state, accountVM: accountVM, settingsVM: settingsVM,
+                            homeVM: homeVM, localServersVM: container.localServersVM
+                        )
                     case .ampSettings:
                         AmpSettingsView(state: state, speakerVM: speakerVM, groupVM: groupVM)
                     }
@@ -217,195 +218,15 @@ struct MainWindowView: View {
             .animation(.easeInOut(duration: DS.Animation.standard), value: state.isQueuePanelOpen)
             .background(DS.Colors.background)
         }
+        // On the container, not on the identity-switching Group: a rebuild there recreated the search field mid-typing.
+        .safeAreaInset(edge: .top, spacing: 0) { TopBarView(state: state, container: container) }
+        .ignoresSafeArea(edges: .top)
         .overlay(alignment: .bottom) {
             toastOverlay
                 .animation(.easeInOut(duration: DS.Animation.standard), value: state.toast)
         }
         .animation(.easeInOut(duration: DS.Animation.standard), value: state.toast)
     }
-
-    // MARK: - Top Bar
-
-    private var topBar: some View {
-        HStack(spacing: DS.Spacing.md) {
-            // Back / Forward arrows
-            HStack(spacing: DS.Spacing.xs) {
-                navArrowButton(
-                    icon: DS.Icons.back,
-                    enabled: container.canGoBack,
-                    accessibilityID: AccessibilityID.TopBar.backButton,
-                    action: { container.goBack() }
-                )
-
-                navArrowButton(
-                    icon: DS.Icons.forward,
-                    enabled: container.canGoForward,
-                    accessibilityID: AccessibilityID.TopBar.forwardButton,
-                    action: { container.goForward() }
-                )
-            }
-
-            Spacer()
-
-            searchField
-
-            // Speaker indicator
-            speakerIndicator
-
-            // Profile button
-            profileButton
-        }
-        .padding(.horizontal, DS.Spacing.lg)
-        .padding(.bottom, DS.Spacing.sm)
-        .frame(height: 48)
-        .background(DS.Colors.background)
-    }
-
-    // MARK: - Search Field
-
-    private var searchField: some View {
-        HStack(spacing: DS.Spacing.sm) {
-            Image(systemName: DS.Icons.search)
-                .font(DS.IconFont.body)
-                .foregroundStyle(DS.Colors.textSecondary)
-            NoRingTextField(
-                placeholder: "Search",
-                text: Binding(
-                    get: { searchVM.query },
-                    set: { searchVM.onQueryChanged($0) }
-                ),
-                isFocused: Binding(
-                    get: { state.isSearchFieldFocused },
-                    set: { state.isSearchFieldFocused = $0 }
-                ),
-                accessibilityID: AccessibilityID.TopBar.searchField
-            )
-            .accessibilityIdentifier(AccessibilityID.TopBar.searchField)
-            if !searchVM.query.isEmpty {
-                HoverButton(action: { searchVM.clearSearch() }) { hovered in
-                    Image(systemName: DS.Icons.close)
-                        .font(DS.IconFont.mdEmphasis)
-                        .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
-                }
-                .accessibilityIdentifier(AccessibilityID.Search.clearButton)
-            }
-        }
-        .padding(.horizontal, DS.Spacing.lg)
-        .frame(width: 380, height: 40)
-        .contentShape(Capsule())
-        // The text field is narrower than the capsule, so clicking the magnifier or the padding
-        // used to do nothing. Simultaneous so a click inside the field still places the cursor.
-        .simultaneousGesture(TapGesture().onEnded { state.isSearchFieldFocused = true })
-        .background(DS.Colors.surfaceElevated, in: Capsule())
-        .overlay(
-            Capsule()
-                .strokeBorder(Color.white.opacity(state.isSearchFieldFocused ? 0.6 : 0), lineWidth: 1)
-                .allowsHitTesting(false)
-        )
-        .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
-        .onChange(of: state.isSearchFieldFocused) { _, focused in
-            if focused && !searchVM.query.isEmpty && !searchVM.serviceResults.isEmpty {
-                searchVM.activateOverlay()
-            }
-        }
-        .overlay(alignment: .topLeading) {
-            if state.isSearchFieldFocused && searchVM.query.isEmpty && !searchVM.recentQueries.isEmpty {
-                SearchHistoryOverlay(
-                    queries: searchVM.recentQueries,
-                    onSelect: { query in
-                        state.isSearchFieldFocused = false
-                        searchVM.onQueryChanged(query)
-                    },
-                    onClear: {
-                        searchVM.clearHistory()
-                    }
-                )
-                .frame(width: 380)
-                .offset(y: 48)
-                .zIndex(10)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-                .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
-            }
-        }
-    }
-
-    // MARK: - Speaker Indicator
-
-    private var speakerIndicator: some View {
-        let isActive = browseVM.currentDestination == .ampSettings
-        return HoverButton(action: {
-            if isActive {
-                browseVM.goBack()
-            } else {
-                if browseVM.currentDestination == .settings { browseVM.goBack() }
-                browseVM.navigateToAmpSettings()
-            }
-        }) { hovered in
-            HStack(spacing: 6) {
-                Image(systemName: DS.Icons.speakerFill)
-                    .font(DS.IconFont.sm)
-                    .foregroundStyle(DS.Colors.accent)
-
-                Text(state.selectedPlayerDisplayName ?? "No Player")
-                    .typography(.secondary)
-                    .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : .white.opacity(0.8))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 10)
-            .frame(maxWidth: 180, minHeight: 32, alignment: .leading)
-            .background(
-                isActive ? DS.Colors.accent.opacity(0.12) : .clear,
-                in: Capsule()
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(
-                        isActive ? DS.Colors.accent : hovered ? DS.Colors.accent.opacity(0.6) : DS.Colors.accent.opacity(0.4),
-                        lineWidth: 1
-                    )
-            )
-        }
-        .accessibilityIdentifier(AccessibilityID.Sidebar.ampCard)
-    }
-
-    private var profileButton: some View {
-        let isActive = browseVM.currentDestination == .settings
-        return HoverButton(action: {
-            if isActive {
-                browseVM.goBack()
-            } else {
-                if browseVM.currentDestination == .ampSettings { browseVM.goBack() }
-                browseVM.navigateToSettings()
-            }
-        }) { hovered in
-            Image(systemName: DS.Icons.personCircle)
-                .font(DS.IconFont.hero)
-                .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : Color.white.opacity(0.7))
-        }
-        .accessibilityIdentifier(AccessibilityID.TopBar.profileButton)
-    }
-
-    // MARK: - Navigation Arrow
-
-    private func navArrowButton(icon: String, enabled: Bool, accessibilityID: String, action: @escaping () -> Void) -> some View {
-        HoverButton(action: action) { hovered in
-            Image(systemName: icon)
-                .font(DS.IconFont.lgEmphasis)
-                .foregroundStyle(
-                    !enabled ? Color.gray.opacity(0.3) :
-                    hovered ? Color.white : Color.secondary
-                )
-                .frame(width: 28, height: 28)
-                .background(
-                    Circle()
-                        .fill(hovered && enabled ? Color.white.opacity(0.1) : .clear)
-                )
-        }
-        .disabled(!enabled)
-        .accessibilityIdentifier(accessibilityID)
-    }
-
-    // MARK: - Navigation
 
     // MARK: - Toast
 
@@ -418,24 +239,4 @@ struct MainWindowView: View {
                 .id(toast.id)
         }
     }
-}
-
-// MARK: - Window Accessor
-
-/// Makes the NSWindow titlebar transparent so canvas background fills edge-to-edge.
-private struct WindowAccessor: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            if let window = view.window {
-                window.titlebarAppearsTransparent = true
-                window.styleMask.insert(.fullSizeContentView)
-                window.isOpaque = false
-                window.backgroundColor = .clear
-            }
-        }
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
 }

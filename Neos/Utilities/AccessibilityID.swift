@@ -58,10 +58,15 @@ enum AccessibilityID {
 
     enum Browse {
         static let view = "browse.view"
+        static let addStation = "browse.addStation"
+        static let breadcrumb = "browse.breadcrumb"
+        static func breadcrumbItem(_ index: Int) -> String { "browse.breadcrumb.\(index)" }
         static let containerArt = "browse.containerArt"
         static let containerTitle = "browse.containerTitle"
+        static let containerArtist = "browse.containerArtist"
         static let playContainer = "browse.playContainer"
         static let addToQueue = "browse.addToQueue"
+        static let shuffleContainer = "browse.shuffleContainer"
     }
 
     // MARK: - Queue
@@ -100,6 +105,9 @@ enum AccessibilityID {
         // Cache
         static let cacheSizeLabel = "settings.cacheSizeLabel"
         static let clearCacheButton = "settings.clearCacheButton"
+        // Local Music Servers
+        static func localServerShow(_ name: String) -> String { "settings.localServer.show.\(name)" }
+        static func localServerSearch(_ name: String) -> String { "settings.localServer.search.\(name)" }
         // About
         static let aboutVersion = "settings.aboutVersion"
         static let aboutBuild = "settings.aboutBuild"

@@ -13,4 +13,7 @@ enum HEOSConstants {
 
     /// TuneIn source ID; used for adding custom URL stations to favorites.
     static let tuneInSID = 3
+
+    /// Local Music source ID: USB drives and DLNA servers.
+    static let localMusicSID = 1024
 }

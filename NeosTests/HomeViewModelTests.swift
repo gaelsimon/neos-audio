@@ -4,6 +4,25 @@ import NeosDomain
 
 final class HomeViewModelTests: XCTestCase {
 
+    // MARK: - Account change
+
+    @MainActor
+    func testAnAccountChangeDropsThePreviousAccountsRows() async {
+        let stale = BrowseItem(name: "Someone else's station")
+        HomeCacheStore.saveFavorites([stale])
+        let vm = HomeViewModel(service: MockAudioService(), state: AppState())
+        vm.favorites = [stale]
+        vm.recentlyPlayed = [stale]
+        vm.serviceCategories = [ServiceCategoryKey(sid: 10, categoryIndex: 0): [stale]]
+
+        vm.resetForAccountChange()
+        await waitUntil { !vm.isLoadingFavorites && !vm.isLoadingRecents }
+
+        let shown = vm.favorites + vm.recentlyPlayed + vm.serviceCategories.values.flatMap { $0 }
+        XCTAssertEqual((shown + HomeCacheStore.loadFavorites()).filter { $0.name == stale.name }, [])
+        HomeCacheStore.clearAll()
+    }
+
     // MARK: - Computed Properties
 
     @MainActor
@@ -206,6 +225,7 @@ final class HomeViewModelTests: XCTestCase {
             sid: 5,
             categoryIndex: 0,
             name: "Playlists",
+            cid: "cached-cid",
             items: [BrowseItem(name: "Cached Playlist", cid: "c1", browsable: true)]
         )
         if cacheIsFresh { HomeCacheStore.markUpdated() }
@@ -226,6 +246,21 @@ final class HomeViewModelTests: XCTestCase {
         await yieldForTask()
         XCTAssertFalse(mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }))
         XCTAssertEqual(vm.serviceCategories[ServiceCategoryKey(sid: 5, categoryIndex: 0)]?.count, 1)
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
+    func testCachedCategoryKeepsItsContainerID() async {
+        let (vm, _, _) = makeProbeVM(cacheIsFresh: true)
+
+        vm.loadHome()
+        await yieldForTask()
+
+        XCTAssertEqual(
+            vm.serviceCategoryCIDs[ServiceCategoryKey(sid: 5, categoryIndex: 0)],
+            "cached-cid",
+            "See All would open the service root without it"
+        )
         HomeCacheStore.clearAll()
     }
 

@@ -5,6 +5,7 @@ struct QueueView: View {
     let state: AppState
     let viewModel: QueueViewModel
     let browseVM: BrowseViewModel
+    @State private var showClearConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -18,12 +19,14 @@ struct QueueView: View {
             } else {
                 // MARK: - Column Header
 
-                TrackListHeader(showArtist: true, showAlbum: true)
+                TrackListHeader(showArtist: true, showAlbum: true, trailingSlots: 2)
+                    .padding(.horizontal, DS.Spacing.xxl)
                 Divider()
                     .foregroundStyle(DS.Colors.border)
-                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.horizontal, DS.Spacing.xxl)
 
                 queueList
+                    .contentMargins(.horizontal, DS.Spacing.xxl, for: .scrollContent)
             }
         }
         .task(id: state.selectedPlayerID) {
@@ -51,17 +54,22 @@ struct QueueView: View {
 
             Spacer()
             if !state.queue.isEmpty {
-                HoverButton(action: { viewModel.clearQueue() }) { hovered in
-                    Text("Clear")
-                        .typography(.secondary)
-                        .foregroundStyle(hovered ? .red : .red.opacity(0.7))
-                }
+                TextActionButton(
+                    title: "Clear",
+                    role: .destructive,
+                    isBusy: viewModel.isClearing,
+                    accessibilityID: AccessibilityID.Queue.clearButton
+                ) { showClearConfirmation = true }
                 .disabled(viewModel.isClearing)
-                .accessibilityIdentifier(AccessibilityID.Queue.clearButton)
+                .confirmationDialog("Clear Queue", isPresented: $showClearConfirmation) {
+                    Button("Clear Queue", role: .destructive) { viewModel.clearQueue() }
+                } message: {
+                    Text("This removes every track from the queue.")
+                }
             }
         }
-        .padding(.horizontal, DS.Spacing.lg)
-        .padding(.top, DS.Spacing.md)
+        .padding(.horizontal, DS.Spacing.xxl)
+        .padding(.top, DS.Spacing.xxl)
         .padding(.bottom, DS.Spacing.md)
     }
 
@@ -71,31 +79,23 @@ struct QueueView: View {
         ScrollView {
             VStack(spacing: DS.TrackList.rowSpacing) {
                 ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
-                    HStack(spacing: 0) {
-                        TrackListRow(
-                            index: index + 1,
-                            name: item.song,
-                            artist: item.artist,
-                            album: item.album,
-                            imageURL: item.imageURL,
-                            isNowPlaying: state.nowPlaying.station == nil && item.qid == state.nowPlaying.qid,
-                            showArtist: true,
-                            showAlbum: true,
-                            onAlbumTap: albumTapHandler(for: item),
-                            onArtistTap: artistTapHandler(for: item),
-                            isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
-                            externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
-                            state: state
-                        ) {
-                            viewModel.playItem(item)
-                        }
-
-                        HoverButton(action: { viewModel.removeItem(item) }) { hovered in
-                            Image(systemName: DS.Icons.dismiss)
-                                .typography(.secondary)
-                                .foregroundStyle(hovered ? DS.Colors.textSecondary : DS.Colors.textTertiary)
-                        }
-                        .padding(.trailing, DS.Spacing.lg)
+                    TrackListRow(
+                        index: index + 1,
+                        name: item.song,
+                        artist: item.artist,
+                        album: item.album,
+                        imageURL: item.imageURL,
+                        isNowPlaying: state.nowPlaying.station == nil && item.qid == state.nowPlaying.qid,
+                        showArtist: true,
+                        showAlbum: true,
+                        onAlbumTap: albumTapHandler(for: item),
+                        onArtistTap: artistTapHandler(for: item),
+                        isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
+                        externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
+                        state: state,
+                        onRemove: { viewModel.removeItem(item) }
+                    ) {
+                        viewModel.playItem(item)
                     }
                     .onAppear {
                         if index >= state.queue.count - 5 {

@@ -4,6 +4,7 @@ struct HomeSection<Content: View>: View {
     let title: String
     var isLoading: Bool = false
     var onSeeAll: (() -> Void)?
+    var inset: CGFloat = DS.Layout.pageMargin
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -19,14 +20,10 @@ struct HomeSection<Content: View>: View {
                 Spacer()
 
                 if let onSeeAll {
-                    HoverButton(action: onSeeAll) { hovered in
-                        Text("See All")
-                            .typography(.secondary)
-                            .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
-                    }
+                    TextActionButton(title: "See All", action: onSeeAll)
                 }
             }
-            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.horizontal, inset)
 
             content
         }

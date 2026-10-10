@@ -64,18 +64,47 @@ struct NoRingTextField: NSViewRepresentable {
 
 class FocusTrackingTextField: NSTextField {
     var onFocusChange: ((Bool) -> Void)?
+    private var outsideClickMonitor: Any?
 
     override func becomeFirstResponder() -> Bool {
         let result = super.becomeFirstResponder()
         if result {
             onFocusChange?(true)
+            watchOutsideClicks()
         }
         return result
     }
 
     override func textDidEndEditing(_ notification: Notification) {
         super.textDidEndEditing(notification)
+        stopWatchingOutsideClicks()
         onFocusChange?(false)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil { stopWatchingOutsideClicks() }
+    }
+
+    // Resigns after the mouse-up: views shown only while editing, like recent searches, must still get their click.
+    private func watchOutsideClicks() {
+        guard outsideClickMonitor == nil else { return }
+        var pressedOutside = false
+        outsideClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { [weak self] event in
+            guard let self, event.window === self.window else { return event }
+            let outside = !self.bounds.contains(self.convert(event.locationInWindow, from: nil))
+            if event.type == .leftMouseDown {
+                pressedOutside = outside
+            } else if pressedOutside && outside {
+                DispatchQueue.main.async { [weak self] in self?.window?.makeFirstResponder(nil) }
+            }
+            return event
+        }
+    }
+
+    private func stopWatchingOutsideClicks() {
+        if let outsideClickMonitor { NSEvent.removeMonitor(outsideClickMonitor) }
+        outsideClickMonitor = nil
     }
 
     override func cancelOperation(_ sender: Any?) {

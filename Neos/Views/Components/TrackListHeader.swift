@@ -3,6 +3,7 @@ import SwiftUI
 struct TrackListHeader: View {
     var showArtist: Bool = true
     var showAlbum: Bool = true
+    var trailingSlots: Int = 1
 
     private var textColumnWeights: [CGFloat] {
         TrackListColumnWeights.textColumnWeights(showArtist: showArtist, showAlbum: showAlbum)
@@ -28,6 +29,9 @@ struct TrackListHeader: View {
                 }
             }
             .frame(maxWidth: .infinity)
+
+            // Matches the rows' trailing action button, or the columns drift.
+            Color.clear.frame(width: DS.TrackList.actionWidth * CGFloat(trailingSlots) + DS.Spacing.sm * CGFloat(trailingSlots - 1), height: 0)
         }
         .typography(.sidebarSection)
         .padding(.horizontal, DS.Spacing.lg)

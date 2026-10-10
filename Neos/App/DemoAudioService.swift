@@ -61,13 +61,22 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
             return BrowseResult(items: DemoDataProvider.favorites, returned: DemoDataProvider.favorites.count, count: DemoDataProvider.favorites.count)
         case 1026:
             return BrowseResult(items: DemoDataProvider.history, returned: DemoDataProvider.history.count, count: DemoDataProvider.history.count)
+        case 2:
+            let categories = DemoDataProvider.deezerCategories
+            return BrowseResult(items: categories, returned: categories.count, count: categories.count)
         default:
             return BrowseResult(items: [])
         }
     }
 
     func browseContainer(sid: Int, cid: String, range: ClosedRange<Int>?) async throws -> BrowseResult {
-        BrowseResult(items: [])
+        let items: [BrowseItem]
+        switch cid {
+        case "cat-albums": items = DemoDataProvider.deezerAlbums
+        case "album-opera": items = DemoDataProvider.deezerAlbumTracks
+        default: items = []
+        }
+        return BrowseResult(items: items, returned: items.count, count: items.count)
     }
 
     func playStation(pid: Int, sid: Int, cid: String, mid: String, name: String) async throws {}
