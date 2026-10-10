@@ -82,23 +82,6 @@ extension BrowseViewModel {
 
     // MARK: - Content Fetching
 
-    func loadSources() {
-        isLoading = true
-        let requestID = beginBrowseRequest(cancelCurrent: false)
-        Task {
-            do {
-                let sources = try await fetchMusicSources()
-                guard browseTracker.isCurrent(requestID) else { return }
-                state.musicSources = sources
-            } catch {
-                guard browseTracker.isCurrent(requestID) else { return }
-                state.error = .generic(error.localizedDescription)
-            }
-            guard browseTracker.isCurrent(requestID) else { return }
-            isLoading = false
-        }
-    }
-
     func loadMore() {
         guard !isLoadingMore, !isLoading, hasMore else { return }
         guard let last = browseStack.last else { return }
