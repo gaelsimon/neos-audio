@@ -224,8 +224,6 @@ final class QueuePanelViewModel {
 
     func removeQueueItem(_ item: QueueItem) {
         guard let pid = state.selectedPlayerID else { return }
-        // Only this item comes back on failure. Restoring a whole snapshot would undo the
-        // removals that succeeded while this one was in flight.
         guard let index = state.queue.firstIndex(where: { $0.qid == item.qid }) else { return }
         state.playback.queue.remove(at: index)
         refreshDisplayData()
@@ -234,7 +232,7 @@ final class QueuePanelViewModel {
                 try await service.removeFromQueue(pid: pid, qids: [item.qid])
             } catch {
                 guard state.selectedPlayerID == pid else { return }
-                QueueRollback.reinsert(item, at: index, into: &state.playback.queue)
+                QueueRollback.reinsert(item, into: &state.playback.queue)
                 refreshDisplayData()
                 state.error = .queueFailed(error.localizedDescription)
             }

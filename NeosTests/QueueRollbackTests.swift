@@ -7,28 +7,48 @@ final class QueueRollbackTests: XCTestCase {
         QueueItem(qid: qid, song: "Track \(qid)")
     }
 
-    func testFailedRemovalComesBackAtItsIndex() {
-        var queue = [item(2), item(3)]
+    func testFailedRemovalComesBackInPlace() {
+        var queue = [item(1), item(3)]
 
-        QueueRollback.reinsert(item(1), at: 0, into: &queue)
+        QueueRollback.reinsert(item(2), into: &queue)
 
         XCTAssertEqual(queue.map(\.qid), [1, 2, 3])
     }
 
-    /// The case a whole-snapshot rollback got wrong: one removal succeeded while another failed.
     func testARollbackDoesNotResurrectARemovalThatSucceeded() {
         // Queue was [1, 2, 3]; removing 2 succeeded, removing 1 is about to fail.
         var queue = [item(3)]
 
-        QueueRollback.reinsert(item(1), at: 0, into: &queue)
+        QueueRollback.reinsert(item(1), into: &queue)
 
-        XCTAssertEqual(queue.map(\.qid), [1, 3], "item 2 was removed on the device and must stay gone")
+        XCTAssertEqual(queue.map(\.qid), [1, 3])
     }
 
-    func testAnIndexPastTheEndLandsAtTheEnd() {
+    func testAnEarlierSuccessfulRemovalDoesNotShiftTheRollback() {
+        // Queue was [1, 2, 3, 4]; 2 then 1 were removed, 1 succeeded and 2 fails.
+        var queue = [item(3), item(4)]
+
+        QueueRollback.reinsert(item(2), into: &queue)
+
+        XCTAssertEqual(queue.map(\.qid), [2, 3, 4])
+    }
+
+    func testTwoFailedRemovalsComeBackInOrderWhicheverFailsFirst() {
+        var laterFirst = [item(1), item(4)]
+        QueueRollback.reinsert(item(3), into: &laterFirst)
+        QueueRollback.reinsert(item(2), into: &laterFirst)
+
+        var earlierFirst = [item(1), item(4)]
+        QueueRollback.reinsert(item(2), into: &earlierFirst)
+        QueueRollback.reinsert(item(3), into: &earlierFirst)
+
+        XCTAssertEqual([laterFirst.map(\.qid), earlierFirst.map(\.qid)], [[1, 2, 3, 4], [1, 2, 3, 4]])
+    }
+
+    func testTheLastItemComesBackAtTheEnd() {
         var queue = [item(3)]
 
-        QueueRollback.reinsert(item(9), at: 7, into: &queue)
+        QueueRollback.reinsert(item(9), into: &queue)
 
         XCTAssertEqual(queue.map(\.qid), [3, 9])
     }
@@ -36,7 +56,7 @@ final class QueueRollbackTests: XCTestCase {
     func testAnItemAlreadyBackIsNotDuplicated() {
         var queue = [item(1), item(2)]
 
-        QueueRollback.reinsert(item(1), at: 0, into: &queue)
+        QueueRollback.reinsert(item(1), into: &queue)
 
         XCTAssertEqual(queue.map(\.qid), [1, 2])
     }
