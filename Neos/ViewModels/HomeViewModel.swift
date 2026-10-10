@@ -89,6 +89,17 @@ final class HomeViewModel {
         loadAllServiceContent()
     }
 
+    func resetForAccountChange() {
+        HomeCacheStore.clearAll()
+        recentlyPlayed = []
+        favorites = []
+        serviceCategories = [:]
+        serviceCategoryNames = [:]
+        serviceCategoryCIDs = [:]
+        hasLoadedPersonal = true
+        refresh()
+    }
+
     /// Loads personal content (recents + favorites) exactly once.
     private func loadPersonalContentIfNeeded() {
         guard !hasLoadedPersonal else { return }

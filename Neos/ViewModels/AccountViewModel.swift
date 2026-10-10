@@ -40,6 +40,8 @@ final class AccountViewModel {
     private let service: any AudioService
     private let state: AppState
 
+    var onAccountChanged: (() -> Void)?
+
     var username: String = ""
     var password: String = ""
     var isSigningIn: Bool = false
@@ -75,8 +77,7 @@ final class AccountViewModel {
             do {
                 try await service.signIn(username: username, password: password)
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                // Favourites, history and service rows belong to the account, not to the app.
-                HomeCacheStore.clearAll()
+                onAccountChanged?()
                 state.signedInUser = username
                 if rememberMe { saveCredentials() }
             } catch {
@@ -96,7 +97,7 @@ final class AccountViewModel {
             do {
                 try await service.signOut()
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                HomeCacheStore.clearAll()
+                onAccountChanged?()
                 state.signedInUser = nil
                 deleteCredentials()
             } catch {

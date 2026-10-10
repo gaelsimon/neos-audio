@@ -4,41 +4,34 @@ import NeosDomain
 
 final class AccountViewModelTests: XCTestCase {
 
-    // MARK: - Home cache
+    // MARK: - Account change
 
     @MainActor
-    func testSignInDropsTheCacheOfThePreviousAccount() async {
-        HomeCacheStore.clearAll()
-        HomeCacheStore.saveFavorites([BrowseItem(name: "Someone else's station")])
-        let state = AppState()
-        let mock = MockAudioService()
-        let vm = AccountViewModel(service: mock, state: state)
+    func testSignInReportsTheAccountChange() async {
+        let vm = AccountViewModel(service: MockAudioService(), state: AppState())
+        var changes = 0
+        vm.onAccountChanged = { changes += 1 }
 
         vm.username = "user"
         vm.password = "pass"
         vm.signIn()
-        await yieldForTask()
+        await waitUntil { !vm.isSigningIn }
 
-        XCTAssertEqual(state.signedInUser, "user")
-        XCTAssertTrue(HomeCacheStore.loadFavorites().isEmpty, "favourites belong to the account")
-        HomeCacheStore.clearAll()
+        XCTAssertEqual(changes, 1)
     }
 
     @MainActor
-    func testSignOutDropsTheCache() async {
-        HomeCacheStore.clearAll()
-        HomeCacheStore.saveRecents([BrowseItem(name: "Played while signed in")])
+    func testSignOutReportsTheAccountChange() async {
         let state = AppState()
-        let mock = MockAudioService()
-        let vm = AccountViewModel(service: mock, state: state)
         state.signedInUser = "user"
+        let vm = AccountViewModel(service: MockAudioService(), state: state)
+        var changes = 0
+        vm.onAccountChanged = { changes += 1 }
 
         vm.signOut()
-        await yieldForTask()
+        await waitUntil { state.signedInUser == nil }
 
-        XCTAssertNil(state.signedInUser)
-        XCTAssertTrue(HomeCacheStore.loadRecents().isEmpty)
-        HomeCacheStore.clearAll()
+        XCTAssertEqual(changes, 1)
     }
 
     // MARK: - signIn

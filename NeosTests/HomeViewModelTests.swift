@@ -4,6 +4,25 @@ import NeosDomain
 
 final class HomeViewModelTests: XCTestCase {
 
+    // MARK: - Account change
+
+    @MainActor
+    func testAnAccountChangeDropsThePreviousAccountsRows() async {
+        let stale = BrowseItem(name: "Someone else's station")
+        HomeCacheStore.saveFavorites([stale])
+        let vm = HomeViewModel(service: MockAudioService(), state: AppState())
+        vm.favorites = [stale]
+        vm.recentlyPlayed = [stale]
+        vm.serviceCategories = [ServiceCategoryKey(sid: 10, categoryIndex: 0): [stale]]
+
+        vm.resetForAccountChange()
+        await waitUntil { !vm.isLoadingFavorites && !vm.isLoadingRecents }
+
+        let shown = vm.favorites + vm.recentlyPlayed + vm.serviceCategories.values.flatMap { $0 }
+        XCTAssertEqual((shown + HomeCacheStore.loadFavorites()).filter { $0.name == stale.name }, [])
+        HomeCacheStore.clearAll()
+    }
+
     // MARK: - Computed Properties
 
     @MainActor

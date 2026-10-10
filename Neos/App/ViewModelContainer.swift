@@ -43,6 +43,9 @@ final class ViewModelContainer {
 
         playerVM.startTrackMetadataObserver()
 
+        let home = homeVM
+        accountVM.onAccountChanged = { [weak home] in home?.resetForAccountChange() }
+
         let speakers = speakerVM
         state.onDeviceDiscovered = { [weak speakers] device in
             speakers?.autoConnectIfCached(device)
