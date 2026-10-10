@@ -25,7 +25,7 @@ struct FilterChip: View {
                         .aspectRatio(contentMode: .fit)
                         .padding(DS.Spacing.xs)
                         .frame(width: 28, height: 28)
-                        .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.small))
+                        .background(.black, in: RoundedRectangle(cornerRadius: DS.Radius.small))
                 }
                 Text(label)
                     .font(.system(size: 13, weight: .semibold))

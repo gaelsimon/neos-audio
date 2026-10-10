@@ -45,7 +45,7 @@ extension View {
     func stickyHeaderGlass() -> some View {
         padding(.top, DS.TopBar.height)
             .background(DarkGlass())
-            .overlay(alignment: .bottom) { Divider().foregroundStyle(DS.Colors.border) }
+            .overlay(alignment: .bottom) { Rectangle().fill(DS.Colors.border).frame(height: 1) }
             .padding(.top, -DS.TopBar.height)
     }
 }

@@ -8,7 +8,7 @@ enum DS {
         static let surface = Color(white: 0.075)          // Sidebar, bottom bar
         static let surfaceElevated = Color(white: 0.12)   // Cards, amp card, hover
         static let glassFill = Color(white: 40 / 255).opacity(0.75) // Top bar pills, Tidal's value
-        static let glassShade = Color.black.opacity(0.85)            // Bar and sub-header backdrop
+        static let glassShade = Color.black.opacity(0.6)            // Bar and sub-header backdrop
         static let surfaceContainer = Color(white: 0.071)  // #121212; service group containers
         static let textSecondary = Color(white: 0.78)
         static let textTertiary = Color(white: 0.55)
