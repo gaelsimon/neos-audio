@@ -186,9 +186,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
 
     // MARK: - Browse Actions
 
+    var musicSources: [MusicSource] = []
+
     func getMusicSources() async throws -> [MusicSource] {
         calls.append("getMusicSources")
-        return []
+        return musicSources
     }
 
     var browseResultsBySID: [Int: BrowseResult] = [:]

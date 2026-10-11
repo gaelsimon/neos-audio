@@ -117,6 +117,7 @@ final class AppState: StateUpdater {
     private var trackLoadWatchdog: Task<Void, Never>?
     /// Called for every device discovery reports, so a remembered speaker can reconnect on its own.
     @ObservationIgnored var onDeviceDiscovered: ((DiscoveredDevice) -> Void)?
+    @ObservationIgnored var onAccountReported: ((String?) -> Void)?
 
     // MARK: - Sub-States
 
@@ -406,6 +407,7 @@ final class AppState: StateUpdater {
 
     func setSignedInUser(_ username: String?) {
         self.signedInUser = username
+        onAccountReported?(username)
     }
 
     func setError(_ error: AppError?) {

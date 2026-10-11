@@ -120,8 +120,15 @@ enum DemoDataProvider {
         // Queue
         state.setQueue(queue)
 
-        // Music sources
-        state.setMusicSources(musicSources)
+        // Music sources; `--demo-services-unavailable` mimics a speaker that is signed in yet refuses every service.
+        if CommandLine.arguments.contains("--demo-services-unavailable") {
+            state.setMusicSources(musicSources.map { source in
+                MusicSource(sid: source.sid, name: source.name, imageURL: source.imageURL, type: source.type,
+                            available: source.type != "music_service", serviceUsername: source.serviceUsername)
+            })
+        } else {
+            state.setMusicSources(musicSources)
+        }
 
         // Search, capabilities, account
         setupSearchAndAccount(state)

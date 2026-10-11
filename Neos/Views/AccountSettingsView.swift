@@ -158,13 +158,14 @@ struct AccountSettingsView: View {
     // MARK: - Services Section
 
     private var servicesSection: some View {
-        sectionCard(header: "Services") {
-            if homeVM.streamingSources.isEmpty {
+        let services = MusicSource.listed(homeVM.streamingSources, signedIn: state.signedInUser != nil)
+        return sectionCard(header: "Services") {
+            if services.isEmpty {
                 Text("No services available. Connect to a speaker to see your music services.")
                     .typography(.secondary)
             } else {
                 ServiceConfigView(
-                    sources: homeVM.streamingSources.filter { $0.available && $0.type == "music_service" },
+                    sources: services,
                     hiddenSIDs: homeVM.hiddenSIDs,
                     onToggle: { sid in homeVM.toggleServiceVisibility(sid: sid) }
                 )

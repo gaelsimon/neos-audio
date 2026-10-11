@@ -25,7 +25,7 @@ struct SidebarView: View {
                     .accessibilityIdentifier(AccessibilityID.Sidebar.home)
 
                     let nonLibrary = state.musicSources.filter { !HEOSConstants.librarySIDs.contains($0.sid) }
-                    let availableServices = nonLibrary.filter { $0.type == "music_service" && $0.available && !hiddenSIDs.contains($0.sid) }
+                    let availableServices = MusicSource.listed(nonLibrary, signedIn: state.signedInUser != nil).filter { !hiddenSIDs.contains($0.sid) }
                     let localSources = nonLibrary.filter { $0.type != "music_service" && !hiddenSIDs.contains($0.sid) }
 
                     if !availableServices.isEmpty {

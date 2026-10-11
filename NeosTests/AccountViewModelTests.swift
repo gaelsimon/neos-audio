@@ -197,4 +197,162 @@ final class AccountViewModelTests: XCTestCase {
         await yieldForTask()
         XCTAssertNil(state.signedInUser)
     }
+
+    // MARK: - Sources follow the account
+
+    private let tuneIn = MusicSource(sid: 3, name: "TuneIn", type: "music_service", available: true)
+
+    @MainActor
+    func testSignInReloadsTheSources() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.musicSources = [tuneIn]
+        let vm = AccountViewModel(service: mock, state: state)
+
+        vm.username = "user"
+        vm.password = "pass"
+        vm.signIn()
+        await waitUntil { !state.musicSources.isEmpty }
+
+        XCTAssertEqual(state.musicSources.map(\.sid), [3])
+    }
+
+    @MainActor
+    func testSignOutReloadsTheSources() async {
+        let state = AppState()
+        state.signedInUser = "user"
+        let mock = MockAudioService()
+        mock.musicSources = [tuneIn]
+        let vm = AccountViewModel(service: mock, state: state)
+
+        vm.signOut()
+        await waitUntil { !state.musicSources.isEmpty }
+
+        XCTAssertTrue(mock.calls.contains("getMusicSources"))
+    }
+
+    @MainActor
+    func testSignInKeepsAskingUntilAServiceIsAvailable() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let notYet = MusicSource(sid: 3, name: "TuneIn", type: "music_service", available: false)
+        mock.musicSources = [notYet]
+        let vm = AccountViewModel(service: mock, state: state)
+
+        vm.username = "user"
+        vm.password = "pass"
+        vm.signIn()
+        await waitUntil { mock.calls.contains("getMusicSources") }
+        mock.musicSources = [tuneIn]
+        await waitUntil(timeout: 3) { state.musicSources.first?.available == true }
+
+        XCTAssertEqual(mock.calls.filter { $0 == "getMusicSources" }.count, 2)
+    }
+
+    @MainActor
+    func testFailedSignInShowsWhatTheSpeakerReportsAndReloadsTheSources() async {
+        let state = AppState()
+        state.signedInUser = "user"
+        let mock = MockAudioService()
+        mock.signInError = NSError(domain: "heos", code: 10, userInfo: [NSLocalizedDescriptionKey: "User not found"])
+        mock.accountUser = nil
+        mock.musicSources = [tuneIn]
+        let vm = AccountViewModel(service: mock, state: state)
+
+        vm.username = "nobody"
+        vm.password = "wrong"
+        vm.signIn()
+        await waitUntil { mock.calls.contains("getMusicSources") }
+
+        XCTAssertNil(state.signedInUser)
+        XCTAssertTrue(mock.calls.contains("checkAccount"))
+    }
+
+    @MainActor
+    func testRestoreSessionSkipsTheCredentialsThatJustFailed() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.signInError = NSError(domain: "heos", code: 10, userInfo: [NSLocalizedDescriptionKey: "User not found"])
+        let vm = AccountViewModel(service: mock, state: state)
+        vm.rememberMe = true
+        vm.username = "nobody"
+        vm.password = "wrong"
+        vm.signIn()
+        await waitUntil { !vm.isSigningIn && mock.calls.contains("checkAccount") }
+
+        vm.restoreSession()
+        await yieldForTask()
+
+        XCTAssertEqual(mock.calls.filter { $0.hasPrefix("signIn") }.count, 1)
+    }
+
+    // MARK: - restoreSession
+
+    @MainActor
+    func testRestoreSessionSignsInWithRememberedCredentials() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = AccountViewModel(service: mock, state: state)
+        vm.rememberMe = true
+        vm.username = "user"
+        vm.password = "pass"
+
+        vm.restoreSession()
+        await waitUntil { state.signedInUser != nil }
+
+        XCTAssertEqual(mock.calls.filter { $0 == "signIn:user" }.count, 1)
+    }
+
+    @MainActor
+    func testRestoreSessionDoesNothingWithoutCredentials() async {
+        let mock = MockAudioService()
+        let vm = AccountViewModel(service: mock, state: AppState())
+
+        vm.restoreSession()
+        await yieldForTask()
+
+        XCTAssertFalse(mock.calls.contains { $0.hasPrefix("signIn") })
+    }
+
+    @MainActor
+    func testRestoreSessionDoesNothingWhenSignedIn() async {
+        let state = AppState()
+        state.signedInUser = "user"
+        let mock = MockAudioService()
+        let vm = AccountViewModel(service: mock, state: state)
+        vm.username = "user"
+        vm.password = "pass"
+
+        vm.restoreSession()
+        await yieldForTask()
+
+        XCTAssertFalse(mock.calls.contains { $0.hasPrefix("signIn") })
+    }
+
+    @MainActor
+    func testRestoreSessionDoesNothingWhenNotRemembered() async {
+        let mock = MockAudioService()
+        let vm = AccountViewModel(service: mock, state: AppState())
+        vm.username = "user"
+        vm.password = "pass"
+        vm.rememberMe = false
+        defer { vm.rememberMe = true }
+
+        vm.restoreSession()
+        await yieldForTask()
+
+        XCTAssertFalse(mock.calls.contains { $0.hasPrefix("signIn") })
+    }
+
+    @MainActor
+    func testReportedSignOutReachesTheListener() {
+        let state = AppState()
+        var reported: [String?] = []
+        state.onAccountReported = { reported.append($0) }
+
+        state.setSignedInUser("user")
+        state.setSignedInUser(nil)
+
+        XCTAssertEqual(reported, ["user", nil])
+    }
 }

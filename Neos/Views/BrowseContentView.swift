@@ -73,10 +73,11 @@ struct BrowseContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let source = browseVM.selectedSource, !source.available {
+            if let source = browseVM.selectedSource, !source.available,
+               !MusicSource.listed(state.musicSources, signedIn: state.signedInUser != nil).contains(where: { $0.sid == source.sid }) {
                 unavailableServiceView(source)
             } else if let error = browseVM.errorMessage {
-                if state.signedInUser == nil && isAuthError(error) {
+                if isAuthError(error) {
                     SignInPromptView(
                         title: "Sign in to access this service",
                         message: "Connect your HEOS account to browse and play from streaming services.",
