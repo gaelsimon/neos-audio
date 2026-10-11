@@ -297,11 +297,11 @@ struct AccountSettingsView: View {
 
                 Divider().opacity(0.3)
 
-                // App Review rejects links to outside payment, tips included.
+                // App Review rejects links to outside payment, tips included, and a repo page with a Sponsor button counts.
                 #if APP_STORE
                 aboutLink(
-                    "Neos on GitHub", icon: Image("GitHubMark"), tint: DS.Colors.textSecondary,
-                    url: "https://github.com/gaelsimon/neos-audio", accessibilityID: AccessibilityID.Settings.githubButton
+                    "Neos Support", icon: Image(systemName: "questionmark.circle"), tint: DS.Colors.textSecondary,
+                    url: "https://gaelsimon.github.io/neos-audio/support.html", accessibilityID: AccessibilityID.Settings.helpButton
                 )
                 #else
                 aboutLink(
