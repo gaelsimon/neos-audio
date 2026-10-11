@@ -287,6 +287,15 @@ struct AccountSettingsView: View {
 
                     aboutRow(label: "Build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
                         .accessibilityIdentifier(AccessibilityID.Settings.aboutBuild)
+
+                    if let update = state.availableUpdate {
+                        Divider().opacity(0.3)
+
+                        aboutLink(
+                            "Neos \(update.version) is available", icon: Image(systemName: DS.Icons.update), tint: DS.Colors.accent,
+                            url: update.url.absoluteString, accessibilityID: AccessibilityID.Settings.updateLink
+                        )
+                    }
                 }
 
                 if let copyright = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String, !copyright.isEmpty {

@@ -112,6 +112,7 @@ enum AccessibilityID {
         static let aboutVersion = "settings.aboutVersion"
         static let aboutBuild = "settings.aboutBuild"
         static let aboutCopyright = "settings.aboutCopyright"
+        static let updateLink = "settings.updateLink"
         // Support
         static let supportButton = "settings.supportButton"
         static let helpButton = "settings.helpButton"

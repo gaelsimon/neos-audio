@@ -97,6 +97,7 @@
 		6F00E60D332B64799C9B54A3 /* ViewModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E079ABAB0E206CFCB270D1 /* ViewModelContainer.swift */; };
 		6F25827317CA59352F576D83 /* demo-jkl012.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 6CC9AA48494E09CE572EEBC6 /* demo-jkl012.jpg */; };
 		70F23B0F5D739DC6FD7678FF /* SearchHistoryOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27E67B4E10D3DBEEFE06B12 /* SearchHistoryOverlay.swift */; };
+		70FA3D0C2D96656C759AED66 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2DE42B5DE0D21C78E147203 /* UpdateCheckerTests.swift */; };
 		717E441A1B68EDA866ABB747 /* ImageURLCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67EBCBDA28626FAF24BBF5F0 /* ImageURLCache.swift */; };
 		744A7E8C4048E3352BFBA3C7 /* ShimmerModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56529599EED266A09B6C5A78 /* ShimmerModifier.swift */; };
 		74761A218537C119D3EEE6B3 /* LifecycleMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55EFE5D02408AE2B6548995B /* LifecycleMonitorTests.swift */; };
@@ -179,6 +180,7 @@
 		CCDF668EDD4CF1EC68E30421 /* AppState+ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625FEDCC1AE4400D9F5AC931 /* AppState+ImageCache.swift */; };
 		CD70FF41D6C20B02192601BD /* NeosURLSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3E31058DD91862FE3ED808 /* NeosURLSession.swift */; };
 		CD7AA9DC79BEE8C4F6C3DAE5 /* BreadcrumbBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE494EE8D4948062F90A2E8 /* BreadcrumbBar.swift */; };
+		CEEF69F942ADA5378C958F4E /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A756122624D76036B99E0853 /* UpdateChecker.swift */; };
 		D03EFFA54C30C8F5AB585C92 /* QueuePanelRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24A1397A0092400FB26FDAF8 /* QueuePanelRow.swift */; };
 		D059F05EF9EEBF4B62F23E22 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0E045F741F4373B6E1B6F4 /* HomeViewModel.swift */; };
 		D0BF6EB81F38DAEBA8C288E8 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8840412049B8345AEA7C7520 /* SettingsViewModel.swift */; };
@@ -388,6 +390,7 @@
 		A2E25FE5F83F8D2818A7AB98 /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
 		A371F72930B8AD1568FE8214 /* Spinner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spinner.swift; sourceTree = "<group>"; };
 		A672C3037E20F10D9D97B4B5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A756122624D76036B99E0853 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		A79712CCEF77303B51C44A80 /* demo-races.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "demo-races.jpg"; sourceTree = "<group>"; };
 		A82F5D5DBA0EA46982F37668 /* DiscoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveryView.swift; sourceTree = "<group>"; };
 		A95384FBD5FCD38A4E19EB1E /* DemoPlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPlayerTests.swift; sourceTree = "<group>"; };
@@ -396,6 +399,7 @@
 		B056265064669296EBD288DE /* StationImageEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationImageEditorTests.swift; sourceTree = "<group>"; };
 		B0B536C8E04E8476C68C0941 /* HomePreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomePreferencesTests.swift; sourceTree = "<group>"; };
 		B234BE99D332CF1AA0C22D25 /* GroupViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupViewModel.swift; sourceTree = "<group>"; };
+		B2DE42B5DE0D21C78E147203 /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
 		B431061BB0E200A459CAF630 /* GroupViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupViewModelTests.swift; sourceTree = "<group>"; };
 		B5B396E88879501223C1DDB4 /* DemoAddStationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAddStationTests.swift; sourceTree = "<group>"; };
 		B70EF0DCDA8D8279139D81FF /* TopBarScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBarScreen.swift; sourceTree = "<group>"; };
@@ -499,6 +503,7 @@
 				5A02F9C4D523A841757D4FC9 /* SoundCloudLinkResolver.swift */,
 				50DFA8A847EEAC06E4566843 /* SpaceKeyMonitor.swift */,
 				4202C12EE7B050402074A2F0 /* TrackListPresentation.swift */,
+				A756122624D76036B99E0853 /* UpdateChecker.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -808,6 +813,7 @@
 				B056265064669296EBD288DE /* StationImageEditorTests.swift */,
 				40DD05AB8B993AFFC2B5C458 /* StationImageStoreTests.swift */,
 				0AFA16BD9B1A7EF512852BCD /* TrackListPresentationTests.swift */,
+				B2DE42B5DE0D21C78E147203 /* UpdateCheckerTests.swift */,
 				6D8D84758E6B4D11BFDA1893 /* ViewModelContainerTests.swift */,
 				BF837AD9308EB22F5D83A5A0 /* Helpers */,
 			);
@@ -1001,6 +1007,7 @@
 				4063D38970BCF669273A92BD /* StationImageStoreTests.swift in Sources */,
 				92C0ADFDF62445D7B0B71742 /* TestHelpers.swift in Sources */,
 				A2F827C69C634EEB88335EC6 /* TrackListPresentationTests.swift in Sources */,
+				70FA3D0C2D96656C759AED66 /* UpdateCheckerTests.swift in Sources */,
 				7CEB9F44A8E0B113360BD3C8 /* ViewModelContainerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1126,6 +1133,7 @@
 				F766F8F24926CA73E18AF1D5 /* TrackListHeader.swift in Sources */,
 				3BB6A5A294503E02869DBD38 /* TrackListPresentation.swift in Sources */,
 				88B3EB1856A3E921DE2B767E /* TrackListRow.swift in Sources */,
+				CEEF69F942ADA5378C958F4E /* UpdateChecker.swift in Sources */,
 				6F00E60D332B64799C9B54A3 /* ViewModelContainer.swift in Sources */,
 				D283CBC203262E4290D28CBE /* VolumeControlView.swift in Sources */,
 				AA6CECFC7E80516A4B84CDC6 /* VolumeHoverZone.swift in Sources */,

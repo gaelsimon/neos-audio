@@ -104,6 +104,7 @@ final class AppState: StateUpdater {
     var discoveryError: String?
     var isDiscovering: Bool = false
     var toast: ToastMessage?
+    var availableUpdate: UpdateChecker.Update?
     var isQueuePanelOpen: Bool = false
     var isNowPlayingCanvasOpen: Bool = false
     /// Drives the search field's focus; shared so the menu bar can focus it too.
