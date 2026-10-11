@@ -93,16 +93,21 @@ footer.site p { margin: 4px 0; }
   border: 0;
   padding: 0;
   background: transparent;
-  max-width: min(96vw, 1800px);
-  max-height: 96vh;
+  max-width: min(92vw, 1440px);
+  max-height: 92vh;
 }
-.lightbox::backdrop { background: rgba(0, 0, 0, 0.85); }
+.lightbox::backdrop {
+  background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
 .lightbox img {
   display: block;
-  max-width: min(96vw, 1800px);
-  max-height: 96vh;
+  max-width: min(92vw, 1440px);
+  max-height: 92vh;
   width: auto;
   height: auto;
   border-radius: 12px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
   cursor: zoom-out;
 }

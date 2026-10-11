@@ -27,7 +27,7 @@
       <div class="meta">Free and open source · macOS 14 or later</div>
     </section>
 
-    <img class="shot" src="images/home.jpg" alt="Neos home screen with recently played albums and radio stations" width="1600" height="1000">
+    <img class="shot" src="images/home.jpg" data-full="images/home@2x.jpg" alt="Neos home screen with recently played albums and radio stations" width="1600" height="1000">
 
     <section class="features">
       <div>
@@ -65,16 +65,16 @@
     </section>
 
     <div class="pair">
-      <img class="shot" src="images/search.jpg" alt="Search results for an artist, filtered to Tidal" width="1600" height="1000">
-      <img class="shot" src="images/nas-album.jpg" alt="An album from a music server on the local network" width="1600" height="1000">
+      <img class="shot" src="images/search.jpg" data-full="images/search@2x.jpg" alt="Search results for an artist, filtered to Tidal" width="1600" height="1000">
+      <img class="shot" src="images/nas-album.jpg" data-full="images/nas-album@2x.jpg" alt="An album from a music server on the local network" width="1600" height="1000">
     </div>
     <div class="pair">
-      <img class="shot" src="images/queue.jpg" alt="The speaker's queue open next to the home screen" width="1600" height="1000">
-      <img class="shot" src="images/now-playing.jpg" alt="Full-window now playing view" width="1600" height="1000">
+      <img class="shot" src="images/queue.jpg" data-full="images/queue@2x.jpg" alt="The speaker's queue open next to the home screen" width="1600" height="1000">
+      <img class="shot" src="images/now-playing.jpg" data-full="images/now-playing@2x.jpg" alt="Full-window now playing view" width="1600" height="1000">
     </div>
     <div class="pair">
-      <img class="shot" src="images/settings.jpg" alt="Settings: services and local music servers" width="1600" height="1000">
-      <img class="shot" src="images/speakers.jpg" alt="Players and speaker groups with their volumes" width="1600" height="1000">
+      <img class="shot" src="images/settings.jpg" data-full="images/settings@2x.jpg" alt="Settings: services and local music servers" width="1600" height="1000">
+      <img class="shot" src="images/speakers.jpg" data-full="images/speakers@2x.jpg" alt="Players and speaker groups with their volumes" width="1600" height="1000">
     </div>
   </div>
 
@@ -91,7 +91,7 @@
     const large = lightbox.querySelector('img');
     document.querySelectorAll('img.shot').forEach(shot => {
       shot.addEventListener('click', () => {
-        large.src = shot.src;
+        large.src = shot.dataset.full || shot.src;
         large.alt = shot.alt;
         lightbox.showModal();
       });
