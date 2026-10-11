@@ -1201,34 +1201,6 @@ final class BrowseViewModelTests: XCTestCase {
 
         XCTAssertEqual(vm.items.map(\.name), ["Kantele NAS"])
     }
-}
-
-private actor MockBrowseBackend {
-    private var sourceContinuations: [Int: CheckedContinuation<BrowseResult, Error>] = [:]
-
-    func browseSource(sid: Int) async throws -> BrowseResult {
-        try await withCheckedThrowingContinuation { continuation in
-            sourceContinuations[sid] = continuation
-        }
-    }
-
-    func browseContainer(sid: Int, cid: String, range: ClosedRange<Int>?) async throws -> BrowseResult {
-        _ = sid
-        _ = cid
-        _ = range
-        return BrowseResult(items: [])
-    }
-
-    func pendingSourceRequestCount() -> Int {
-        sourceContinuations.count
-    }
-
-    func resumeBrowseSource(sid: Int, with result: BrowseResult) {
-        guard let continuation = sourceContinuations.removeValue(forKey: sid) else {
-            return
-        }
-        continuation.resume(returning: result)
-    }
 
     @MainActor
     func testRefusedBrowseWhileSignedInReportsTheLostAccount() async {
@@ -1269,5 +1241,33 @@ private actor MockBrowseBackend {
 
         XCTAssertEqual(viewModel.errorMessage, "System error")
         XCTAssertEqual(state.signedInUser, "user")
+    }
+}
+
+private actor MockBrowseBackend {
+    private var sourceContinuations: [Int: CheckedContinuation<BrowseResult, Error>] = [:]
+
+    func browseSource(sid: Int) async throws -> BrowseResult {
+        try await withCheckedThrowingContinuation { continuation in
+            sourceContinuations[sid] = continuation
+        }
+    }
+
+    func browseContainer(sid: Int, cid: String, range: ClosedRange<Int>?) async throws -> BrowseResult {
+        _ = sid
+        _ = cid
+        _ = range
+        return BrowseResult(items: [])
+    }
+
+    func pendingSourceRequestCount() -> Int {
+        sourceContinuations.count
+    }
+
+    func resumeBrowseSource(sid: Int, with result: BrowseResult) {
+        guard let continuation = sourceContinuations.removeValue(forKey: sid) else {
+            return
+        }
+        continuation.resume(returning: result)
     }
 }
