@@ -87,3 +87,22 @@ footer.site {
   font-size: 14px;
 }
 footer.site p { margin: 4px 0; }
+
+.shot { cursor: zoom-in; }
+.lightbox {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: min(96vw, 1800px);
+  max-height: 96vh;
+}
+.lightbox::backdrop { background: rgba(0, 0, 0, 0.85); }
+.lightbox img {
+  display: block;
+  max-width: min(96vw, 1800px);
+  max-height: 96vh;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  cursor: zoom-out;
+}

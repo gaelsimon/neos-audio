@@ -85,5 +85,18 @@
       <p>© 2025–2026 Gael Simon · <a href="support.html">Support</a> · <a href="privacy.html">Privacy</a></p>
     </div>
   </footer>
+  <dialog class="lightbox" id="lightbox"><img src="" alt=""></dialog>
+  <script>
+    const lightbox = document.getElementById('lightbox');
+    const large = lightbox.querySelector('img');
+    document.querySelectorAll('img.shot').forEach(shot => {
+      shot.addEventListener('click', () => {
+        large.src = shot.src;
+        large.alt = shot.alt;
+        lightbox.showModal();
+      });
+    });
+    lightbox.addEventListener('click', () => lightbox.close());
+  </script>
 </body>
 </html>
