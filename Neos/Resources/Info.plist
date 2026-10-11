@@ -21,7 +21,7 @@
     <key>LSMinimumSystemVersion</key>
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright 2025-2026 Gael Simon. All rights reserved.</string>
+    <string>© 2025–2026 Gael Simon</string>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsLocalNetworking</key>
@@ -33,5 +33,9 @@
     <array>
         <string>_heos-audio._tcp</string>
     </array>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.music</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>

@@ -21,26 +21,26 @@ final class DemoSearchTests: DemoTestCase {
     // MARK: - Search Field
 
     func testSearchFieldAcceptsInput() {
-        typeSearch("Queen")
+        typeSearch("The Velvet Hours")
         // The field should contain the typed text
         let value = topBar.searchField.value as? String ?? ""
-        XCTAssertTrue(value.contains("Queen"), "Search field should contain typed text, got: \(value)")
+        XCTAssertTrue(value.contains("The Velvet Hours"), "Search field should contain typed text, got: \(value)")
     }
 
     func testSearchResultsViewAppearsAfterTyping() {
-        typeSearch("Queen")
+        typeSearch("The Velvet Hours")
         waitForElement(search.resultsView)
         XCTAssertTrue(search.resultsView.exists, "Search results should appear after typing")
     }
 
     func testClearButtonAppearsWhenSearching() {
-        typeSearch("Queen")
+        typeSearch("The Velvet Hours")
         waitForElement(search.clearButton)
         XCTAssertTrue(search.clearButton.exists, "Clear button should appear when query is non-empty")
     }
 
     func testClearButtonDismissesSearch() {
-        typeSearch("Queen")
+        typeSearch("The Velvet Hours")
         waitForElement(search.clearButton)
         search.clearButton.click()
 
@@ -53,7 +53,7 @@ final class DemoSearchTests: DemoTestCase {
     // MARK: - Search to Navigation Flow
 
     func testSearchThenNavigateBackShowsHome() {
-        typeSearch("Queen")
+        typeSearch("The Velvet Hours")
         waitForElement(search.resultsView)
 
         // Press back to dismiss search

@@ -129,6 +129,7 @@ final class AccountViewModel {
     private static let legacyKeychainService = "com.neos.heos-account"
 
     private func saveCredentials() {
+        guard !DemoSession.isActive else { return }
         let payload = ["u": username, "p": password]
         guard let data = try? JSONEncoder().encode(payload) else { return }
         let query: [String: Any] = [
@@ -178,6 +179,7 @@ final class AccountViewModel {
     }
 
     private func deleteCredentials() {
+        guard !DemoSession.isActive else { return }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,

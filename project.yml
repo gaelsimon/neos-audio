@@ -37,6 +37,9 @@ targets:
         GENERATE_INFOPLIST_FILE: false
         COMBINE_HIDPI_IMAGES: true
         ENABLE_HARDENED_RUNTIME: true
+      configs:
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: "demo-*.jpg CREDITS.md"
     dependencies:
       - package: swift-heos
         product: HEOSKit

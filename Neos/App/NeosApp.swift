@@ -116,10 +116,11 @@ struct NeosApp: App {
     /// Idempotent: whichever scene appears first boots the services.
     private func initializeServices() {
         guard container == nil else { return }
-        let isDemoMode = CommandLine.arguments.contains("--demo-mode")
 
         // Demo mode takes priority; always initialize even when hosted by XCTest
-        if isDemoMode {
+        // Debug builds only: the demo never ships.
+        #if DEBUG
+        if DemoSession.isActive {
             let svc = DemoAudioService()
             let vms = ViewModelContainer(service: svc, state: appState)
             self.container = vms
@@ -127,6 +128,7 @@ struct NeosApp: App {
             DemoDataProvider.populate(appState)
             return
         }
+        #endif
 
         // Keep unit tests hermetic: avoid real discovery/network startup when hosted by XCTest.
         let isUnitTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil

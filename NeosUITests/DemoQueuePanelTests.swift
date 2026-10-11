@@ -59,13 +59,13 @@ final class DemoQueuePanelTests: DemoTestCase {
     func testUpNextHasContent() {
         ensurePanelOpen()
         waitForElement(panel.upNextSection)
-        // The up next section should contain text from the next track (Under Pressure)
+        // The up next section should contain text from the next track (Glass Weather)
         // Static texts only: `value CONTAINS` on every element reaches the volume slider,
         // whose value is a number, and the exception that raises kills the app under test.
-        let underPressure = app.descendants(matching: .staticText).matching(
-            NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Under Pressure", "Under Pressure")
+        let nextTrack = app.descendants(matching: .staticText).matching(
+            NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Glass Weather", "Glass Weather")
         )
-        XCTAssertTrue(underPressure.count > 0 || panel.upNextSection.exists, "Up next section should have content")
+        XCTAssertTrue(nextTrack.count > 0 || panel.upNextSection.exists, "Up next section should have content")
     }
 
     func testEmptyStateNotVisibleWhenPlaying() {

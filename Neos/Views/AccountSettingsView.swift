@@ -297,20 +297,18 @@ struct AccountSettingsView: View {
 
                 Divider().opacity(0.3)
 
-                Button(action: {
-                    if let url = URL(string: "https://ko-fi.com/galela") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }) {
-                    HStack(spacing: DS.Spacing.sm) {
-                        Image(systemName: DS.Icons.heartFill)
-                            .foregroundStyle(.pink)
-                        Text("Support Neos on Ko-fi")
-                            .typography(.bodyMedium)
-                    }
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(AccessibilityID.Settings.supportButton)
+                // App Review rejects links to outside payment, tips included, and a repo page with a Sponsor button counts.
+                #if APP_STORE
+                aboutLink(
+                    "Neos Support", icon: Image(systemName: "questionmark.circle"), tint: DS.Colors.textSecondary,
+                    url: "https://gaelsimon.github.io/neos-audio/support.html", accessibilityID: AccessibilityID.Settings.helpButton
+                )
+                #else
+                aboutLink(
+                    "Support Neos on Ko-fi", icon: Image(systemName: DS.Icons.heartFill), tint: .pink,
+                    url: "https://ko-fi.com/galela", accessibilityID: AccessibilityID.Settings.supportButton
+                )
+                #endif
             }
         }
     }
@@ -323,6 +321,26 @@ struct AccountSettingsView: View {
             Text(value)
                 .typography(.bodyPrimary)
         }
+    }
+
+    private func aboutLink(_ title: String, icon: Image, tint: Color, url: String, accessibilityID: String) -> some View {
+        Button(action: {
+            if let url = URL(string: url) {
+                NSWorkspace.shared.open(url)
+            }
+        }) {
+            HStack(spacing: DS.Spacing.sm) {
+                icon
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(tint)
+                Text(title)
+                    .typography(.bodyMedium)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityID)
     }
 
     // MARK: - Diagnostics Section
