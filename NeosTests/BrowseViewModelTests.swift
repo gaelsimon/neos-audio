@@ -1251,4 +1251,22 @@ private actor MockBrowseBackend {
         XCTAssertNil(state.signedInUser)
         XCTAssertEqual(reported, [nil])
     }
+
+    func testAuthErrorsAreRecognisedByTheirWording() {
+        XCTAssertTrue(BrowseViewModel.isAuthError("User not logged in"))
+        XCTAssertTrue(BrowseViewModel.isAuthError("Not signed in"))
+        XCTAssertFalse(BrowseViewModel.isAuthError("Timed out"))
+    }
+
+    @MainActor
+    func testReportedBrowseErrorKeepsTheAccountWhenItIsNotAboutAuth() {
+        let state = AppState()
+        state.signedInUser = "user"
+        let viewModel = BrowseViewModel(service: MockAudioService(), state: state)
+
+        viewModel.reportBrowseError(NSError(domain: "heos", code: 12, userInfo: [NSLocalizedDescriptionKey: "System error"]))
+
+        XCTAssertEqual(viewModel.errorMessage, "System error")
+        XCTAssertEqual(state.signedInUser, "user")
+    }
 }
