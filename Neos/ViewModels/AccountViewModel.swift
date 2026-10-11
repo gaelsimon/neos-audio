@@ -61,6 +61,8 @@ final class AccountViewModel {
     private let operationTracker = RequestTracker()
     /// A failed sign-in also signs the speaker out; never retry it with the credentials that just failed.
     private var failedCredentials: String?
+    /// What the keychain holds; rewriting an unchanged item makes an ad-hoc signed build ask for the keychain again.
+    private var storedCredentials: String?
 
     init(service: any AudioService, state: AppState) {
         self.service = service
@@ -172,7 +174,7 @@ final class AccountViewModel {
     }()
 
     private func saveCredentials() {
-        guard !DemoSession.isActive else { return }
+        guard !DemoSession.isActive, storedCredentials != "\(username)\n\(password)" else { return }
         let payload = ["u": username, "p": password]
         guard let data = try? JSONEncoder().encode(payload) else { return }
         let query: [String: Any] = [
@@ -183,7 +185,9 @@ final class AccountViewModel {
         ].merging(Self.keychainScope) { $1 }
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)
-        if status != errSecSuccess {
+        if status == errSecSuccess {
+            storedCredentials = "\(username)\n\(password)"
+        } else {
             keychainLogger.warning("Keychain save failed: \(status)")
         }
     }
@@ -206,6 +210,7 @@ final class AccountViewModel {
                let u = dict["u"], let p = dict["p"] {
                 username = u
                 password = p
+                storedCredentials = "\(u)\n\(p)"
             } else if let str = String(data: data, encoding: .utf8) {
                 // Legacy colon format; migrates to JSON on next save
                 let parts = str.split(separator: ":", maxSplits: 1)
@@ -231,6 +236,7 @@ final class AccountViewModel {
         }
         username = ""
         password = ""
+        storedCredentials = nil
     }
 
     /// Move any existing keychain item from the legacy service name to the current one.
