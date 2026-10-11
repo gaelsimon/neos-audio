@@ -1252,6 +1252,7 @@ private actor MockBrowseBackend {
         XCTAssertEqual(reported, [nil])
     }
 
+    @MainActor
     func testAuthErrorsAreRecognisedByTheirWording() {
         XCTAssertTrue(BrowseViewModel.isAuthError("User not logged in"))
         XCTAssertTrue(BrowseViewModel.isAuthError("Not signed in"))
