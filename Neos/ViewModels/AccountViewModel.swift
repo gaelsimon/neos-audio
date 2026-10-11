@@ -156,6 +156,20 @@ final class AccountViewModel {
     private static let keychainService = "com.galela.neos.heos-account"
     private static let legacyKeychainService = "com.neos.heos-account"
 
+    // Ad-hoc signed builds, the DMG included, have no application identifier, and the data-protection keychain refuses them.
+    private static let keychainScope: [String: Any] = {
+        // Only a write reveals the missing entitlement; a read just says "not found".
+        let probe: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService + ".probe",
+            kSecUseDataProtectionKeychain as String: true,
+            kSecValueData as String: Data()
+        ]
+        let status = SecItemAdd(probe as CFDictionary, nil)
+        SecItemDelete(probe as CFDictionary)
+        return status == errSecMissingEntitlement ? [:] : [kSecUseDataProtectionKeychain as String: true]
+    }()
+
     private func saveCredentials() {
         guard !DemoSession.isActive else { return }
         let payload = ["u": username, "p": password]
@@ -163,10 +177,9 @@ final class AccountViewModel {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
-            kSecUseDataProtectionKeychain as String: true,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
             kSecValueData as String: data
-        ]
+        ].merging(Self.keychainScope) { $1 }
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)
         if status != errSecSuccess {
@@ -180,10 +193,9 @@ final class AccountViewModel {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
-            kSecUseDataProtectionKeychain as String: true,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        ].merging(Self.keychainScope) { $1 }
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecSuccess,
@@ -211,8 +223,7 @@ final class AccountViewModel {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
-            kSecUseDataProtectionKeychain as String: true
-        ]
+        ].merging(Self.keychainScope) { $1 }
         let status = SecItemDelete(query as CFDictionary)
         if status != errSecSuccess, status != errSecItemNotFound {
             keychainLogger.warning("Keychain delete failed: \(status)")
@@ -227,10 +238,9 @@ final class AccountViewModel {
         let legacyQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.legacyKeychainService,
-            kSecUseDataProtectionKeychain as String: true,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        ].merging(Self.keychainScope) { $1 }
         var result: AnyObject?
         let status = SecItemCopyMatching(legacyQuery as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data else { return }
@@ -238,10 +248,9 @@ final class AccountViewModel {
         let newQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
-            kSecUseDataProtectionKeychain as String: true,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
             kSecValueData as String: data
-        ]
+        ].merging(Self.keychainScope) { $1 }
         SecItemDelete(newQuery as CFDictionary)
         let addStatus = SecItemAdd(newQuery as CFDictionary, nil)
         guard addStatus == errSecSuccess else {
@@ -252,8 +261,7 @@ final class AccountViewModel {
         let deleteLegacy: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.legacyKeychainService,
-            kSecUseDataProtectionKeychain as String: true
-        ]
+        ].merging(Self.keychainScope) { $1 }
         SecItemDelete(deleteLegacy as CFDictionary)
     }
 
