@@ -104,6 +104,7 @@ final class AppState: StateUpdater {
     var discoveryError: String?
     var isDiscovering: Bool = false
     var toast: ToastMessage?
+    var availableUpdate: UpdateChecker.Update?
     var isQueuePanelOpen: Bool = false
     var isNowPlayingCanvasOpen: Bool = false
     /// Drives the search field's focus; shared so the menu bar can focus it too.
@@ -116,6 +117,7 @@ final class AppState: StateUpdater {
     private var trackLoadWatchdog: Task<Void, Never>?
     /// Called for every device discovery reports, so a remembered speaker can reconnect on its own.
     @ObservationIgnored var onDeviceDiscovered: ((DiscoveredDevice) -> Void)?
+    @ObservationIgnored var onAccountReported: ((String?) -> Void)?
 
     // MARK: - Sub-States
 
@@ -405,6 +407,7 @@ final class AppState: StateUpdater {
 
     func setSignedInUser(_ username: String?) {
         self.signedInUser = username
+        onAccountReported?(username)
     }
 
     func setError(_ error: AppError?) {

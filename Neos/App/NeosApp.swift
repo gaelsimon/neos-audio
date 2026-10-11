@@ -163,5 +163,23 @@ struct NeosApp: App {
         if let cached = DeviceCache.load() {
             vms.speakerVM.connectToCachedDevice(cached)
         }
+
+        // The App Store updates its own build.
+        #if !APP_STORE
+        startUpdateCheck()
+        #endif
+    }
+
+    private func startUpdateCheck() {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        let checker = UpdateChecker(currentVersion: version)
+        let state = appState
+        Task { @MainActor in
+            guard let update = await checker.check() else { return }
+            state.availableUpdate = update
+            if checker.markNotified(update) {
+                state.showToast("Neos \(update.version) is available", icon: DS.Icons.update, style: .info)
+            }
+        }
     }
 }

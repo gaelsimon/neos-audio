@@ -97,6 +97,7 @@
 		6F00E60D332B64799C9B54A3 /* ViewModelContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E079ABAB0E206CFCB270D1 /* ViewModelContainer.swift */; };
 		6F25827317CA59352F576D83 /* demo-jkl012.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 6CC9AA48494E09CE572EEBC6 /* demo-jkl012.jpg */; };
 		70F23B0F5D739DC6FD7678FF /* SearchHistoryOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27E67B4E10D3DBEEFE06B12 /* SearchHistoryOverlay.swift */; };
+		70FA3D0C2D96656C759AED66 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2DE42B5DE0D21C78E147203 /* UpdateCheckerTests.swift */; };
 		717E441A1B68EDA866ABB747 /* ImageURLCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67EBCBDA28626FAF24BBF5F0 /* ImageURLCache.swift */; };
 		744A7E8C4048E3352BFBA3C7 /* ShimmerModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56529599EED266A09B6C5A78 /* ShimmerModifier.swift */; };
 		74761A218537C119D3EEE6B3 /* LifecycleMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55EFE5D02408AE2B6548995B /* LifecycleMonitorTests.swift */; };
@@ -119,6 +120,7 @@
 		8A50A357A8AB7D6E935E1FBB /* StationImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC288A8E7CB02C0BC265FD8 /* StationImageStore.swift */; };
 		8AAE490EB336A14BFA936DD8 /* RequestTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69ED4EF743B3D4FAD3F936A0 /* RequestTracker.swift */; };
 		8BA440F928E96BD77F4CB9B5 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 948DF034A3269DAA849F62A3 /* MainWindowView.swift */; };
+		8E2D8C253DB40F171C849166 /* MusicSourceListingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9CB904A8407637F231D2104 /* MusicSourceListingTests.swift */; };
 		9053B00425DE44E0B7CEBA74 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A939583966AAA1EFE309B72 /* MenuBarView.swift */; };
 		90ACF5A9D6833BBDBF7FE23A /* HomeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBEE7998B03430B6F5541C03 /* HomeViewModelTests.swift */; };
 		92078682A6E966718DE31193 /* CancellableTaskHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA91B9970B64593857EE303B /* CancellableTaskHandle.swift */; };
@@ -170,6 +172,7 @@
 		BE87ED44CFBC753AA2BB9CB5 /* SpaceKeyMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02652436E8C5300E706CEFF0 /* SpaceKeyMonitorTests.swift */; };
 		C042596E5E6B1719994458D7 /* LifecycleMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930F5F8AFC73726B3DE5F249 /* LifecycleMonitor.swift */; };
 		C050503510D1A4EE219E3D95 /* DemoSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B857172376380AAE5AA19938 /* DemoSettingsTests.swift */; };
+		C05A32E24229BEFFFD6D8A6E /* MusicSource+Listing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A46B49BC48E87CBFB67CA8D6 /* MusicSource+Listing.swift */; };
 		C3EED3C77051EDD2E5B2362B /* PlaybackRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191B31C7F1654A9214079D80 /* PlaybackRouterTests.swift */; };
 		C43B3C7FBCF04B2379D937AB /* LocalServerPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9828257C38C1F9B944677FD3 /* LocalServerPreferencesTests.swift */; };
 		C66992ECEC3208E3271099EA /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 537DA69FD49E675D382ED995 /* Glass.swift */; };
@@ -179,6 +182,7 @@
 		CCDF668EDD4CF1EC68E30421 /* AppState+ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625FEDCC1AE4400D9F5AC931 /* AppState+ImageCache.swift */; };
 		CD70FF41D6C20B02192601BD /* NeosURLSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3E31058DD91862FE3ED808 /* NeosURLSession.swift */; };
 		CD7AA9DC79BEE8C4F6C3DAE5 /* BreadcrumbBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE494EE8D4948062F90A2E8 /* BreadcrumbBar.swift */; };
+		CEEF69F942ADA5378C958F4E /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A756122624D76036B99E0853 /* UpdateChecker.swift */; };
 		D03EFFA54C30C8F5AB585C92 /* QueuePanelRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24A1397A0092400FB26FDAF8 /* QueuePanelRow.swift */; };
 		D059F05EF9EEBF4B62F23E22 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0E045F741F4373B6E1B6F4 /* HomeViewModel.swift */; };
 		D0BF6EB81F38DAEBA8C288E8 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8840412049B8345AEA7C7520 /* SettingsViewModel.swift */; };
@@ -387,7 +391,9 @@
 		9EA00DA8E807AB81B7B3B7D9 /* DeviceCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCache.swift; sourceTree = "<group>"; };
 		A2E25FE5F83F8D2818A7AB98 /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
 		A371F72930B8AD1568FE8214 /* Spinner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spinner.swift; sourceTree = "<group>"; };
+		A46B49BC48E87CBFB67CA8D6 /* MusicSource+Listing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MusicSource+Listing.swift"; sourceTree = "<group>"; };
 		A672C3037E20F10D9D97B4B5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A756122624D76036B99E0853 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		A79712CCEF77303B51C44A80 /* demo-races.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "demo-races.jpg"; sourceTree = "<group>"; };
 		A82F5D5DBA0EA46982F37668 /* DiscoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveryView.swift; sourceTree = "<group>"; };
 		A95384FBD5FCD38A4E19EB1E /* DemoPlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPlayerTests.swift; sourceTree = "<group>"; };
@@ -396,6 +402,7 @@
 		B056265064669296EBD288DE /* StationImageEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationImageEditorTests.swift; sourceTree = "<group>"; };
 		B0B536C8E04E8476C68C0941 /* HomePreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomePreferencesTests.swift; sourceTree = "<group>"; };
 		B234BE99D332CF1AA0C22D25 /* GroupViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupViewModel.swift; sourceTree = "<group>"; };
+		B2DE42B5DE0D21C78E147203 /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
 		B431061BB0E200A459CAF630 /* GroupViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupViewModelTests.swift; sourceTree = "<group>"; };
 		B5B396E88879501223C1DDB4 /* DemoAddStationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAddStationTests.swift; sourceTree = "<group>"; };
 		B70EF0DCDA8D8279139D81FF /* TopBarScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBarScreen.swift; sourceTree = "<group>"; };
@@ -415,6 +422,7 @@
 		C67C51541DAA872DE76B6E60 /* HomeCacheStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeCacheStoreTests.swift; sourceTree = "<group>"; };
 		C7B11E8614109E071EB98554 /* LocalServerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalServerSettingsView.swift; sourceTree = "<group>"; };
 		C8ED1AD2C80B453D4CE0782D /* NoRingTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoRingTextField.swift; sourceTree = "<group>"; };
+		C9CB904A8407637F231D2104 /* MusicSourceListingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSourceListingTests.swift; sourceTree = "<group>"; };
 		CA331DE0E2142FB64DC2EA78 /* DisconnectedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisconnectedScreen.swift; sourceTree = "<group>"; };
 		CAA5B187CE069C085FBB3F3D /* StationImageEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationImageEditor.swift; sourceTree = "<group>"; };
 		CAA6BF3C2B997509F25C54B0 /* SearchResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResultsView.swift; sourceTree = "<group>"; };
@@ -490,6 +498,7 @@
 				562D253082EF88ADC2BBF521 /* ImageURLUpscaler.swift */,
 				930F5F8AFC73726B3DE5F249 /* LifecycleMonitor.swift */,
 				0B77AD6720ECB5C294E9144C /* MenuBarIcon.swift */,
+				A46B49BC48E87CBFB67CA8D6 /* MusicSource+Listing.swift */,
 				1AB54A3ABF58C2D50102594A /* NavigationHistoryStack.swift */,
 				9A3E31058DD91862FE3ED808 /* NeosURLSession.swift */,
 				CED5C2385D9BB43510765FD8 /* PaginationState.swift */,
@@ -499,6 +508,7 @@
 				5A02F9C4D523A841757D4FC9 /* SoundCloudLinkResolver.swift */,
 				50DFA8A847EEAC06E4566843 /* SpaceKeyMonitor.swift */,
 				4202C12EE7B050402074A2F0 /* TrackListPresentation.swift */,
+				A756122624D76036B99E0853 /* UpdateChecker.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -793,6 +803,7 @@
 				9828257C38C1F9B944677FD3 /* LocalServerPreferencesTests.swift */,
 				AB888CE40783F9BEAD662F65 /* LocalServersViewModelTests.swift */,
 				CD0D88EDE33CA1535C7F704D /* MenuBarIconTests.swift */,
+				C9CB904A8407637F231D2104 /* MusicSourceListingTests.swift */,
 				DF27B137A7D402C9B228D43E /* NavigationDestinationTests.swift */,
 				63B05E34C2DBCB5332D93F67 /* NavigationHistoryStackTests.swift */,
 				BEF700384B19E77175E9DB0C /* PaginationStateTests.swift */,
@@ -808,6 +819,7 @@
 				B056265064669296EBD288DE /* StationImageEditorTests.swift */,
 				40DD05AB8B993AFFC2B5C458 /* StationImageStoreTests.swift */,
 				0AFA16BD9B1A7EF512852BCD /* TrackListPresentationTests.swift */,
+				B2DE42B5DE0D21C78E147203 /* UpdateCheckerTests.swift */,
 				6D8D84758E6B4D11BFDA1893 /* ViewModelContainerTests.swift */,
 				BF837AD9308EB22F5D83A5A0 /* Helpers */,
 			);
@@ -985,6 +997,7 @@
 				2099814C335233F419EEC353 /* MenuBarIconTests.swift in Sources */,
 				AEB4C0FBE40E0E7815BCB14A /* MockAudioService.swift in Sources */,
 				8871ADC8F0BBB6C60C7D56FF /* MockData.swift in Sources */,
+				8E2D8C253DB40F171C849166 /* MusicSourceListingTests.swift in Sources */,
 				76ECB42092990D4611A6A954 /* NavigationDestinationTests.swift in Sources */,
 				3659BFB278DCA33D265D4AD5 /* NavigationHistoryStackTests.swift in Sources */,
 				BD143E7533D5622CA3A3C20D /* PaginationStateTests.swift in Sources */,
@@ -1001,6 +1014,7 @@
 				4063D38970BCF669273A92BD /* StationImageStoreTests.swift in Sources */,
 				92C0ADFDF62445D7B0B71742 /* TestHelpers.swift in Sources */,
 				A2F827C69C634EEB88335EC6 /* TrackListPresentationTests.swift in Sources */,
+				70FA3D0C2D96656C759AED66 /* UpdateCheckerTests.swift in Sources */,
 				7CEB9F44A8E0B113360BD3C8 /* ViewModelContainerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1075,6 +1089,7 @@
 				8BA440F928E96BD77F4CB9B5 /* MainWindowView.swift in Sources */,
 				D38B136D6DB2BFF9878C8FB4 /* MenuBarIcon.swift in Sources */,
 				9053B00425DE44E0B7CEBA74 /* MenuBarView.swift in Sources */,
+				C05A32E24229BEFFFD6D8A6E /* MusicSource+Listing.swift in Sources */,
 				6D861BE1239F930DA19BF65E /* NavigationDestination.swift in Sources */,
 				A41AE49E6EC17DF0DED22D14 /* NavigationHistoryStack.swift in Sources */,
 				E4E8446D28E07A0D1BC04AF4 /* NeosApp.swift in Sources */,
@@ -1126,6 +1141,7 @@
 				F766F8F24926CA73E18AF1D5 /* TrackListHeader.swift in Sources */,
 				3BB6A5A294503E02869DBD38 /* TrackListPresentation.swift in Sources */,
 				88B3EB1856A3E921DE2B767E /* TrackListRow.swift in Sources */,
+				CEEF69F942ADA5378C958F4E /* UpdateChecker.swift in Sources */,
 				6F00E60D332B64799C9B54A3 /* ViewModelContainer.swift in Sources */,
 				D283CBC203262E4290D28CBE /* VolumeControlView.swift in Sources */,
 				AA6CECFC7E80516A4B84CDC6 /* VolumeHoverZone.swift in Sources */,

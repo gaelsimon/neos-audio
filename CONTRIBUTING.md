@@ -58,7 +58,8 @@ DEVELOPMENT_TEAM=XXXXXXXXXX NOTARY_KEY_PATH=... NOTARY_KEY_ID=... NOTARY_ISSUER_
 ```
 
 The App Store build compiles with `APP_STORE`, which swaps the Ko-fi link in About for one to the
-support page, and gets a timestamp build number unless one is passed as the second argument. It uses
+support page and leaves out the daily check of GitHub releases that tells DMG users about a newer
+version, and gets a timestamp build number unless one is passed as the second argument. It uses
 the same App Store Connect API key as notarisation; `DESTINATION=export` keeps the package local
 instead of uploading it.
 

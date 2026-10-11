@@ -190,4 +190,16 @@ final class ViewModelContainerTests: XCTestCase {
         XCTAssertTrue(container.searchVM.hasSuspendedSearch)
         XCTAssertEqual(container.browseVM.currentDestination, .settings)
     }
+
+    @MainActor
+    func testReportedSignOutAsksTheAccountToRestoreTheSession() {
+        let (container, state) = makeContainer()
+        container.accountVM.username = "user"
+        container.accountVM.password = "pass"
+        container.accountVM.rememberMe = true
+
+        state.setSignedInUser(nil)
+
+        XCTAssertTrue(container.accountVM.isSigningIn)
+    }
 }

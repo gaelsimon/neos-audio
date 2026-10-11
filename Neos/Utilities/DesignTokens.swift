@@ -97,6 +97,7 @@ enum DS {
         static let add = "plus.circle"
         static let checkmark = "checkmark"
         static let refresh = "arrow.clockwise"
+        static let update = "arrow.down.circle"
         static let navigate = "arrow.right.circle"
         static let back = "chevron.left"
         static let forward = "chevron.right"

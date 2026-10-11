@@ -46,6 +46,11 @@ final class ViewModelContainer {
         let home = homeVM
         accountVM.onAccountChanged = { [weak home] in home?.resetForAccountChange() }
 
+        let account = accountVM
+        state.onAccountReported = { [weak account] user in
+            if user == nil { account?.restoreSession() }
+        }
+
         let speakers = speakerVM
         state.onDeviceDiscovered = { [weak speakers] device in
             speakers?.autoConnectIfCached(device)

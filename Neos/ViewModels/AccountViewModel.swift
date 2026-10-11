@@ -59,6 +59,8 @@ final class AccountViewModel {
     private let signOutTask = CancellableTaskHandle()
     private let accountCheckTask = CancellableTaskHandle()
     private let operationTracker = RequestTracker()
+    /// A failed sign-in also signs the speaker out; never retry it with the credentials that just failed.
+    private var failedCredentials: String?
 
     init(service: any AudioService, state: AppState) {
         self.service = service
@@ -78,14 +80,22 @@ final class AccountViewModel {
                 try await service.signIn(username: username, password: password)
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
                 onAccountChanged?()
+                failedCredentials = nil
                 state.signedInUser = username
                 if rememberMe { saveCredentials() }
+                isSigningIn = false
+                await refreshSources(untilAvailable: true, requestID: requestID)
+                return
             } catch {
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
                 signInError = Self.categorizeError(error)
+                if case .authFailed = signInError { failedCredentials = "\(username)\n\(password)" }
             }
             guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isSigningIn = false
+            // The speaker drops its session on a failed sign-in: show what it now reports.
+            state.setSignedInUser(try? await service.checkAccount())
+            await refreshSources(untilAvailable: false, requestID: requestID)
         })
     }
 
@@ -100,6 +110,7 @@ final class AccountViewModel {
                 onAccountChanged?()
                 state.signedInUser = nil
                 deleteCredentials()
+                await refreshSources(untilAvailable: false, requestID: requestID)
             } catch {
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
                 state.error = .accountFailed(error.localizedDescription)
@@ -107,6 +118,24 @@ final class AccountViewModel {
             guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isSigningOut = false
         })
+    }
+
+    /// The speaker reports no account but the user asked to be remembered: sign in again, once per report.
+    func restoreSession() {
+        guard rememberMe, !username.isEmpty, !password.isEmpty, state.signedInUser == nil, !isSigningIn,
+              failedCredentials != "\(username)\n\(password)" else { return }
+        signIn()
+    }
+
+    // The speaker sends no sources_changed for an account change, and marks services available a moment after a sign-in.
+    private func refreshSources(untilAvailable: Bool, requestID: Int) async {
+        for attempt in 1...5 {
+            guard let sources = try? await service.getMusicSources(),
+                  operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
+            state.setMusicSources(sources)
+            if !untilAvailable || sources.contains(where: { $0.type == "music_service" && $0.available }) || attempt == 5 { return }
+            try? await Task.sleep(for: .seconds(1))
+        }
     }
 
     func checkAccount() {
@@ -128,6 +157,20 @@ final class AccountViewModel {
     private static let keychainService = "com.galela.neos.heos-account"
     private static let legacyKeychainService = "com.neos.heos-account"
 
+    // Ad-hoc signed builds, the DMG included, have no application identifier, and the data-protection keychain refuses them.
+    private static let keychainScope: [String: Any] = {
+        // Only a write reveals the missing entitlement; a read just says "not found".
+        let probe: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService + ".probe",
+            kSecUseDataProtectionKeychain as String: true,
+            kSecValueData as String: Data()
+        ]
+        let status = SecItemAdd(probe as CFDictionary, nil)
+        SecItemDelete(probe as CFDictionary)
+        return status == errSecMissingEntitlement ? [:] : [kSecUseDataProtectionKeychain as String: true]
+    }()
+
     private func saveCredentials() {
         guard !DemoSession.isActive else { return }
         let payload = ["u": username, "p": password]
@@ -135,10 +178,9 @@ final class AccountViewModel {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
-            kSecUseDataProtectionKeychain as String: true,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
             kSecValueData as String: data
-        ]
+        ].merging(Self.keychainScope) { $1 }
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)
         if status != errSecSuccess {
@@ -152,10 +194,9 @@ final class AccountViewModel {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
-            kSecUseDataProtectionKeychain as String: true,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        ].merging(Self.keychainScope) { $1 }
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecSuccess,
@@ -183,8 +224,7 @@ final class AccountViewModel {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
-            kSecUseDataProtectionKeychain as String: true
-        ]
+        ].merging(Self.keychainScope) { $1 }
         let status = SecItemDelete(query as CFDictionary)
         if status != errSecSuccess, status != errSecItemNotFound {
             keychainLogger.warning("Keychain delete failed: \(status)")
@@ -199,10 +239,9 @@ final class AccountViewModel {
         let legacyQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.legacyKeychainService,
-            kSecUseDataProtectionKeychain as String: true,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        ].merging(Self.keychainScope) { $1 }
         var result: AnyObject?
         let status = SecItemCopyMatching(legacyQuery as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data else { return }
@@ -210,10 +249,9 @@ final class AccountViewModel {
         let newQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
-            kSecUseDataProtectionKeychain as String: true,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
             kSecValueData as String: data
-        ]
+        ].merging(Self.keychainScope) { $1 }
         SecItemDelete(newQuery as CFDictionary)
         let addStatus = SecItemAdd(newQuery as CFDictionary, nil)
         guard addStatus == errSecSuccess else {
@@ -224,8 +262,7 @@ final class AccountViewModel {
         let deleteLegacy: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.legacyKeychainService,
-            kSecUseDataProtectionKeychain as String: true
-        ]
+        ].merging(Self.keychainScope) { $1 }
         SecItemDelete(deleteLegacy as CFDictionary)
     }
 
