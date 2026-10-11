@@ -21,22 +21,29 @@
 
   <main class="wrap narrow doc">
     <h1>Support</h1>
-    <p>Something not working, or an idea? <a href="https://github.com/gaelsimon/neos-audio/issues/new/choose">Open an issue on GitHub</a>. Include your speaker model and, if Neos shows something odd, what Settings › Diagnostics › Copy All gives you.</p>
+    <p>Neos is a small project I work on in my spare time. If something doesn't work, or you'd like Neos to do something it can't do yet, <a href="https://github.com/gaelsimon/neos-audio/issues/new/choose">open an issue on GitHub</a>. Let me know which speaker or receiver you use. If something looks wrong, go to Settings › Diagnostics › Copy All and include the result. It usually helps me figure out what's going on.</p>
+    <p>Neos controls your HEOS device; it doesn't play music itself. It sends commands to the speaker and displays the information it gets back, so some things depend on what HEOS supports.</p>
 
     <h2>Neos doesn't find my speaker</h2>
-    <p>The Mac and the speaker have to be on the same network. Check that Neos is allowed in System Settings › Privacy &amp; Security › Local Network. A speaker in standby only answers when its network standby is on (often called Network Control, set to Always On).</p>
+    <p>Your Mac and speaker need to be on the same network. If you denied Neos access to your local network, you can enable it in System Settings › Privacy &amp; Security › Local Network.</p>
+    <p>If the speaker is in standby, check that network standby is enabled. On Denon devices, look for <em>Network Control</em> and set it to <em>Always On</em>.</p>
 
     <h2>Spotify isn't listed</h2>
-    <p>On HEOS, Spotify only works through Spotify Connect, so it isn't available to apps like Neos. Play it from the Spotify app and pick your speaker as the device. The HEOS app works the same way.</p>
+    <p>Spotify playback on HEOS uses Spotify Connect. Open Spotify and select your speaker from the list of available devices. Neos can't start Spotify playback directly, and the HEOS app has the same limit.</p>
 
     <h2>A service is missing</h2>
-    <p>Neos shows the services linked to the HEOS account on your speaker. Sign in to the service in the HEOS app first. A service hidden in Settings › Services won't appear in the sidebar or the search.</p>
+    <p>Neos shows the music services available through your HEOS account. Sign in to the service in the HEOS app first. If it still doesn't show up, check Settings › Services to make sure it isn't hidden.</p>
+    <p>Some services only exist in certain countries.</p>
 
     <h2>Album covers are missing on my music server</h2>
-    <p>HEOS doesn't pass on album covers when you browse a music server's albums, only the covers of the tracks inside. Open the album and its cover appears.</p>
+    <p>When browsing albums on a music server, HEOS sends Neos the track covers but not the album covers. The cover appears when you open the album. Neos can't fix this: the speaker never sends the album cover.</p>
 
-    <h2>A local server is slow to search, or never finds anything</h2>
-    <p>Some music servers can't search. Uncheck Search for that server in Settings › Local Music Servers and Neos stops asking it.</p>
+    <h2>Search is slow or doesn't find anything on a local server</h2>
+    <p>Some music servers don't support search, and HEOS doesn't tell Neos which ones. You can disable Search for that server in Settings › Local Music Servers so Neos skips it.</p>
+
+    <h2>Which speakers work?</h2>
+    <p>Neos is made for HEOS devices, including Denon and Marantz receivers and amplifiers, HEOS speakers and Denon Home speakers.</p>
+    <p>I only have one receiver to test with, so if you try Neos with another model, let me know how it goes. Reports are welcome even if everything works fine.</p>
   </main>
 
   <footer class="site">
