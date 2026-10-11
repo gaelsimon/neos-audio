@@ -286,6 +286,25 @@ final class AccountViewModelTests: XCTestCase {
         XCTAssertEqual(mock.calls.filter { $0.hasPrefix("signIn") }.count, 1)
     }
 
+    @MainActor
+    func testRestoreSessionRetriesAfterANetworkFailure() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.signInError = URLError(.notConnectedToInternet)
+        let vm = AccountViewModel(service: mock, state: state)
+        vm.rememberMe = true
+        vm.username = "user"
+        vm.password = "pass"
+        vm.signIn()
+        await waitUntil { !vm.isSigningIn && mock.calls.contains("checkAccount") }
+        mock.signInError = nil
+
+        vm.restoreSession()
+        await waitUntil { state.signedInUser != nil }
+
+        XCTAssertEqual(mock.calls.filter { $0.hasPrefix("signIn") }.count, 2)
+    }
+
     // MARK: - restoreSession
 
     @MainActor

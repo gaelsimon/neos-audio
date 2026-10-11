@@ -29,8 +29,7 @@ extension BrowseContentView {
     // MARK: - Sign In Prompt (browse error)
 
     func isAuthError(_ error: String) -> Bool {
-        let lower = error.lowercased()
-        return lower.contains("not logged in") || lower.contains("not signed in")
+        BrowseViewModel.isAuthError(error)
     }
 
     // MARK: - Error View

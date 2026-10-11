@@ -344,6 +344,19 @@ final class BrowseViewModel {
         items = []
     }
 
+    static func isAuthError(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return lower.contains("not logged in") || lower.contains("not signed in")
+    }
+
+    // The speaker drops its account without an event at times; the first refused browse is how Neos learns of it.
+    func reportBrowseError(_ error: Error) {
+        errorMessage = error.localizedDescription
+        if state.signedInUser != nil, Self.isAuthError(error.localizedDescription) {
+            state.setSignedInUser(nil)
+        }
+    }
+
     func selectSource(_ source: MusicSource) {
         let rootTarget = BrowseTarget(sid: source.sid, name: source.name, imageURL: source.imageURL, serviceName: source.name)
         let newDest = NavigationDestination.browse(rootTarget)

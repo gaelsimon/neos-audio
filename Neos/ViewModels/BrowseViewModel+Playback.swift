@@ -183,7 +183,7 @@ extension BrowseViewModel {
                 #endif
             } catch {
                 guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                errorMessage = error.localizedDescription
+                reportBrowseError(error)
             }
             guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoading = false
@@ -215,7 +215,7 @@ extension BrowseViewModel {
                 }
             } catch {
                 guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                errorMessage = error.localizedDescription
+                reportBrowseError(error)
             }
             guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoading = false

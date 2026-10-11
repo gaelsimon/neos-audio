@@ -84,18 +84,18 @@ final class AccountViewModel {
                 state.signedInUser = username
                 if rememberMe { saveCredentials() }
                 isSigningIn = false
-                await refreshSources(untilAvailable: true)
+                await refreshSources(untilAvailable: true, requestID: requestID)
                 return
             } catch {
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
                 signInError = Self.categorizeError(error)
-                failedCredentials = "\(username)\n\(password)"
+                if case .authFailed = signInError { failedCredentials = "\(username)\n\(password)" }
             }
             guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isSigningIn = false
             // The speaker drops its session on a failed sign-in: show what it now reports.
             state.setSignedInUser(try? await service.checkAccount())
-            await refreshSources(untilAvailable: false)
+            await refreshSources(untilAvailable: false, requestID: requestID)
         })
     }
 
@@ -110,7 +110,7 @@ final class AccountViewModel {
                 onAccountChanged?()
                 state.signedInUser = nil
                 deleteCredentials()
-                await refreshSources(untilAvailable: false)
+                await refreshSources(untilAvailable: false, requestID: requestID)
             } catch {
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
                 state.error = .accountFailed(error.localizedDescription)
@@ -128,9 +128,10 @@ final class AccountViewModel {
     }
 
     // The speaker sends no sources_changed for an account change, and marks services available a moment after a sign-in.
-    private func refreshSources(untilAvailable: Bool) async {
+    private func refreshSources(untilAvailable: Bool, requestID: Int) async {
         for attempt in 1...5 {
-            guard let sources = try? await service.getMusicSources(), !Task.isCancelled else { return }
+            guard let sources = try? await service.getMusicSources(),
+                  operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
             state.setMusicSources(sources)
             if !untilAvailable || sources.contains(where: { $0.type == "music_service" && $0.available }) || attempt == 5 { return }
             try? await Task.sleep(for: .seconds(1))
