@@ -243,6 +243,13 @@ extension BrowseViewModel {
         return browseTracker.next()
     }
 
+    // MARK: - Scroll Position
+
+    func resetScrollTracking() {
+        visibleTopID = nil
+        isHeaderScrolledAway = false
+    }
+
     // MARK: - Service Options
 
     /// Flags a playable container; the device refuses it as an action.

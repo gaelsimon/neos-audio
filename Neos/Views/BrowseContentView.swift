@@ -116,6 +116,10 @@ struct BrowseContentView: View {
 
     // MARK: - Scrollable Content
 
+    private var visibleTopID: Binding<String?> {
+        Binding(get: { browseVM.visibleTopID }, set: { browseVM.visibleTopID = $0 })
+    }
+
     private var scrollableContent: some View {
         // Read here, not inside .background: @Observable only tracks browseVM.items from the body.
         let backdropURL = browseVM.isInContainer ? browseVM.browseStack.last.flatMap(headerBackgroundURL) : nil
@@ -137,6 +141,7 @@ struct BrowseContentView: View {
                 )
                 .onPreferenceChange(ScrollOffsetKey.self) { maxY in
                     showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.TopBar.height) + 20
+                    browseVM.isHeaderScrolledAway = showCompactHeader
                 }
 
                 if isInputSource {
@@ -157,6 +162,8 @@ struct BrowseContentView: View {
                 }
             }
         }
+        // Back seeds the binding from history, and a new scroll view opens on that row.
+        .scrollPosition(id: visibleTopID, anchor: .top)
         .coordinateSpace(name: "browse_scroll")
         .ignoresSafeArea(edges: backdropURL == nil ? [] : .top)
         .overlay(alignment: .top) {
@@ -272,6 +279,7 @@ struct BrowseContentView: View {
                         }
                     }
                 }
+                .scrollTargetLayout()
                 .padding(.horizontal, DS.Spacing.xxl)
                 .padding(.bottom, DS.Spacing.lg)
             } else {
@@ -304,6 +312,7 @@ struct BrowseContentView: View {
                             .padding(.leading, DS.Spacing.lg + DS.ImageSize.listRow + DS.Spacing.md)
                     }
                 }
+                .scrollTargetLayout()
                 .padding(.horizontal, DS.Spacing.xxl)
             }
         }
@@ -348,6 +357,7 @@ struct BrowseContentView: View {
                     }
                 }
             }
+            .scrollTargetLayout()
             .padding(.horizontal, DS.Spacing.xxl)
         } else if browseVM.isLoadingMore {
             HStack {

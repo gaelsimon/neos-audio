@@ -91,6 +91,79 @@ final class BrowseViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.canGoForward)
     }
 
+    // MARK: - Scroll Restoration
+
+    @MainActor
+    private func openAlbumFromScrolledList(headerScrolledAway: Bool) async -> BrowseViewModel {
+        let state = AppState()
+        let albums = (1...200).map { BrowseItem(name: "Album \($0)", cid: "al-\($0)", browsable: true) }
+        let viewModel = BrowseViewModel(
+            service: MockAudioService(),
+            state: state,
+            browseSource: { _ in BrowseResult(items: albums) },
+            browseContainer: { _, _, _ in BrowseResult(items: [BrowseItem(name: "Track", type: .song, mid: "t1", playable: true)]) }
+        )
+        viewModel.selectSource(MusicSource(sid: 1, name: "TIDAL"))
+        await waitUntil { viewModel.items.count == 200 }
+        viewModel.visibleTopID = "al-180"
+        viewModel.isHeaderScrolledAway = headerScrolledAway
+        viewModel.browseItem(albums[179])
+        await waitUntil { viewModel.items.map(\.name) == ["Track"] }
+        return viewModel
+    }
+
+    @MainActor
+    func testBackReturnsToTheRowThatWasAtTheTop() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: true)
+
+        viewModel.goBack()
+
+        XCTAssertEqual(viewModel.items.count, 200)
+        XCTAssertEqual(viewModel.visibleTopID, "al-180")
+        XCTAssertTrue(viewModel.isHeaderScrolledAway)
+    }
+
+    @MainActor
+    func testBackToAPageWithItsHeaderInViewStaysAtTheTop() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: false)
+
+        viewModel.goBack()
+
+        XCTAssertNil(viewModel.visibleTopID)
+    }
+
+    @MainActor
+    func testANewPageStartsAtTheTop() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: true)
+
+        XCTAssertNil(viewModel.visibleTopID)
+        XCTAssertFalse(viewModel.isHeaderScrolledAway)
+    }
+
+    @MainActor
+    func testARestoredPositionSurvivesASecondRoundTrip() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: true)
+        viewModel.goBack()
+
+        viewModel.browseItem(BrowseItem(name: "Album 180", cid: "al-180", browsable: true))
+        await waitUntil { viewModel.items.map(\.name) == ["Track"] }
+        viewModel.goBack()
+
+        XCTAssertEqual(viewModel.visibleTopID, "al-180")
+    }
+
+    @MainActor
+    func testForwardReturnsToTheRowThatWasAtTheTop() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: true)
+        viewModel.visibleTopID = "t1"
+        viewModel.isHeaderScrolledAway = true
+
+        viewModel.goBack()
+        viewModel.goForward()
+
+        XCTAssertEqual(viewModel.visibleTopID, "t1")
+    }
+
     @MainActor
     func testGoForwardRestoresBrowseStack() async {
         let state = AppState()
