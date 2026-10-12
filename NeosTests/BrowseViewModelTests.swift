@@ -276,6 +276,41 @@ final class BrowseViewModelTests: XCTestCase {
     // MARK: - browseSubSource Navigation Tests
 
     @MainActor
+    private func enterSubSource(sid: Int, criteria: [SearchCriteria]) async -> (BrowseViewModel, AppState, MockAudioService) {
+        let state = AppState()
+        let service = MockAudioService()
+        service.searchCriteriaBySID[sid] = criteria
+        let viewModel = BrowseViewModel(
+            service: service,
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, _, _ in BrowseResult(items: []) }
+        )
+        viewModel.selectSource(MusicSource(sid: 1024, name: "Local Music"))
+        await yieldForTask()
+        viewModel.browseSubSource(BrowseItem(name: "Kantele NAS", type: .heosServer, sid: sid))
+        await waitUntil { service.calls.contains("getSearchCriteria:\(sid)") }
+        await yieldForTask()
+        return (viewModel, state, service)
+    }
+
+    @MainActor
+    func testEnteringALocalServerLoadsItsCapabilities() async {
+        let (_, state, _) = await enterSubSource(sid: 5555, criteria: MockData.searchCriteria)
+        await waitUntil { state.serviceCapabilities[5555] != nil }
+
+        XCTAssertEqual(state.serviceCapabilities[5555]?.canBrowseArtists, true)
+    }
+
+    @MainActor
+    func testALocalServerThatCannotSearchGetsNoCapabilities() async {
+        let (_, state, service) = await enterSubSource(sid: 5556, criteria: [])
+
+        XCTAssertTrue(service.calls.contains("getSearchCriteria:5556"))
+        XCTAssertNil(state.serviceCapabilities[5556])
+    }
+
+    @MainActor
     func testBrowseSubSourcePushesTargetWithSubSourceSID() async {
         let state = AppState()
         let service = HEOSService(stateUpdater: state)

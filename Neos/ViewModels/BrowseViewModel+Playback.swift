@@ -192,6 +192,10 @@ extension BrowseViewModel {
 
     func fetchCurrentBreadcrumb() {
         guard let last = browseStack.last else { return }
+        // A server under Local Music has its own sid, and its own search criteria.
+        if last.sid != browseStack.first?.sid {
+            loadServiceCapabilitiesIfNeeded(sid: last.sid)
+        }
         let requestID = beginBrowseRequest()
         isLoading = true
         isLoadingMore = false
