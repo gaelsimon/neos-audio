@@ -20,7 +20,7 @@ struct NowPlayingBanner: View {
                         .background(.quaternary)
                 }
                 .frame(width: 72, height: 72)
-                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artwork))
                 .accessibilityIdentifier(AccessibilityID.NowPlayingBanner.albumArt)
 
                 // Song Info

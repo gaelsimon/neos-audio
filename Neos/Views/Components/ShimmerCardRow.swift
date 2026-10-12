@@ -9,7 +9,7 @@ struct ShimmerCardRow: View {
             HStack(spacing: DS.Spacing.lg) {
                 ForEach(0..<cardCount, id: \.self) { _ in
                     VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                        RoundedRectangle(cornerRadius: DS.Radius.medium)
+                        RoundedRectangle(cornerRadius: DS.Radius.artwork)
                             .fill(.quaternary)
                             .frame(width: DS.ImageSize.homeCard, height: DS.ImageSize.homeCard)
                             .shimmer()

@@ -235,7 +235,7 @@ struct BrowseContentView: View {
     }
 
     private let gridColumns = [
-        GridItem(.adaptive(minimum: 140, maximum: 160), spacing: DS.Spacing.xl)
+        GridItem(.adaptive(minimum: 140), spacing: DS.Spacing.xl)
     ]
 
     /// Human-friendly noun for the dominant item type in the current container.

@@ -94,12 +94,12 @@ struct NowPlayingToolbar: View {
                 .background(DS.Colors.surfaceElevated)
         }
         .frame(width: 72, height: 72)
-        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artwork))
         .accessibilityIdentifier(AccessibilityID.Player.albumArt)
         .accessibilityLabel(canBrowseAlbum ? "Go to album: \(state.nowPlaying.album)" : "Album artwork")
         .overlay {
             if state.isLoadingTrack {
-                RoundedRectangle(cornerRadius: DS.Radius.medium)
+                RoundedRectangle(cornerRadius: DS.Radius.artwork)
                     .fill(.black.opacity(0.5))
                 Spinner(size: 16, lineWidth: 2, color: .white)
             }
@@ -107,7 +107,7 @@ struct NowPlayingToolbar: View {
         .overlay {
             if isArtworkHovered {
                 ZStack {
-                    RoundedRectangle(cornerRadius: DS.Radius.medium)
+                    RoundedRectangle(cornerRadius: DS.Radius.artwork)
                         .fill(.black.opacity(0.35))
                     Image(systemName: DS.Icons.expandUp)
                         .font(DS.IconFont.bodyEmphasis)

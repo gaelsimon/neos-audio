@@ -9,6 +9,7 @@ enum DS {
         static let surfaceElevated = Color(white: 0.12)   // Cards, amp card, hover
         static let glassFill = Color(white: 40 / 255).opacity(0.75) // Top bar pills, Tidal's value
         static let glassShade = Color.black.opacity(0.6)            // Bar and sub-header backdrop
+        static let glassEdge = Color.white.opacity(0.16)            // Hairline round the top bar pills
         static let surfaceContainer = Color(white: 0.071)  // #121212; service group containers
         static let textSecondary = Color(white: 0.78)
         static let textTertiary = Color(white: 0.55)
@@ -23,6 +24,8 @@ enum DS {
         static let medium: CGFloat = 8
         static let large: CGFloat = 12
         static let xl: CGFloat = 14
+        static let artwork: CGFloat = 6        // Cover tiles, cards and the player thumbnail
+        static let artworkLarge: CGFloat = 8   // Page-header and now-playing covers
     }
 
     // MARK: - Image Sizes
