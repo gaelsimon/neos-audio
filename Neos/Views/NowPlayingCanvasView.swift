@@ -126,7 +126,7 @@ struct NowPlayingCanvasView: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: 650)
-        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.large))
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artworkLarge))
         .shadow(color: .black.opacity(0.5), radius: 40, y: 10)
         .accessibilityIdentifier(AccessibilityID.NowPlayingCanvas.artwork)
     }

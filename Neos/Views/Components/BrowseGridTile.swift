@@ -22,7 +22,7 @@ struct BrowseGridTile: View {
                                     .foregroundStyle(DS.Colors.textTertiary)
                             }
                             .frame(width: geo.size.width, height: geo.size.width)
-                            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
+                            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artwork))
                     } else {
                         CachedAsyncImage(
                             url: URL(string: item.resolvedImageURL),
@@ -37,7 +37,7 @@ struct BrowseGridTile: View {
                                 }
                         }
                         .frame(width: geo.size.width, height: geo.size.width)
-                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artwork))
                     }
                 }
                 .aspectRatio(1, contentMode: .fit)

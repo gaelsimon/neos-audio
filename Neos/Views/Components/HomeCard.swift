@@ -10,6 +10,8 @@ struct HomeCard: View {
     var state: AppState?
     let onTap: () -> Void
 
+    private var textAlignment: Alignment { isCircular ? .center : .leading }
+
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
@@ -22,7 +24,7 @@ struct HomeCard: View {
                             Circle()
                                 .fill(.quaternary)
                         } else {
-                            RoundedRectangle(cornerRadius: DS.Radius.medium)
+                            RoundedRectangle(cornerRadius: DS.Radius.artwork)
                                 .fill(.quaternary)
                         }
                     }
@@ -33,18 +35,18 @@ struct HomeCard: View {
                     }
                 }
                 .frame(width: DS.ImageSize.homeCard, height: DS.ImageSize.homeCard)
-                .clipShape(isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: DS.Radius.medium)))
+                .clipShape(isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: DS.Radius.artwork)))
 
                 Text(title)
                     .typography(.secondaryEmphasis)
                     .lineLimit(1)
-                    .frame(width: DS.ImageSize.homeCard, alignment: .leading)
+                    .frame(width: DS.ImageSize.homeCard, alignment: textAlignment)
 
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .typography(.secondary)
                         .lineLimit(1)
-                        .frame(width: DS.ImageSize.homeCard, alignment: .leading)
+                        .frame(width: DS.ImageSize.homeCard, alignment: textAlignment)
                 }
             }
         }

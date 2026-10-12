@@ -192,6 +192,10 @@ extension BrowseViewModel {
 
     func fetchCurrentBreadcrumb() {
         guard let last = browseStack.last else { return }
+        // A server under Local Music has its own sid, and its own search criteria.
+        if last.sid != browseStack.first?.sid {
+            loadServiceCapabilitiesIfNeeded(sid: last.sid)
+        }
         let requestID = beginBrowseRequest()
         isLoading = true
         isLoadingMore = false
@@ -239,7 +243,21 @@ extension BrowseViewModel {
         return browseTracker.next()
     }
 
+    // MARK: - Scroll Position
+
+    func resetScrollTracking() {
+        visibleTopID = nil
+        isHeaderScrolledAway = false
+    }
+
     // MARK: - Service Options
+
+    /// Flags a playable container; the device refuses it as an action.
+    static let playableContainerOptionID = 21
+
+    var menuOptions: [ServiceOption] {
+        browseOptions.filter { $0.context == .browse && $0.id != Self.playableContainerOptionID }
+    }
 
     func executeServiceOption(_ option: ServiceOption, for item: BrowseItem) {
         let sid = item.sid ?? browseStack.last?.sid ?? 0

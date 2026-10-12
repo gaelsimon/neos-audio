@@ -104,7 +104,7 @@ extension BrowseContentView {
     func containerHeader(_ target: BrowseTarget, backdropURL: URL?) -> some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
             HStack(alignment: .top, spacing: DS.Spacing.xxl) {
-                containerArtwork(target, size: DS.ImageSize.containerArt, cornerRadius: DS.Radius.large)
+                containerArtwork(target, size: DS.ImageSize.containerArt, cornerRadius: DS.Radius.artworkLarge)
                     .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 10)
                     .accessibilityIdentifier(AccessibilityID.Browse.containerArt)
 
@@ -113,8 +113,8 @@ extension BrowseContentView {
             }
         }
         .padding(.horizontal, DS.Layout.pageMargin)
-        .padding(.top, DS.Spacing.xl)
-        .padding(.bottom, backdropURL == nil ? DS.Spacing.xxl + DS.Spacing.lg : DS.Spacing.xxxl * 2)
+        .padding(.top, DS.Spacing.xl + DS.Spacing.lg)
+        .padding(.bottom, backdropURL == nil ? DS.Spacing.xxl + DS.Spacing.lg : DS.Spacing.xxxl + DS.Spacing.lg)
         .padding(.top, backdropURL == nil ? 0 : DS.TopBar.height)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
@@ -137,8 +137,8 @@ extension BrowseContentView {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .clear, location: 0.3),
-                        .init(color: DS.Colors.background.opacity(0.5), location: 0.65),
+                        .init(color: .clear, location: 0.4),
+                        .init(color: DS.Colors.background.opacity(0.5), location: 0.75),
                         .init(color: DS.Colors.background, location: 1),
                     ],
                     startPoint: .top,

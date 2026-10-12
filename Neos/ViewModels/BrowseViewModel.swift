@@ -18,6 +18,7 @@ private struct NavigationEntry: Equatable {
     // Cached items for instant back-navigation
     var cachedItems: [BrowseItem]?
     var cachedPagination: CachedPagination?
+    var scrollAnchorID: String?
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.destination == rhs.destination
@@ -52,6 +53,10 @@ final class BrowseViewModel {
     var addingToQueueItemID: String?
     /// Incremented on every sidebar navigation tap, even if destination unchanged.
     var navigationTapCount: Int = 0
+
+    /// First row in view and whether the header has scrolled off, as the view reports them.
+    @ObservationIgnored var visibleTopID: String?
+    @ObservationIgnored var isHeaderScrolledAway = false
 
     // MARK: - History Stack
 
@@ -130,13 +135,16 @@ final class BrowseViewModel {
         onWillPushEntry?()
         snapshotCurrentEntry()
         history.push(NavigationEntry(destination: destination, browseStack: browseStack, searchContext: searchContext))
+        resetScrollTracking()
     }
 
     /// Save current items and pagination into the history entry before navigating away.
     private func snapshotCurrentEntry() {
         guard case .browse = history.current.destination, !items.isEmpty else { return }
         let snapshotHasMore = hasMore
+        let anchor = isHeaderScrolledAway ? visibleTopID : nil
         history.updateCurrent { entry in
+            entry.scrollAnchorID = anchor
             entry.cachedItems = items
             entry.cachedPagination = CachedPagination(
                 totalCount: pagination.totalCount,
@@ -155,6 +163,7 @@ final class BrowseViewModel {
         errorMessage = nil
         isLoading = false
         isLoadingMore = false
+        resetScrollTracking()
 
         switch entry.destination {
         case .home, .queue, .settings, .ampSettings:
@@ -162,6 +171,8 @@ final class BrowseViewModel {
         case .browse:
             if let cached = entry.cachedItems?.filter(serverPreferences.shows) {
                 items = cached
+                visibleTopID = entry.scrollAnchorID
+                isHeaderScrolledAway = entry.scrollAnchorID != nil
                 if let p = entry.cachedPagination {
                     pagination.restore(totalCount: p.totalCount, currentOffset: p.currentOffset, items: cached)
                     // If there was nothing more to load at snapshot time, pin totalCount

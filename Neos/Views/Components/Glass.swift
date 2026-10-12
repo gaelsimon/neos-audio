@@ -37,6 +37,12 @@ struct GlassCapsule: View {
             tint
         }
         .clipShape(Capsule())
+        .overlay {
+            Capsule().strokeBorder(
+                LinearGradient(colors: [DS.Colors.glassEdge, DS.Colors.glassEdge.opacity(0.4)], startPoint: .top, endPoint: .bottom),
+                lineWidth: 0.5
+            )
+        }
     }
 }
 

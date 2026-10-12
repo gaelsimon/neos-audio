@@ -116,6 +116,10 @@ struct BrowseContentView: View {
 
     // MARK: - Scrollable Content
 
+    private var visibleTopID: Binding<String?> {
+        Binding(get: { browseVM.visibleTopID }, set: { browseVM.visibleTopID = $0 })
+    }
+
     private var scrollableContent: some View {
         // Read here, not inside .background: @Observable only tracks browseVM.items from the body.
         let backdropURL = browseVM.isInContainer ? browseVM.browseStack.last.flatMap(headerBackgroundURL) : nil
@@ -137,6 +141,7 @@ struct BrowseContentView: View {
                 )
                 .onPreferenceChange(ScrollOffsetKey.self) { maxY in
                     showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.TopBar.height) + 20
+                    browseVM.isHeaderScrolledAway = showCompactHeader
                 }
 
                 if isInputSource {
@@ -157,6 +162,8 @@ struct BrowseContentView: View {
                 }
             }
         }
+        // Back seeds the binding from history, and a new scroll view opens on that row.
+        .scrollPosition(id: visibleTopID, anchor: .top)
         .coordinateSpace(name: "browse_scroll")
         .ignoresSafeArea(edges: backdropURL == nil ? [] : .top)
         .overlay(alignment: .top) {
@@ -205,10 +212,6 @@ struct BrowseContentView: View {
         return { browseVM.pushAlbumSearchNavigate(sid: sid, albumName: albumName, artistHint: item.artist) }
     }
 
-    private var browseContextOptions: [ServiceOption] {
-        browseVM.browseOptions.filter { $0.context == .browse }
-    }
-
     // MARK: - Items List
 
     /// Types that have visual artwork and deserve a grid layout.
@@ -232,7 +235,7 @@ struct BrowseContentView: View {
     }
 
     private let gridColumns = [
-        GridItem(.adaptive(minimum: 140, maximum: 160), spacing: DS.Spacing.xl)
+        GridItem(.adaptive(minimum: 140), spacing: DS.Spacing.xl)
     ]
 
     /// Human-friendly noun for the dominant item type in the current container.
@@ -276,6 +279,7 @@ struct BrowseContentView: View {
                         }
                     }
                 }
+                .scrollTargetLayout()
                 .padding(.horizontal, DS.Spacing.xxl)
                 .padding(.bottom, DS.Spacing.lg)
             } else {
@@ -308,6 +312,7 @@ struct BrowseContentView: View {
                             .padding(.leading, DS.Spacing.lg + DS.ImageSize.listRow + DS.Spacing.md)
                     }
                 }
+                .scrollTargetLayout()
                 .padding(.horizontal, DS.Spacing.xxl)
             }
         }
@@ -352,6 +357,7 @@ struct BrowseContentView: View {
                     }
                 }
             }
+            .scrollTargetLayout()
             .padding(.horizontal, DS.Spacing.xxl)
         } else if browseVM.isLoadingMore {
             HStack {
@@ -380,7 +386,7 @@ struct BrowseContentView: View {
             onAddToQueue: addToQueueHandler(for: item),
             onArtistView: artistViewHandler(for: item),
             onAlbumView: albumViewHandler(for: item),
-            serviceOptions: browseContextOptions,
+            serviceOptions: browseVM.menuOptions,
             onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
             externalLink: externalLink(for: item),
             state: state,
@@ -401,7 +407,7 @@ struct BrowseContentView: View {
             onPlayNext: playNextHandler(for: item),
             onArtistView: artistViewHandler(for: item),
             onAlbumView: albumViewHandler(for: item),
-            serviceOptions: browseContextOptions,
+            serviceOptions: browseVM.menuOptions,
             onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
             externalLink: externalLink(for: item),
             state: state,

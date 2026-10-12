@@ -51,6 +51,19 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testMenuOptionsLeaveOutThePlayableContainerFlag() {
+        let state = AppState()
+        let viewModel = BrowseViewModel(service: HEOSService(stateUpdater: state), state: state)
+        viewModel.browseOptions = [
+            ServiceOption(context: .browse, id: 21, name: "Playable Container"),
+            ServiceOption(context: .browse, id: ServiceOption.addToFavoritesID, name: "Add to HEOS Favorites"),
+            ServiceOption(context: .play, id: ServiceOption.thumbsUpID, name: "Thumbs Up"),
+        ]
+
+        XCTAssertEqual(viewModel.menuOptions.map(\.id), [ServiceOption.addToFavoritesID])
+    }
+
+    @MainActor
     func testGoBackPushesToForwardStack() async {
         let state = AppState()
         let service = HEOSService(stateUpdater: state)
@@ -76,6 +89,79 @@ final class BrowseViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.browseStack.count, 1)
         XCTAssertTrue(viewModel.canGoForward)
+    }
+
+    // MARK: - Scroll Restoration
+
+    @MainActor
+    private func openAlbumFromScrolledList(headerScrolledAway: Bool) async -> BrowseViewModel {
+        let state = AppState()
+        let albums = (1...200).map { BrowseItem(name: "Album \($0)", cid: "al-\($0)", browsable: true) }
+        let viewModel = BrowseViewModel(
+            service: MockAudioService(),
+            state: state,
+            browseSource: { _ in BrowseResult(items: albums) },
+            browseContainer: { _, _, _ in BrowseResult(items: [BrowseItem(name: "Track", type: .song, mid: "t1", playable: true)]) }
+        )
+        viewModel.selectSource(MusicSource(sid: 1, name: "TIDAL"))
+        await waitUntil { viewModel.items.count == 200 }
+        viewModel.visibleTopID = "al-180"
+        viewModel.isHeaderScrolledAway = headerScrolledAway
+        viewModel.browseItem(albums[179])
+        await waitUntil { viewModel.items.map(\.name) == ["Track"] }
+        return viewModel
+    }
+
+    @MainActor
+    func testBackReturnsToTheRowThatWasAtTheTop() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: true)
+
+        viewModel.goBack()
+
+        XCTAssertEqual(viewModel.items.count, 200)
+        XCTAssertEqual(viewModel.visibleTopID, "al-180")
+        XCTAssertTrue(viewModel.isHeaderScrolledAway)
+    }
+
+    @MainActor
+    func testBackToAPageWithItsHeaderInViewStaysAtTheTop() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: false)
+
+        viewModel.goBack()
+
+        XCTAssertNil(viewModel.visibleTopID)
+    }
+
+    @MainActor
+    func testANewPageStartsAtTheTop() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: true)
+
+        XCTAssertNil(viewModel.visibleTopID)
+        XCTAssertFalse(viewModel.isHeaderScrolledAway)
+    }
+
+    @MainActor
+    func testARestoredPositionSurvivesASecondRoundTrip() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: true)
+        viewModel.goBack()
+
+        viewModel.browseItem(BrowseItem(name: "Album 180", cid: "al-180", browsable: true))
+        await waitUntil { viewModel.items.map(\.name) == ["Track"] }
+        viewModel.goBack()
+
+        XCTAssertEqual(viewModel.visibleTopID, "al-180")
+    }
+
+    @MainActor
+    func testForwardReturnsToTheRowThatWasAtTheTop() async {
+        let viewModel = await openAlbumFromScrolledList(headerScrolledAway: true)
+        viewModel.visibleTopID = "t1"
+        viewModel.isHeaderScrolledAway = true
+
+        viewModel.goBack()
+        viewModel.goForward()
+
+        XCTAssertEqual(viewModel.visibleTopID, "t1")
     }
 
     @MainActor
@@ -261,6 +347,41 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     // MARK: - browseSubSource Navigation Tests
+
+    @MainActor
+    private func enterSubSource(sid: Int, criteria: [SearchCriteria]) async -> (BrowseViewModel, AppState, MockAudioService) {
+        let state = AppState()
+        let service = MockAudioService()
+        service.searchCriteriaBySID[sid] = criteria
+        let viewModel = BrowseViewModel(
+            service: service,
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, _, _ in BrowseResult(items: []) }
+        )
+        viewModel.selectSource(MusicSource(sid: 1024, name: "Local Music"))
+        await yieldForTask()
+        viewModel.browseSubSource(BrowseItem(name: "Kantele NAS", type: .heosServer, sid: sid))
+        await waitUntil { service.calls.contains("getSearchCriteria:\(sid)") }
+        await yieldForTask()
+        return (viewModel, state, service)
+    }
+
+    @MainActor
+    func testEnteringALocalServerLoadsItsCapabilities() async {
+        let (_, state, _) = await enterSubSource(sid: 5555, criteria: MockData.searchCriteria)
+        await waitUntil { state.serviceCapabilities[5555] != nil }
+
+        XCTAssertEqual(state.serviceCapabilities[5555]?.canBrowseArtists, true)
+    }
+
+    @MainActor
+    func testALocalServerThatCannotSearchGetsNoCapabilities() async {
+        let (_, state, service) = await enterSubSource(sid: 5556, criteria: [])
+
+        XCTAssertTrue(service.calls.contains("getSearchCriteria:5556"))
+        XCTAssertNil(state.serviceCapabilities[5556])
+    }
 
     @MainActor
     func testBrowseSubSourcePushesTargetWithSubSourceSID() async {
