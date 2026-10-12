@@ -241,6 +241,13 @@ extension BrowseViewModel {
 
     // MARK: - Service Options
 
+    /// Flags a playable container; the device refuses it as an action.
+    static let playableContainerOptionID = 21
+
+    var menuOptions: [ServiceOption] {
+        browseOptions.filter { $0.context == .browse && $0.id != Self.playableContainerOptionID }
+    }
+
     func executeServiceOption(_ option: ServiceOption, for item: BrowseItem) {
         let sid = item.sid ?? browseStack.last?.sid ?? 0
         Task {

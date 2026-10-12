@@ -51,6 +51,19 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testMenuOptionsLeaveOutThePlayableContainerFlag() {
+        let state = AppState()
+        let viewModel = BrowseViewModel(service: HEOSService(stateUpdater: state), state: state)
+        viewModel.browseOptions = [
+            ServiceOption(context: .browse, id: 21, name: "Playable Container"),
+            ServiceOption(context: .browse, id: ServiceOption.addToFavoritesID, name: "Add to HEOS Favorites"),
+            ServiceOption(context: .play, id: ServiceOption.thumbsUpID, name: "Thumbs Up"),
+        ]
+
+        XCTAssertEqual(viewModel.menuOptions.map(\.id), [ServiceOption.addToFavoritesID])
+    }
+
+    @MainActor
     func testGoBackPushesToForwardStack() async {
         let state = AppState()
         let service = HEOSService(stateUpdater: state)

@@ -205,10 +205,6 @@ struct BrowseContentView: View {
         return { browseVM.pushAlbumSearchNavigate(sid: sid, albumName: albumName, artistHint: item.artist) }
     }
 
-    private var browseContextOptions: [ServiceOption] {
-        browseVM.browseOptions.filter { $0.context == .browse }
-    }
-
     // MARK: - Items List
 
     /// Types that have visual artwork and deserve a grid layout.
@@ -380,7 +376,7 @@ struct BrowseContentView: View {
             onAddToQueue: addToQueueHandler(for: item),
             onArtistView: artistViewHandler(for: item),
             onAlbumView: albumViewHandler(for: item),
-            serviceOptions: browseContextOptions,
+            serviceOptions: browseVM.menuOptions,
             onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
             externalLink: externalLink(for: item),
             state: state,
@@ -401,7 +397,7 @@ struct BrowseContentView: View {
             onPlayNext: playNextHandler(for: item),
             onArtistView: artistViewHandler(for: item),
             onAlbumView: albumViewHandler(for: item),
-            serviceOptions: browseContextOptions,
+            serviceOptions: browseVM.menuOptions,
             onServiceOption: { option in browseVM.executeServiceOption(option, for: item) },
             externalLink: externalLink(for: item),
             state: state,
