@@ -66,7 +66,7 @@ struct QueuePanelRow: View {
     private var artwork: some View {
         CachedAsyncImage(
             url: URL(string: imageURL),
-            highResURL: ImageURLUpscaler.highResURL(from: imageURL).flatMap(URL.init(string:))
+            highResURL: ImageURLUpscaler.highResURL(from: imageURL, pixels: 160).flatMap(URL.init(string:))
         ) {
             RoundedRectangle(cornerRadius: DS.Radius.small)
                 .fill(DS.Colors.surfaceElevated)

@@ -50,19 +50,21 @@ struct CachedAsyncImage<Placeholder: View>: View {
         }
         .task(id: url) {
             guard let url else { self.image = nil; loadedURL = nil; return }
+            // Already showing the best version from memory: nothing to read or fetch.
+            if image != nil, loadedURL == (highResURL ?? url) { return }
+            let lowResShown = image != nil && loadedURL == url
 
-            // Check high-res cache first
             if let highResURL, let cached = await ImageCache.shared.load(highResURL) {
                 guard !Task.isCancelled else { return }
                 self.image = cached
                 self.loadedURL = highResURL
                 return
             }
-            if let cached = await ImageCache.shared.load(url) {
+            if !lowResShown, let cached = await ImageCache.shared.load(url) {
                 guard !Task.isCancelled else { return }
                 self.image = cached
                 self.loadedURL = url
-            } else if loadedURL != url {
+            } else if !lowResShown, loadedURL != url {
                 self.image = nil
                 self.loadedURL = nil
                 do {

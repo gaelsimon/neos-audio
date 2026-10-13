@@ -17,7 +17,7 @@ struct HomeCard: View {
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                 CachedAsyncImage(
                     url: URL(string: imageURL),
-                    highResURL: ImageURLUpscaler.highResURL(from: imageURL).flatMap(URL.init(string:))
+                    highResURL: ImageURLUpscaler.highResURL(from: imageURL, pixels: 320).flatMap(URL.init(string:))
                 ) {
                     Group {
                         if isCircular {

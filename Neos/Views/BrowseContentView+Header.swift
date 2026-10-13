@@ -43,7 +43,7 @@ extension BrowseContentView {
         if !target.imageURL.isEmpty {
             CachedAsyncImage(
                 url: URL(string: target.imageURL),
-                highResURL: ImageURLUpscaler.highResURL(from: target.imageURL).flatMap(URL.init(string:))
+                highResURL: ImageURLUpscaler.highResURL(from: target.imageURL, pixels: 480).flatMap(URL.init(string:))
             ) {
                 artworkPlaceholder(size: size, cornerRadius: cornerRadius)
             }
@@ -57,7 +57,7 @@ extension BrowseContentView {
             if albums.count == 1, let firstImage = itemImages.first {
                 CachedAsyncImage(
                     url: URL(string: firstImage),
-                    highResURL: ImageURLUpscaler.highResURL(from: firstImage).flatMap(URL.init(string:))
+                    highResURL: ImageURLUpscaler.highResURL(from: firstImage, pixels: 480).flatMap(URL.init(string:))
                 ) {
                     artworkPlaceholder(size: size, cornerRadius: cornerRadius)
                 }

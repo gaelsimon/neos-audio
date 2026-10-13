@@ -26,7 +26,7 @@ struct BrowseGridTile: View {
                     } else {
                         CachedAsyncImage(
                             url: URL(string: item.resolvedImageURL),
-                            highResURL: ImageURLUpscaler.highResURL(from: item.imageURL).flatMap(URL.init(string:))
+                            highResURL: ImageURLUpscaler.highResURL(from: item.imageURL, pixels: 400).flatMap(URL.init(string:))
                         ) {
                             Rectangle()
                                 .fill(DS.Colors.surfaceElevated)
