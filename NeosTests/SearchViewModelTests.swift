@@ -488,11 +488,13 @@ final class SearchViewModelTests: XCTestCase {
     @MainActor
     private func makeLocalMusicSearch(
         unsearchable: String,
-        defaults: UserDefaults
+        defaults: UserDefaults,
+        criteriaFromBrowsing: [Int: [SearchCriteria]] = [:]
     ) -> (SearchViewModel, MockAudioService, LocalServerPreferences) {
         let prefs = LocalServerPreferences(defaults: defaults)
         prefs.setSearchable(false, for: unsearchable)
         let state = AppState()
+        state.searchCriteria = criteriaFromBrowsing
         state.musicSources = [MusicSource(sid: HEOSConstants.localMusicSID, name: "Local Music", type: "heos_server")]
         let mock = MockAudioService()
         mock.searchCriteriaBySID = [HEOSConstants.localMusicSID: []]
@@ -523,6 +525,22 @@ final class SearchViewModelTests: XCTestCase {
             await waitUntil { mock.calls.contains { $0.hasPrefix("search:-1:") } && !vm.isSearching }
 
             XCTAssertEqual(mock.calls.filter { $0.contains(":-2") }, [])
+        }
+    }
+
+    @MainActor
+    func testAServerOpenedBeforeSearchingIsStillSearched() async {
+        await withIsolatedStores { defaults in
+            let (vm, mock, _) = makeLocalMusicSearch(
+                unsearchable: "NASPERES", defaults: defaults,
+                criteriaFromBrowsing: [-1: MockData.searchCriteria]
+            )
+
+            vm.onQueryChanged("paris")
+            await waitUntil { !vm.isSearching && mock.calls.contains { $0.hasPrefix("search:") } }
+
+            XCTAssertNotNil(vm.discoveredSubSources[-1])
+            XCTAssertTrue(mock.calls.contains { $0.hasPrefix("search:-1:") })
         }
     }
 
