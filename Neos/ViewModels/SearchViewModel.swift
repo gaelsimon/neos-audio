@@ -427,7 +427,13 @@ final class SearchViewModel {
 
         var loadedSIDs = Set<Int>()
         for item in subSourceItems {
-            guard let sid = item.sid, state.searchCriteria[sid] == nil else { continue }
+            guard let sid = item.sid else { continue }
+            // Opening a server loads its criteria too, and it must still be registered here.
+            if let known = state.searchCriteria[sid], !known.isEmpty {
+                registerSubSource(item, sid: sid)
+                loadedSIDs.insert(sid)
+                continue
+            }
             do {
                 let criteria = try await service.getSearchCriteria(sid: sid)
                 if criteria.isEmpty {
@@ -437,18 +443,17 @@ final class SearchViewModel {
                 logger.info("Search criteria for sub-source \(item.name) (sid=\(sid)): \(criteria.map(\.name).joined(separator: ", "))")
                 state.searchCriteria[sid] = criteria
                 state.setServiceCapabilities(sid: sid, capabilities: ServiceCapabilities(from: criteria))
-                discoveredSubSources[sid] = MusicSource(
-                    sid: sid,
-                    name: item.name,
-                    imageURL: item.imageURL,
-                    type: "heos_server"
-                )
+                registerSubSource(item, sid: sid)
                 loadedSIDs.insert(sid)
             } catch {
                 logger.warning("getSearchCriteria failed for sub-source \(item.name) (sid=\(sid)): \(error)")
             }
         }
         return loadedSIDs
+    }
+
+    private func registerSubSource(_ item: BrowseItem, sid: Int) {
+        discoveredSubSources[sid] = MusicSource(sid: sid, name: item.name, imageURL: item.imageURL, type: "heos_server")
     }
 
     // MARK: - Filter Actions
