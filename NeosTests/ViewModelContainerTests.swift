@@ -136,6 +136,58 @@ final class ViewModelContainerTests: XCTestCase {
     }
 
     @MainActor
+    func testGoForwardReopensASearchClosedByBack() {
+        let (container, _) = makeContainer()
+        activateSearchWithResults(container)
+
+        container.goBack()
+        XCTAssertTrue(container.canGoForward)
+
+        container.goForward()
+
+        XCTAssertTrue(container.searchVM.isOverlayVisible)
+        XCTAssertEqual(container.browseVM.currentDestination, .home)
+    }
+
+    @MainActor
+    func testSearchClosedByBackWaitsOnTheEntryItWasClosedOn() {
+        let (container, _) = makeContainer()
+        container.browseVM.navigateToSettings()
+        activateSearchWithResults(container)
+        container.goBack()
+
+        container.goBack()
+        container.goForward()
+        XCTAssertFalse(container.searchVM.isOverlayVisible)
+        XCTAssertEqual(container.browseVM.currentDestination, .settings)
+
+        container.goForward()
+        XCTAssertTrue(container.searchVM.isOverlayVisible)
+    }
+
+    @MainActor
+    func testNavigatingDropsASearchClosedByBack() {
+        let (container, _) = makeContainer()
+        activateSearchWithResults(container)
+        container.goBack()
+
+        container.browseVM.navigateToSettings()
+        container.goBack()
+
+        XCTAssertFalse(container.searchVM.canReopen(atToken: container.browseVM.currentHistoryToken))
+    }
+
+    @MainActor
+    func testEscapeDoesNotLeaveTheSearchForForward() {
+        let (container, _) = makeContainer()
+        activateSearchWithResults(container)
+
+        container.searchVM.dismissOverlay()
+
+        XCTAssertFalse(container.canGoForward)
+    }
+
+    @MainActor
     func testCanGoBackIsFalseAtRoot() {
         let (container, _) = makeContainer()
 

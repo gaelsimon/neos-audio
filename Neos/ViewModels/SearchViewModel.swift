@@ -11,6 +11,8 @@ enum SearchOverlayPhase: Equatable {
     case inactive
     case active
     case suspended(originToken: Int)
+    /// Closed by Back on that entry, so Forward can reopen it.
+    case closedByBack(token: Int)
 }
 
 @Observable
@@ -85,6 +87,27 @@ final class SearchViewModel {
         // A suspended search survives ambient dismissals so back-navigation can still restore it.
         guard overlayPhase == .active else { return }
         overlayPhase = .inactive
+    }
+
+    func closeForBack(atToken token: Int) {
+        guard overlayPhase == .active else { return }
+        overlayPhase = .closedByBack(token: token)
+    }
+
+    func canReopen(atToken token: Int) -> Bool {
+        overlayPhase == .closedByBack(token: token)
+    }
+
+    @discardableResult
+    func reopen(atToken token: Int) -> Bool {
+        guard canReopen(atToken: token) else { return false }
+        overlayPhase = .active
+        return true
+    }
+
+    /// A new page truncates the forward history, and the search closed by Back with it.
+    func dropClosedByBack() {
+        if case .closedByBack = overlayPhase { overlayPhase = .inactive }
     }
 
     func suspendForNavigation(originToken: Int) {
