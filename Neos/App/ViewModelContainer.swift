@@ -60,7 +60,9 @@ final class ViewModelContainer {
         let search = searchVM
         let browse = browseVM
         browseVM.onWillPushEntry = { [weak search, weak browse] in
-            guard let search, let browse, search.isOverlayVisible else { return }
+            guard let search, let browse else { return }
+            search.dropClosedByBack()
+            guard search.isOverlayVisible else { return }
             search.suspendForNavigation(originToken: browse.currentHistoryToken)
         }
         // And it comes back on the entry it belongs to, whichever control moved there.
@@ -77,17 +79,20 @@ final class ViewModelContainer {
         searchVM.isOverlayVisible || searchVM.hasSuspendedSearch || browseVM.canGoBack
     }
 
-    var canGoForward: Bool { browseVM.canGoForward }
+    var canGoForward: Bool {
+        searchVM.canReopen(atToken: browseVM.currentHistoryToken) || browseVM.canGoForward
+    }
 
     func goBack() {
         if searchVM.isOverlayVisible {
-            searchVM.dismissOverlay()
+            searchVM.closeForBack(atToken: browseVM.currentHistoryToken)
             return
         }
         browseVM.goBack()
     }
 
     func goForward() {
+        if searchVM.reopen(atToken: browseVM.currentHistoryToken) { return }
         if searchVM.isOverlayVisible {
             searchVM.suspendForNavigation(originToken: browseVM.currentHistoryToken)
         }

@@ -1,26 +1,32 @@
 import Foundation
 
 enum ImageURLUpscaler {
-    /// Returns a high-resolution variant of a streaming service image URL, or `nil` if the service is unrecognized.
-    static func highResURL(from urlString: String) -> String? {
+    /// Tidal publishes its artwork at these sizes only.
+    private static let tidalSizes = [160, 320, 640, 750, 1080, 1280]
+
+    /// The service's variant with at least `pixels` per side and never smaller than the URL's own, or `nil` if the service is unrecognized.
+    static func highResURL(from urlString: String, pixels: Int = 1280) -> String? {
         guard !urlString.isEmpty else { return nil }
 
         let url = upgradeToHTTPS(urlString)
+        let wanted = max(pixels, sizeInURL(url))
+        let tidal = tidalSizes.first { $0 >= wanted } ?? 1280
+        let deezer = min(wanted, 1000)
 
-        // Tidal: resources.tidal.com/images/{id}/160x160.jpg → 1280x1280.jpg
+        // Tidal: resources.tidal.com/images/{id}/160x160.jpg → 320x320.jpg
         if url.contains("resources.tidal.com") || url.contains("resources.wimpmusic.com") {
             return url.replacingOccurrences(
                 of: #"/\d+x\d+\."#,
-                with: "/1280x1280.",
+                with: "/\(tidal)x\(tidal).",
                 options: .regularExpression
             )
         }
 
-        // Tidal (legacy): images.osl.wimpmusic.com/im/im?w=160&h=160&... → w=1280&h=1280
+        // Tidal (legacy): images.osl.wimpmusic.com/im/im?w=160&h=160&... → w=320&h=320
         if url.contains("wimpmusic.com") || url.contains("tidal.com") {
             let upgraded = url
-                .replacingOccurrences(of: #"[?&]w=\d+"#, with: "?w=1280", options: .regularExpression)
-                .replacingOccurrences(of: #"[?&]h=\d+"#, with: "&h=1280", options: .regularExpression)
+                .replacingOccurrences(of: #"[?&]w=\d+"#, with: "?w=\(tidal)", options: .regularExpression)
+                .replacingOccurrences(of: #"[?&]h=\d+"#, with: "&h=\(tidal)", options: .regularExpression)
             if upgraded != url { return upgraded }
         }
 
@@ -29,18 +35,17 @@ enum ImageURLUpscaler {
         if url.contains("dzcdn.net") {
             let upgraded = url.replacingOccurrences(
                 of: #"/\d+x\d+([-.])"#,
-                with: "/1000x1000$1",
+                with: "/\(deezer)x\(deezer)$1",
                 options: .regularExpression
             )
             if upgraded != url { return upgraded }
         }
 
-        // SoundCloud: i1.sndcdn.com/artworks-...t500x500.jpg → t500x500 is already decent,
-        // but some use smaller sizes like t200x200 or t300x300
+        // SoundCloud: i1.sndcdn.com/artworks-...-t200x200.jpg → t300x300 or t500x500
         if url.contains("sndcdn.com") {
             let upgraded = url.replacingOccurrences(
                 of: #"-t\d+x\d+\."#,
-                with: "-t500x500.",
+                with: wanted <= 300 ? "-t300x300." : "-t500x500.",
                 options: .regularExpression
             )
             if upgraded != url { return upgraded }
@@ -55,6 +60,12 @@ enum ImageURLUpscaler {
     }
 
     // MARK: - Private
+
+    private static func sizeInURL(_ url: String) -> Int {
+        guard let match = url.firstMatch(of: #/\/(\d+)x\d+[-.]|-t(\d+)x\d+\.|[?&]w=(\d+)/#),
+              let digits = match.1 ?? match.2 ?? match.3 else { return 0 }
+        return Int(digits) ?? 0
+    }
 
     private static func upgradeToHTTPS(_ urlString: String) -> String {
         if urlString.hasPrefix("http://") && !isPrivateNetworkURL(urlString) {

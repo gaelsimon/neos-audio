@@ -14,7 +14,7 @@ struct PatchworkArtView: View {
             // Not enough unique images; use first one
             CachedAsyncImage(
                 url: URL(string: urls[0]),
-                highResURL: ImageURLUpscaler.highResURL(from: urls[0]).flatMap(URL.init(string:))
+                highResURL: ImageURLUpscaler.highResURL(from: urls[0], pixels: 480).flatMap(URL.init(string:))
             ) {
                 placeholder
             }
@@ -44,7 +44,7 @@ struct PatchworkArtView: View {
     private func cell(_ url: String, size: CGFloat) -> some View {
         CachedAsyncImage(
             url: URL(string: url),
-            highResURL: ImageURLUpscaler.highResURL(from: url).flatMap(URL.init(string:))
+            highResURL: ImageURLUpscaler.highResURL(from: url, pixels: 480).flatMap(URL.init(string:))
         ) {
             Rectangle().fill(DS.Colors.surfaceElevated)
         }
