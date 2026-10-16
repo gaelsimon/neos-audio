@@ -7,13 +7,13 @@ A native macOS app for controlling Denon and Marantz HEOS speakers. Built with S
 [![CI](https://img.shields.io/github/actions/workflow/status/gaelsimon/neos-audio/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/gaelsimon/neos-audio/actions/workflows/ci.yml)
 [![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Neos-ff5e5b?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/galela)
 
-![Neos Home](screenshots/home.png)
+![Neos Home](site/images/home.jpg)
 
-![Neos Now Playing](screenshots/now-playing.png)
+![Neos Now Playing](site/images/now-playing.jpg)
 
-![Neos Browse Album](screenshots/browse-album.png)
+![An album from a local music server](site/images/nas-album.jpg)
 
-![Neos Search](screenshots/search.png)
+![Neos Search](site/images/search.jpg)
 
 ## Why?
 
@@ -22,7 +22,7 @@ I spend most of my day at my computer, and I got tired of reaching for my phone 
 Using the Tidal desktop app with HEOS isn't great either. It only supports Tidal Connect, which means no queue management, no browse integration, and you can't mix in radio stations or local music. With Neos I can jump from a Tidal album to a TuneIn radio station to a SoundCloud mix to a FLAC from my NAS, all from the same place.
 
 - **Lives in your menu bar** - always one click away, never in the way.
-- **Fast** - connects to your last speaker in under 500ms. No splash screen, no loading spinner.
+- **Fast** - reconnects to your last speaker as soon as it opens.
 - **All your music in one place** - switch between Tidal, SoundCloud, TuneIn, Deezer, and local music without changing apps.
 - **Audio quality info** - shows what's actually playing: bit depth, sample rate, and codec (e.g. "16-bit / 44.1 kHz FLAC").
 - **Native macOS** - SwiftUI, no Electron, no web wrapper.
@@ -33,13 +33,16 @@ Using the Tidal desktop app with HEOS isn't great either. It only supports Tidal
 - Shuffle and repeat modes
 - Volume slider with mute, dB readout, and hardware volume limit
 - Home screen with recently played, favorites, and quick access to your services
-- Browse music sources with infinite scroll
+- Browse music sources with infinite scroll, a clickable path, and Back/Forward that keeps your scroll position
 - Search across services with category filters (tracks, artists, albums)
-- Hide a local music server, or keep it out of search, from Settings
+- Local music servers (MinimServer and other DLNA servers) with album covers and search; hide a server, or keep it out of search, from Settings
+- Switch your amp's inputs
+- Group speakers and set each one's volume; a stereo pair shows as one speaker
+- Add your own radio stations by URL, with custom artwork
 - Full-screen Now Playing view with album art and queue panel
 - Click an artist or album name to jump to their page
 - Open any track, album, or station in its own service, or copy a shareable link
-- Automatic speaker discovery on your local network
+- Automatic speaker discovery on your local network, and reconnection after sleep or a network change
 - Power on/off your receiver
 - HEOS account sign-in for favorites across devices
 - Menu bar compact player with playback controls and volume
@@ -47,8 +50,6 @@ Using the Tidal desktop app with HEOS isn't great either. It only supports Tidal
 ## Tested With
 
 Neos has been primarily tested with **Tidal**, **SoundCloud**, **TuneIn**, and **local music** (USB / NAS). Deezer works but has had less testing. Other HEOS-supported services (Spotify, Amazon Music, Pandora, Napster, etc.) should work through the standard HEOS protocol but haven't been tested yet. Feedback welcome.
-
-Speaker grouping (multi-room) is implemented but hasn't been tested with multiple speakers.
 
 ## Download
 
@@ -83,7 +84,7 @@ The HEOS protocol layer lives in its own package, [swift-heos](https://github.co
 
 ## Known Limitations
 
-- Speaker grouping is untested (I only have one speaker)
+- Multi-room and stereo pairs are only tested by users, since I have a single speaker
 - Some music services beyond Tidal/SoundCloud/TuneIn/Deezer are untested
 
 ### About the HEOS protocol
