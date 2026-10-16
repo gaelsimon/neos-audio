@@ -59,16 +59,7 @@ Speaker grouping (multi-room) is implemented but hasn't been tested with multipl
 3. Launch Neos - it appears in your menu bar
 4. Your speaker should be discovered automatically
 
-### First launch (Gatekeeper)
-
-The DMG is unsigned and unnotarized (see [Known Limitations](#known-limitations)), so macOS blocks it on first open. This is a one-time step per version — pick whichever you prefer:
-
-- **Right-click → Open:** in Applications, right-click (or Control-click) Neos → **Open** → **Open** in the dialog.
-- **Privacy & Security:** try to open Neos normally, then go to  → System Settings → Privacy & Security and click **Open Anyway**.
-- **Terminal:** clear the quarantine flag directly:
-  ```sh
-  xattr -dr com.apple.quarantine /Applications/Neos.app
-  ```
+Neos is signed with a Developer ID and notarized by Apple, so macOS opens it like any other app downloaded from the internet. Versions before 1.7.3 were unsigned and needed a right-click → **Open** on first launch.
 
 ## How It Works
 
@@ -94,7 +85,6 @@ The HEOS protocol layer lives in its own package, [swift-heos](https://github.co
 
 - Speaker grouping is untested (I only have one speaker)
 - Some music services beyond Tidal/SoundCloud/TuneIn/Deezer are untested
-- DMG is unsigned and unnotarized. First launch needs right-click > Open. Signing requires an Apple Developer Program subscription ($99/year), which I haven't taken on. Happy to add it if there's interest; [Ko-fi](https://ko-fi.com/galela) helps make that decision easier.
 
 ### About the HEOS protocol
 
