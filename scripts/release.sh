@@ -59,6 +59,12 @@ hdiutil create -volname "Neos" \
 
 rm -rf "$DMG_DIR"
 
+# Gatekeeper assesses the disk image by its own signature, so the stapled ticket alone is not enough.
+if [ "$CODE_SIGN_IDENTITY" != "-" ]; then
+    echo "==> Signing DMG..."
+    codesign --sign "$CODE_SIGN_IDENTITY" --timestamp "$DMG_PATH"
+fi
+
 # Notarising the DMG and stapling the ticket to it means the downloaded file clears Gatekeeper
 # on its own, with no right-click and no quarantine flag to remove.
 if [ "$CODE_SIGN_IDENTITY" = "-" ]; then
