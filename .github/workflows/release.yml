@@ -119,11 +119,20 @@ jobs:
           DMG: ${{ steps.checksum.outputs.dmg }}
           SHA: ${{ steps.checksum.outputs.sha256 }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          SIGNED: ${{ steps.signing.outputs.signed }}
         run: |
           # workflow_dispatch path may need to create the tag itself
           if ! git rev-parse "$TAG" >/dev/null 2>&1; then
             git tag "$TAG"
             git push origin "$TAG"
+          fi
+
+          if [ "$SIGNED" = "true" ]; then
+            FIRST_LAUNCH="3. Open Neos from Applications. It is signed and notarized by Apple, so macOS opens it without a warning."
+          else
+            FIRST_LAUNCH="3. First launch (the DMG is unsigned): right-click Neos → Open → Open.
+             Alternatively, System Settings → Privacy & Security → Open Anyway,
+             or run \`xattr -dr com.apple.quarantine /Applications/Neos.app\`."
           fi
 
           NOTES_FILE=$(mktemp)
@@ -137,9 +146,7 @@ jobs:
           ### Install
           1. Download \`Neos-${VERSION}.dmg\` below
           2. Open the DMG, drag Neos to Applications
-          3. First launch (the DMG is unsigned): right-click Neos → Open → Open.
-             Alternatively, System Settings → Privacy & Security → Open Anyway,
-             or run \`xattr -dr com.apple.quarantine /Applications/Neos.app\`.
+          ${FIRST_LAUNCH}
 
           ### Checksum
           \`\`\`
