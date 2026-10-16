@@ -54,14 +54,21 @@ the Gatekeeper warning on first launch. Set `CODE_SIGN_IDENTITY`, `DEVELOPMENT_T
 ### Uploading to the Mac App Store
 
 ```bash
-DEVELOPMENT_TEAM=XXXXXXXXXX NOTARY_KEY_PATH=... NOTARY_KEY_ID=... NOTARY_ISSUER_ID=... ./scripts/appstore.sh 1.6.0
+DEVELOPMENT_TEAM=XXXXXXXXXX \
+APP_SIGN_IDENTITY="Apple Distribution: ..." INSTALLER_SIGN_IDENTITY="3rd Party Mac Developer Installer: ..." \
+PROVISIONING_PROFILE=path/to/profile.provisionprofile \
+APPSTORE_APP_ID=... APPSTORE_KEY_PATH=... APPSTORE_KEY_ID=... APPSTORE_ISSUER_ID=... \
+./scripts/appstore.sh 1.6.0
 ```
 
 The App Store build compiles with `APP_STORE`, which swaps the Ko-fi link in About for one to the
 support page and leaves out the daily check of GitHub releases that tells DMG users about a newer
-version, and gets a timestamp build number unless one is passed as the second argument. It uses
-the same App Store Connect API key as notarisation; `DESTINATION=export` keeps the package local
-instead of uploading it.
+version, and gets a timestamp build number unless one is passed as the second argument. The
+archive is signed ad hoc, then the script embeds the Mac App Store profile, signs the app and the
+installer package with identities from the keychain, and uploads with `altool`. Xcode's
+cloud-managed signing is not used: when the certificate name has an accented letter, its export
+writes a designated requirement the signature does not satisfy, and App Store Connect rejects the
+build (ITMS-90238). `DESTINATION=export` keeps the package local instead of uploading it.
 
 ### Signing and notarisation in CI
 
