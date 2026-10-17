@@ -49,7 +49,9 @@ final class AccountViewModel {
     var signInError: SignInErrorType?
     var rememberMe: Bool {
         didSet {
-            UserDefaults.standard.set(rememberMe, forKey: "settings.rememberMe")
+            if !Self.isUnitTestHost {
+                UserDefaults.standard.set(rememberMe, forKey: "settings.rememberMe")
+            }
             if !rememberMe {
                 deleteCredentials()
             }
@@ -67,7 +69,7 @@ final class AccountViewModel {
     init(service: any AudioService, state: AppState) {
         self.service = service
         self.state = state
-        self.rememberMe = UserDefaults.standard.object(forKey: "settings.rememberMe") as? Bool ?? true
+        self.rememberMe = Self.isUnitTestHost ? true : UserDefaults.standard.object(forKey: "settings.rememberMe") as? Bool ?? true
         loadCredentials()
     }
 
@@ -156,6 +158,9 @@ final class AccountViewModel {
 
     // MARK: - Keychain
 
+    /// Unit tests must neither prompt for the keychain password nor overwrite the developer's saved login.
+    private static let isUnitTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     private static let keychainService = "com.galela.neos.heos-account"
     private static let legacyKeychainService = "com.neos.heos-account"
 
@@ -174,7 +179,7 @@ final class AccountViewModel {
     }()
 
     private func saveCredentials() {
-        guard !DemoSession.isActive, storedCredentials != "\(username)\n\(password)" else { return }
+        guard !DemoSession.isActive, !Self.isUnitTestHost, storedCredentials != "\(username)\n\(password)" else { return }
         let payload = ["u": username, "p": password]
         guard let data = try? JSONEncoder().encode(payload) else { return }
         let query: [String: Any] = [
@@ -193,7 +198,7 @@ final class AccountViewModel {
     }
 
     private func loadCredentials() {
-        guard rememberMe else { return }
+        guard rememberMe, !Self.isUnitTestHost else { return }
         migrateLegacyKeychainIfNeeded()
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -226,6 +231,12 @@ final class AccountViewModel {
 
     private func deleteCredentials() {
         guard !DemoSession.isActive else { return }
+        defer {
+            username = ""
+            password = ""
+            storedCredentials = nil
+        }
+        guard !Self.isUnitTestHost else { return }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
@@ -234,9 +245,6 @@ final class AccountViewModel {
         if status != errSecSuccess, status != errSecItemNotFound {
             keychainLogger.warning("Keychain delete failed: \(status)")
         }
-        username = ""
-        password = ""
-        storedCredentials = nil
     }
 
     /// Move any existing keychain item from the legacy service name to the current one.
