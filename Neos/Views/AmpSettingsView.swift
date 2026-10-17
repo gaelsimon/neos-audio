@@ -223,6 +223,14 @@ struct AmpSettingsView: View {
                 .monospacedDigit()
                 .frame(width: 24, alignment: .trailing)
         }
+        .onAppear { syncGroupVolume(group) }
+        .onChange(of: state.groupVolumes[group.gid]) { syncGroupVolume(group) }
+    }
+
+    /// The amp's level wins whenever the user is not dragging.
+    private func syncGroupVolume(_ group: SpeakerGroup) {
+        guard !isDraggingVolume, let level = state.groupVolumes[group.gid] else { return }
+        groupVolume = Double(level)
     }
 
     // MARK: - Create Group
@@ -237,7 +245,7 @@ struct AmpSettingsView: View {
                     .typography(.bodyMedium)
 
                 HStack {
-                    Text("Leader:")
+                    Text("Music from:")
                         .typography(.secondary)
                     Picker("", selection: leaderBinding) {
                         ForEach(state.players) { player in
@@ -248,8 +256,11 @@ struct AmpSettingsView: View {
                     .accessibilityIdentifier(AccessibilityID.Group.leaderPicker)
                 }
 
+                Text("Also play on:")
+                    .typography(.secondary)
+
                 ForEach(state.players) { player in
-                    if player.pid != selectedLeaderPID {
+                    if player.pid != leaderPID {
                         Toggle(isOn: memberBinding(for: player.pid)) {
                             HStack(spacing: DS.Spacing.sm) {
                                 Image(systemName: DS.Icons.speaker)
@@ -267,7 +278,7 @@ struct AmpSettingsView: View {
                 HStack {
                     Spacer()
                     Button {
-                        guard let leaderPID = selectedLeaderPID else { return }
+                        guard let leaderPID else { return }
                         groupVM.createGroup(leaderPID: leaderPID)
                     } label: {
                         if groupVM.isCreatingGroup {
@@ -333,15 +344,20 @@ struct AmpSettingsView: View {
         return state.selectedPlayer?.name ?? device.host
     }
 
+    /// The picker shows the first player before the user touches it; the form must agree.
+    private var leaderPID: Int? {
+        selectedLeaderPID ?? state.players.first?.pid
+    }
+
     private var canCreate: Bool {
-        guard let leaderPID = selectedLeaderPID else { return false }
+        guard let leaderPID else { return false }
         let members = groupVM.selectedMemberPIDs.filter { $0 != leaderPID }
         return !members.isEmpty
     }
 
     private var leaderBinding: Binding<Int> {
         Binding(
-            get: { selectedLeaderPID ?? (state.players.first?.pid ?? 0) },
+            get: { leaderPID ?? 0 },
             set: { newValue in
                 selectedLeaderPID = newValue
                 groupVM.selectedMemberPIDs.remove(newValue)

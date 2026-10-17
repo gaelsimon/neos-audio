@@ -19,9 +19,13 @@ final class GroupViewModel {
     private(set) var isCreatingGroup = false
     private(set) var isUngrouping = false
 
-    init(service: any AudioService, state: AppState) {
+    /// The amp often fails or times out set_group while the group forms anyway; it settles within a second.
+    private let groupSettleDelay: Duration
+
+    init(service: any AudioService, state: AppState, groupSettleDelay: Duration = .seconds(1)) {
         self.service = service
         self.state = state
+        self.groupSettleDelay = groupSettleDelay
     }
 
     func loadGroups() {
@@ -53,7 +57,11 @@ final class GroupViewModel {
                 loadGroups()
             } catch {
                 guard !Task.isCancelled else { return }
-                state.error = .groupFailed(error.localizedDescription)
+                if await groupsAfterSettling().contains(where: { $0.leads(leaderPID, over: memberPIDs) }) {
+                    selectedMemberPIDs = []
+                } else {
+                    state.error = .groupFailed(error.localizedDescription)
+                }
             }
             guard !Task.isCancelled else { return }
             isCreatingGroup = false
@@ -69,11 +77,21 @@ final class GroupViewModel {
                 loadGroups()
             } catch {
                 guard !Task.isCancelled else { return }
-                state.error = .groupFailed(error.localizedDescription)
+                if await groupsAfterSettling().contains(where: { $0.leader?.pid == pid }) {
+                    state.error = .groupFailed(error.localizedDescription)
+                }
             }
             guard !Task.isCancelled else { return }
             isUngrouping = false
         })
+    }
+
+    /// Re-reads the groups once the amp has had time to apply a set_group it did not acknowledge.
+    private func groupsAfterSettling() async -> [SpeakerGroup] {
+        try? await Task.sleep(for: groupSettleDelay)
+        guard !Task.isCancelled, let groups = try? await service.getGroups() else { return state.groups }
+        state.groups = groups
+        return groups
     }
 
     func setGroupVolume(gid: Int, level: Int) {
@@ -118,5 +136,11 @@ final class GroupViewModel {
 
     func setAdjustingMemberVolume(pid: Int, _ adjusting: Bool) {
         state.setAdjustingVolume(pid: pid, adjusting)
+    }
+}
+
+private extension SpeakerGroup {
+    func leads(_ leaderPID: Int, over memberPIDs: [Int]) -> Bool {
+        leader?.pid == leaderPID && memberPIDs.allSatisfy { pid in players.contains { $0.pid == pid } }
     }
 }

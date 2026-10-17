@@ -26,6 +26,7 @@ final class MockAudioService: AudioService, @unchecked Sendable {
     var queueItems: [QueueItem] = MockData.queueItems
     var groups: [SpeakerGroup] = []
     var searchCriteria: [SearchCriteria] = MockData.searchCriteria
+    var getGroupsError: Error?
     var createGroupError: Error?
     var ungroupError: Error?
     var removeFromQueueError: Error?
@@ -163,6 +164,7 @@ final class MockAudioService: AudioService, @unchecked Sendable {
 
     func getGroups() async throws -> [SpeakerGroup] {
         calls.append("getGroups")
+        if let error = getGroupsError { throw error }
         return groups
     }
 

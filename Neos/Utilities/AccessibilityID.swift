@@ -40,6 +40,7 @@ enum AccessibilityID {
         static let artistName = "player.artistName"
         static let albumArt = "player.albumArt"
         static let qualityBadge = "player.qualityBadge"
+        static let speakerName = "player.speakerName"
     }
 
     // MARK: - Home
