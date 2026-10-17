@@ -413,6 +413,12 @@ final class AppState: StateUpdater {
 
     func setQueue(_ items: [QueueItem]) {
         playback.queue = items
+        playback.queueNeedsReload = false
+    }
+
+    /// The queue_changed fetch can be lost or time out, so the queue view refetches on its next visit.
+    func noteQueueEdit() {
+        playback.queueNeedsReload = true
     }
 
     func setSignedInUser(_ username: String?) {

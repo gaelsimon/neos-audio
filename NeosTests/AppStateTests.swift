@@ -360,6 +360,53 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.progressPercent, 0)
     }
 
+    // MARK: - playbackTargetName
+
+    @MainActor
+    func testPlaybackTargetNameIsTheMultiRoomGroupName() {
+        let state = AppState()
+        state.players = [Player(pid: 1, name: "Den"), Player(pid: 2, name: "Bath")]
+        state.groups = [SpeakerGroup(gid: 1, name: "Den + Bath", players: [
+            GroupPlayer(name: "Den", pid: 1, role: .leader),
+            GroupPlayer(name: "Bath", pid: 2, role: .member)
+        ])]
+        state.multiRoomGroupIDs = [1]
+        state.selectedPlayerID = 2
+
+        XCTAssertEqual(state.playbackTargetName, "Den + Bath")
+    }
+
+    @MainActor
+    func testPlaybackTargetNameIsThePairNameForACollapsedPair() {
+        let state = AppState()
+        state.players = [Player(pid: 1, name: "Kitchen Left"), Player(pid: 2, name: "Kitchen Right")]
+        state.groups = [SpeakerGroup(gid: 1, name: "Kitchen Left", players: [
+            GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+        ])]
+        state.selectedPlayerID = 1
+
+        XCTAssertEqual(state.playbackTargetName, "Kitchen")
+    }
+
+    @MainActor
+    func testPlaybackTargetNameIsNilWithoutASelection() {
+        XCTAssertNil(AppState().playbackTargetName)
+    }
+
+    // MARK: - queueNeedsReload
+
+    @MainActor
+    func testQueueEditIsClearedByTheNextQueueFromTheAmp() {
+        let state = AppState()
+        state.noteQueueEdit()
+        XCTAssertTrue(state.playback.queueNeedsReload)
+
+        state.setQueue([])
+
+        XCTAssertFalse(state.playback.queueNeedsReload)
+    }
+
     // MARK: - reportNonFatal
 
     @MainActor

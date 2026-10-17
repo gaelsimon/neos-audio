@@ -4,6 +4,37 @@ import NeosDomain
 
 final class QueuePanelViewModelTests: XCTestCase {
 
+    // MARK: - onPanelOpen
+
+    @MainActor
+    func testPanelOpenRefetchesTheQueueAfterALostEdit() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.queueItems = [QueueItem(qid: 1, song: "Song A", mid: "m1")]
+        let vm = QueuePanelViewModel(service: mock, state: state)
+        state.selectedPlayerID = 42
+        state.noteQueueEdit()
+
+        vm.onPanelOpen()
+
+        await waitUntil { !state.queue.isEmpty }
+        XCTAssertEqual(state.queue.map(\.song), ["Song A"])
+        XCTAssertFalse(state.playback.queueNeedsReload)
+    }
+
+    @MainActor
+    func testPanelOpenLeavesACurrentQueueAlone() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = QueuePanelViewModel(service: mock, state: state)
+        state.selectedPlayerID = 42
+
+        vm.onPanelOpen()
+
+        await yieldForTask()
+        XCTAssertFalse(mock.calls.contains("getQueue:42"))
+    }
+
     // MARK: - nowPlayingQueueItem
 
     @MainActor

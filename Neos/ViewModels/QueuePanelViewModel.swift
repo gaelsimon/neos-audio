@@ -248,5 +248,16 @@ final class QueuePanelViewModel {
 
     func onPanelOpen() {
         refreshDisplayData()
+        reloadQueueIfNeeded()
+    }
+
+    /// Same fallback as the queue page: an edit whose change event was lost is refetched on open.
+    private func reloadQueueIfNeeded() {
+        guard state.playback.queueNeedsReload, let pid = state.selectedPlayerID else { return }
+        Task {
+            guard let items = try? await service.getQueue(pid: pid, range: nil),
+                  state.selectedPlayerID == pid else { return }
+            state.setQueue(items)
+        }
     }
 }

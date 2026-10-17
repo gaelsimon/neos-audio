@@ -52,6 +52,8 @@ final class PlaybackState {
     // MARK: - Queue
 
     var queue: [QueueItem] = []
+    /// Neos edited the queue and has not seen the amp's version since.
+    var queueNeedsReload = false
 
     // MARK: - Stream Context
 

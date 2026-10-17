@@ -36,6 +36,7 @@ enum PlaybackRouter {
                 try await service.playStation(pid: pid, sid: sid, cid: cid, mid: mid, name: item.name)
             } else {
                 try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: item.mid, criteria: .playNow)
+                state.noteQueueEdit()
             }
         } catch {
             state.failTrackLoad(generation: loadGeneration)
