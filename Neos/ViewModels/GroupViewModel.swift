@@ -35,7 +35,7 @@ final class GroupViewModel {
             do {
                 let groups = try await service.getGroups()
                 guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                state.groups = groups
+                state.setGroups(groups)
             } catch {
                 guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
                 state.error = .groupFailed(error.localizedDescription)
@@ -107,7 +107,7 @@ final class GroupViewModel {
     private func groupsAfterSettling() async -> [SpeakerGroup] {
         try? await Task.sleep(for: groupSettleDelay)
         guard !Task.isCancelled, let groups = try? await service.getGroups() else { return state.groups }
-        state.groups = groups
+        state.setGroups(groups)
         return groups
     }
 

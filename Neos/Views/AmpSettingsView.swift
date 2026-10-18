@@ -175,7 +175,7 @@ struct AmpSettingsView: View {
                 }
             }
 
-            groupVolumeSlider(group)
+            GroupVolumeSlider(state: state, groupVM: groupVM, gid: group.gid)
 
             HStack {
                 Spacer()
@@ -191,62 +191,6 @@ struct AmpSettingsView: View {
         .padding(DS.Spacing.md)
         .background(DS.Colors.surfaceContainer, in: RoundedRectangle(cornerRadius: DS.Radius.medium))
         .onAppear { groupVM.loadMemberVolumes(for: group) }
-    }
-
-    // MARK: - Group Volume Slider
-
-    @State private var groupVolume: Double = 50
-    @State private var isDraggingVolume = false
-
-    private func groupVolumeSlider(_ group: SpeakerGroup) -> some View {
-        HStack(spacing: DS.Spacing.sm) {
-            Image(systemName: DS.Icons.speakerActive)
-                .font(DS.IconFont.sm)
-                .foregroundStyle(DS.Colors.textSecondary)
-
-            GeometryReader { geo in
-                let width = geo.size.width
-                let fraction = groupVolume / 100
-
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.15))
-                        .frame(height: 4)
-
-                    Capsule()
-                        .fill(DS.Colors.accent)
-                        .frame(width: max(0, fraction * width), height: 4)
-                }
-                .frame(height: geo.size.height)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            isDraggingVolume = true
-                            let clamped = max(0, min(1, value.location.x / width))
-                            groupVolume = clamped * 100
-                            groupVM.setGroupVolume(gid: group.gid, level: Int(groupVolume))
-                        }
-                        .onEnded { _ in
-                            isDraggingVolume = false
-                        }
-                )
-            }
-            .frame(height: 14)
-
-            Text("\(Int(groupVolume))")
-                .typography(.secondary)
-                .monospacedDigit()
-                .frame(width: 24, alignment: .trailing)
-        }
-        .onAppear { syncGroupVolume(group) }
-        .onChange(of: state.groupVolumes[group.gid]) { syncGroupVolume(group) }
-    }
-
-    /// The amp's level wins whenever the user is not dragging.
-    private func syncGroupVolume(_ group: SpeakerGroup) {
-        guard !isDraggingVolume, let level = state.groupVolumes[group.gid] else { return }
-        groupVolume = Double(level)
     }
 
     // MARK: - Create Group
@@ -396,6 +340,68 @@ struct AmpSettingsView: View {
 }
 
 /// One speaker's volume slider in a group card. Reads live volume from `playerVolumes[pid]`.
+/// One per group card: the amp's level wins whenever the user is not dragging.
+private struct GroupVolumeSlider: View {
+    let state: AppState
+    let groupVM: GroupViewModel
+    let gid: Int
+
+    @State private var sliderVolume: Double = 50
+    @State private var isDragging = false
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Image(systemName: DS.Icons.speakerActive)
+                .font(DS.IconFont.sm)
+                .foregroundStyle(DS.Colors.textSecondary)
+
+            GeometryReader { geo in
+                let width = geo.size.width
+                let fraction = sliderVolume / 100
+
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.15))
+                        .frame(height: 4)
+                    Capsule()
+                        .fill(DS.Colors.accent)
+                        .frame(width: max(0, fraction * width), height: 4)
+                }
+                .frame(height: geo.size.height)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            isDragging = true
+                            let clamped = max(0, min(1, value.location.x / width))
+                            sliderVolume = clamped * 100
+                            groupVM.setGroupVolume(gid: gid, level: Int(sliderVolume))
+                        }
+                        .onEnded { _ in
+                            isDragging = false
+                        }
+                )
+            }
+            .frame(height: 14)
+
+            Text("\(Int(sliderVolume))")
+                .typography(.secondary)
+                .monospacedDigit()
+                .frame(width: 24, alignment: .trailing)
+        }
+        .onAppear { sync() }
+        .onChange(of: state.groupVolumes[gid]) { sync() }
+        .accessibilityElement()
+        .accessibilityLabel("Group volume")
+        .accessibilityValue("\(Int(sliderVolume)) percent")
+    }
+
+    private func sync() {
+        guard !isDragging, let level = state.groupVolumes[gid] else { return }
+        sliderVolume = Double(level)
+    }
+}
+
 private struct MemberVolumeSlider: View {
     let state: AppState
     let groupVM: GroupViewModel
