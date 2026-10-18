@@ -45,6 +45,23 @@ final class GroupViewModel {
         })
     }
 
+    /// Re-reads players and groups from the device: the escape hatch when a speaker came back or a
+    /// pair broke up and the device never said so.
+    func refresh() {
+        let requestID = groupsTracker.next()
+        isLoadingGroups = true
+        loadGroupsTask.replace(with: Task {
+            do {
+                try await service.refreshSpeakers()
+            } catch {
+                guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
+                state.error = .groupFailed(error.localizedDescription)
+            }
+            guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
+            isLoadingGroups = false
+        })
+    }
+
     func createGroup(leaderPID: Int) {
         let memberPIDs = Array(selectedMemberPIDs.filter { $0 != leaderPID })
         guard !memberPIDs.isEmpty else { return }

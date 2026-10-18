@@ -27,6 +27,7 @@ final class MockAudioService: AudioService, @unchecked Sendable {
     var groups: [SpeakerGroup] = []
     var searchCriteria: [SearchCriteria] = MockData.searchCriteria
     var getGroupsError: Error?
+    var refreshSpeakersError: Error?
     var createGroupError: Error?
     var ungroupError: Error?
     var removeFromQueueError: Error?
@@ -166,6 +167,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         calls.append("getGroups")
         if let error = getGroupsError { throw error }
         return groups
+    }
+
+    func refreshSpeakers() async throws {
+        calls.append("refreshSpeakers")
+        if let error = refreshSpeakersError { throw error }
     }
 
     func createGroup(leaderPID: Int, memberPIDs: [Int]) async throws {

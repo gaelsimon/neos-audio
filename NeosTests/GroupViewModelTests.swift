@@ -4,6 +4,36 @@ import NeosDomain
 
 final class GroupViewModelTests: XCTestCase {
 
+    // MARK: - refresh
+
+    @MainActor
+    func testRefreshRereadsSpeakersThroughTheService() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+
+        vm.refresh()
+
+        await yieldForTask()
+        XCTAssertEqual(mock.calls, ["refreshSpeakers"])
+        XCTAssertFalse(vm.isLoadingGroups)
+        XCTAssertNil(state.error)
+    }
+
+    @MainActor
+    func testRefreshReportsAFailure() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.refreshSpeakersError = NSError(domain: "test", code: 1)
+        let vm = GroupViewModel(service: mock, state: state)
+
+        vm.refresh()
+
+        await yieldForTask()
+        XCTAssertNotNil(state.error)
+        XCTAssertFalse(vm.isLoadingGroups)
+    }
+
     // MARK: - createGroup
 
     @MainActor

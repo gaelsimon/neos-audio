@@ -33,13 +33,18 @@ struct AmpSettingsView: View {
 
     // MARK: - Section Card
 
-    private func sectionCard<Content: View>(
+    private func sectionCard<Content: View, Accessory: View>(
         header: String,
+        @ViewBuilder accessory: () -> Accessory = { EmptyView() },
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            Text(header)
-                .typography(.sectionHeader)
+            HStack {
+                Text(header)
+                    .typography(.sectionHeader)
+                Spacer()
+                accessory()
+            }
 
             VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 content()
@@ -123,10 +128,21 @@ struct AmpSettingsView: View {
     // MARK: - Groups Section
 
     private var groupsSection: some View {
-        sectionCard(header: "Speaker Groups") {
+        sectionCard(header: "Speaker Groups", accessory: { refreshButton }) {
             existingGroupsList
             createGroupForm
         }
+    }
+
+    private var refreshButton: some View {
+        HoverButton(action: { groupVM.refresh() }) { hovered in
+            Image(systemName: DS.Icons.refresh)
+                .typography(.bodyPrimary)
+                .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+        }
+        .disabled(groupVM.isLoadingGroups)
+        .help("Re-read players and groups from the device")
+        .accessibilityIdentifier(AccessibilityID.Group.refreshButton)
     }
 
     @ViewBuilder

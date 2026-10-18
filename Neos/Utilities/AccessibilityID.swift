@@ -228,6 +228,7 @@ enum AccessibilityID {
         static let popover = "group.popover"
         static let leaderPicker = "group.leaderPicker"
         static let createButton = "group.createButton"
+        static let refreshButton = "group.refreshButton"
         static let emptyState = "group.emptyState"
 
         static func ungroupButton(_ gid: Int) -> String {
