@@ -30,9 +30,8 @@ struct QueueView: View {
             }
         }
         .task(id: state.selectedPlayerID) {
-            // Skip reload if queue data already exists (EventRouter keeps it current).
-            // Only fetch on player change or when queue is empty.
-            if state.queue.isEmpty {
+            // EventRouter keeps a loaded queue current, unless an edit's fetch was lost on the way.
+            if state.queue.isEmpty || state.playback.queueNeedsReload {
                 viewModel.loadQueue()
             }
         }

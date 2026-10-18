@@ -4,6 +4,36 @@ import NeosDomain
 
 final class GroupViewModelTests: XCTestCase {
 
+    // MARK: - refresh
+
+    @MainActor
+    func testRefreshRereadsSpeakersThroughTheService() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+
+        vm.refresh()
+
+        await yieldForTask()
+        XCTAssertEqual(mock.calls, ["refreshSpeakers"])
+        XCTAssertFalse(vm.isLoadingGroups)
+        XCTAssertNil(state.error)
+    }
+
+    @MainActor
+    func testRefreshReportsAFailure() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.refreshSpeakersError = NSError(domain: "test", code: 1)
+        let vm = GroupViewModel(service: mock, state: state)
+
+        vm.refresh()
+
+        await yieldForTask()
+        XCTAssertNotNil(state.error)
+        XCTAssertFalse(vm.isLoadingGroups)
+    }
+
     // MARK: - createGroup
 
     @MainActor
@@ -103,12 +133,114 @@ final class GroupViewModelTests: XCTestCase {
         let state = AppState()
         let mock = MockAudioService()
         mock.ungroupError = NSError(domain: "test", code: 1)
-        let vm = GroupViewModel(service: mock, state: state)
+        mock.groups = [formedGroup(leader: 5, members: [6])]
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
 
         vm.ungroup(pid: 5)
 
-        await yieldForTask()
+        await waitUntil { !vm.isUngrouping }
         XCTAssertNotNil(state.error)
+    }
+
+    // MARK: - set_group answered with an error while the group formed
+
+    private func formedGroup(leader: Int, members: [Int]) -> SpeakerGroup {
+        SpeakerGroup(gid: leader, name: "Den + Bath", players:
+            [GroupPlayer(name: "Den", pid: leader, role: .leader)]
+            + members.map { GroupPlayer(name: "Bath \($0)", pid: $0, role: .member) })
+    }
+
+    @MainActor
+    func testCreateGroupErrorIsSwallowedWhenTheGroupFormedAnyway() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.createGroupError = NSError(domain: "test", code: 1)
+        mock.groups = [formedGroup(leader: 1, members: [2])]
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
+
+        vm.selectedMemberPIDs = [2]
+        vm.createGroup(leaderPID: 1)
+
+        await waitUntil { !vm.isCreatingGroup }
+        XCTAssertNil(state.error)
+        XCTAssertTrue(vm.selectedMemberPIDs.isEmpty)
+        XCTAssertEqual(state.groups.map(\.gid), [1])
+    }
+
+    @MainActor
+    func testCreateGroupErrorIsReportedWhenNoGroupFormed() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.createGroupError = NSError(domain: "test", code: 1)
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
+
+        vm.selectedMemberPIDs = [2]
+        vm.createGroup(leaderPID: 1)
+
+        await waitUntil { !vm.isCreatingGroup }
+        XCTAssertNotNil(state.error)
+        XCTAssertEqual(vm.selectedMemberPIDs, [2])
+    }
+
+    @MainActor
+    func testCreateGroupErrorIsReportedWhenAnotherLeaderFormedIt() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.createGroupError = NSError(domain: "test", code: 1)
+        mock.groups = [formedGroup(leader: 2, members: [1])]
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
+
+        vm.selectedMemberPIDs = [2]
+        vm.createGroup(leaderPID: 1)
+
+        await waitUntil { !vm.isCreatingGroup }
+        XCTAssertNotNil(state.error)
+    }
+
+    @MainActor
+    func testUngroupErrorIsSwallowedWhenTheGroupIsGone() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.ungroupError = NSError(domain: "test", code: 1)
+        state.groups = [formedGroup(leader: 5, members: [6])]
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
+
+        vm.ungroup(pid: 5)
+
+        await waitUntil { !vm.isUngrouping }
+        XCTAssertNil(state.error)
+        XCTAssertTrue(state.groups.isEmpty)
+    }
+
+    @MainActor
+    func testCreateGroupErrorIsReportedWhenTheGroupsCannotBeReRead() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.createGroupError = NSError(domain: "test", code: 1)
+        mock.getGroupsError = NSError(domain: "test", code: 2)
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
+
+        vm.selectedMemberPIDs = [2]
+        vm.createGroup(leaderPID: 1)
+
+        await waitUntil { !vm.isCreatingGroup }
+        XCTAssertNotNil(state.error)
+    }
+
+    @MainActor
+    func testUngroupErrorIsReportedWhenTheGroupsCannotBeReRead() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.ungroupError = NSError(domain: "test", code: 1)
+        mock.getGroupsError = NSError(domain: "test", code: 2)
+        state.groups = [formedGroup(leader: 5, members: [6])]
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
+
+        vm.ungroup(pid: 5)
+
+        await waitUntil { !vm.isUngrouping }
+        XCTAssertNotNil(state.error)
+        XCTAssertEqual(state.groups.map(\.gid), [5])
     }
 
     // MARK: - Per-speaker volume

@@ -40,6 +40,7 @@ final class QueueViewModel {
                 let items = try await fetchQueue(pid, 0...(pageSize - 1))
                 guard queueTracker.isCurrent(requestID), !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 state.playback.queue = items
+                state.playback.queueNeedsReload = false
                 currentOffset = items.count
                 hasMore = items.count == pageSize
             } catch {

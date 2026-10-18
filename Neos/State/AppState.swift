@@ -164,6 +164,16 @@ final class AppState: StateUpdater {
         selectedPlayer.map { displayName(for: $0) }
     }
 
+    /// Where the music goes: the multi-room group's name, else the selection's display name.
+    var playbackTargetName: String? {
+        guard let player = selectedPlayer else { return nil }
+        if let group = groups.first(where: { $0.players.contains { $0.pid == player.pid } }),
+           multiRoomGroupIDs.contains(group.gid) {
+            return group.name
+        }
+        return displayName(for: player)
+    }
+
     var isPlaying: Bool { playback.isPlaying }
     var progressPercent: Double { playback.progressPercent }
 
@@ -403,6 +413,12 @@ final class AppState: StateUpdater {
 
     func setQueue(_ items: [QueueItem]) {
         playback.queue = items
+        playback.queueNeedsReload = false
+    }
+
+    /// The queue_changed fetch can be lost or time out, so the queue view refetches on its next visit.
+    func noteQueueEdit() {
+        playback.queueNeedsReload = true
     }
 
     func setSignedInUser(_ username: String?) {

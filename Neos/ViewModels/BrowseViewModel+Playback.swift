@@ -17,6 +17,7 @@ extension BrowseViewModel {
         Task {
             do {
                 try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: nil, criteria: .replaceAndPlay)
+                state.noteQueueEdit()
                 state.showToast("Playing all", icon: DS.Icons.playing, style: .success)
             } catch {
                 state.showToast(error.localizedDescription, icon: DS.Icons.warning, style: .error)
@@ -37,6 +38,7 @@ extension BrowseViewModel {
                 try await service.setPlayMode(pid: pid, repeat: state.repeatMode, shuffle: .on)
                 state.playback.shuffleMode = .on
                 try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: nil, criteria: .replaceAndPlay)
+                state.noteQueueEdit()
                 state.showToast("Shuffling all", icon: DS.Icons.shuffle, style: .success)
             } catch {
                 state.showToast(error.localizedDescription, icon: DS.Icons.warning, style: .error)
@@ -73,6 +75,7 @@ extension BrowseViewModel {
         Task {
             do {
                 try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: nil, criteria: .addToEnd)
+                state.noteQueueEdit()
                 state.showToast("Added to queue", icon: DS.Icons.addedToQueue, style: .success)
             } catch {
                 state.showToast(error.localizedDescription, icon: DS.Icons.warning, style: .error)
@@ -145,6 +148,7 @@ extension BrowseViewModel {
         Task {
             do {
                 try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: item.mid, criteria: criteria)
+                state.noteQueueEdit()
                 let message = criteria == .playNext ? "Playing next" : "Added to queue"
                 state.showToast(message, icon: DS.Icons.addedToQueue, style: .success)
             } catch {

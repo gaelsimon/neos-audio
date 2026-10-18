@@ -19,9 +19,13 @@ final class GroupViewModel {
     private(set) var isCreatingGroup = false
     private(set) var isUngrouping = false
 
-    init(service: any AudioService, state: AppState) {
+    /// The amp often fails or times out set_group while the group forms anyway; it settles within a second.
+    private let groupSettleDelay: Duration
+
+    init(service: any AudioService, state: AppState, groupSettleDelay: Duration = .seconds(1)) {
         self.service = service
         self.state = state
+        self.groupSettleDelay = groupSettleDelay
     }
 
     func loadGroups() {
@@ -31,7 +35,24 @@ final class GroupViewModel {
             do {
                 let groups = try await service.getGroups()
                 guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                state.groups = groups
+                state.setGroups(groups)
+            } catch {
+                guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
+                state.error = .groupFailed(error.localizedDescription)
+            }
+            guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
+            isLoadingGroups = false
+        })
+    }
+
+    /// Re-reads players and groups from the device: the escape hatch when a speaker came back or a
+    /// pair broke up and the device never said so.
+    func refresh() {
+        let requestID = groupsTracker.next()
+        isLoadingGroups = true
+        loadGroupsTask.replace(with: Task {
+            do {
+                try await service.refreshSpeakers()
             } catch {
                 guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
                 state.error = .groupFailed(error.localizedDescription)
@@ -53,7 +74,11 @@ final class GroupViewModel {
                 loadGroups()
             } catch {
                 guard !Task.isCancelled else { return }
-                state.error = .groupFailed(error.localizedDescription)
+                if await groupsAfterSettling().contains(where: { $0.leads(leaderPID, over: memberPIDs) }) {
+                    selectedMemberPIDs = []
+                } else {
+                    state.error = .groupFailed(error.localizedDescription)
+                }
             }
             guard !Task.isCancelled else { return }
             isCreatingGroup = false
@@ -69,11 +94,21 @@ final class GroupViewModel {
                 loadGroups()
             } catch {
                 guard !Task.isCancelled else { return }
-                state.error = .groupFailed(error.localizedDescription)
+                if await groupsAfterSettling().contains(where: { $0.leader?.pid == pid }) {
+                    state.error = .groupFailed(error.localizedDescription)
+                }
             }
             guard !Task.isCancelled else { return }
             isUngrouping = false
         })
+    }
+
+    /// Re-reads the groups once the amp has had time to apply a set_group it did not acknowledge.
+    private func groupsAfterSettling() async -> [SpeakerGroup] {
+        try? await Task.sleep(for: groupSettleDelay)
+        guard !Task.isCancelled, let groups = try? await service.getGroups() else { return state.groups }
+        state.setGroups(groups)
+        return groups
     }
 
     func setGroupVolume(gid: Int, level: Int) {
@@ -118,5 +153,11 @@ final class GroupViewModel {
 
     func setAdjustingMemberVolume(pid: Int, _ adjusting: Bool) {
         state.setAdjustingVolume(pid: pid, adjusting)
+    }
+}
+
+private extension SpeakerGroup {
+    func leads(_ leaderPID: Int, over memberPIDs: [Int]) -> Bool {
+        leader?.pid == leaderPID && memberPIDs.allSatisfy { pid in players.contains { $0.pid == pid } }
     }
 }
