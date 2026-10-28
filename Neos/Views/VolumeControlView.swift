@@ -206,8 +206,9 @@ struct VolumeControlView: View {
         .accessibilityValue("\(Int(sliderVolume)) percent")
     }
 
+    /// The HEOS level as the device reports it; a dB figure would only hold for one amp model.
     private var dBLabel: some View {
-        Text(dBString(for: sliderVolume))
+        Text(state.isMuted ? "Muted" : "\(Int(sliderVolume))")
             .typography(.secondary)
             .frame(width: 52, alignment: .trailing)
             .monospacedDigit()
@@ -229,15 +230,4 @@ struct VolumeControlView: View {
         }
     }
 
-    // MARK: - dB Conversion
-
-    /// Approximate dB from HEOS 0-100 range. Marantz amps map roughly -80 dB to +18 dB.
-    private func dBString(for volume: Double) -> String {
-        if state.isMuted || volume == 0 { return "-\u{221E} dB" } // -∞ dB
-        let dB = -80.0 + (volume / 100.0) * 98.0
-        if dB >= 0 {
-            return String(format: "+%.0f dB", dB)
-        }
-        return String(format: "%.0f dB", dB)
-    }
 }

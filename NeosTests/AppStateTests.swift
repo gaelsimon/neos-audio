@@ -1029,6 +1029,74 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen Left")
     }
 
+    // MARK: - UPnP pair seats
+
+    private func seat(_ role: PairMembership.Role, _ channel: String, _ name: String = "Kitchen") -> PairMembership {
+        PairMembership(groupUUID: "g1", role: role, channel: channel, name: name)
+    }
+
+    /// Newer firmware lists a pair as one player and no group: the UPnP room name is all we have.
+    @MainActor
+    func testPairRoomNameNamesAPlayerTheCLIListsAlone() {
+        let state = AppState()
+        state.players = [Player(pid: 1, name: "Kitchen Left"), Player(pid: 2, name: "Bedroom")]
+
+        state.setPairMemberships([1: seat(.leader, "LEFT")])
+
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Kitchen")
+        XCTAssertEqual(state.displayName(for: state.players[1]), "Bedroom")
+    }
+
+    @MainActor
+    func testPairRoomNameWinsOverTheGroupNameHeuristic() {
+        let state = AppState()
+        state.players = [Player(pid: 1, name: "Kitchen Left"), Player(pid: 2, name: "Kitchen Right")]
+        state.setGroups([SpeakerGroup(gid: 1, name: "Kitchen Left + Kitchen Right", players: [
+            GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader),
+            GroupPlayer(name: "Kitchen Right", pid: 2, role: .member)
+        ])])
+
+        state.setPairMemberships([1: seat(.leader, "LEFT", "Cuisine"), 2: seat(.follower, "RIGHT", "Cuisine")])
+
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Cuisine")
+    }
+
+    @MainActor
+    func testANormalSeatLeavesThePlayerNameAlone() {
+        let state = AppState()
+        state.players = [Player(pid: 1, name: "Den")]
+
+        state.setPairMemberships([1: seat(.leader, "NORMAL", "Den + Bath")])
+
+        XCTAssertEqual(state.displayName(for: state.players[0]), "Den")
+    }
+
+    @MainActor
+    func testADiscoveredFollowerSeatHidesItsCardAndNamesTheLeader() {
+        let state = AppState()
+        state.discoveredDevices = [
+            DiscoveredDevice(host: "10.0.0.1", friendlyName: "Kitchen Left", pair: seat(.leader, "LEFT")),
+            DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right", pair: seat(.follower, "RIGHT")),
+            DiscoveredDevice(host: "10.0.0.3", friendlyName: "Bath", pair: seat(.follower, "NORMAL", "Den + Bath"))
+        ]
+
+        XCTAssertEqual(state.visibleDiscoveredDevices.map(\.friendlyName), ["Kitchen Left", "Bath"])
+        XCTAssertEqual(state.displayName(for: state.discoveredDevices[0]), "Kitchen")
+        XCTAssertEqual(state.displayName(for: state.discoveredDevices[2]), "Bath")
+    }
+
+    @MainActor
+    func testAddDiscoveredDeviceTakesANewerSeat() {
+        let state = AppState()
+        state.addDiscoveredDevice(DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right"))
+
+        state.addDiscoveredDevice(DiscoveredDevice(host: "10.0.0.2", friendlyName: "Kitchen Right", pair: seat(.follower, "RIGHT")))
+
+        XCTAssertEqual(state.discoveredDevices.count, 1)
+        XCTAssertEqual(state.discoveredDevices[0].pair?.role, .follower)
+        XCTAssertTrue(state.visibleDiscoveredDevices.isEmpty)
+    }
+
     // MARK: - Stereo follower discovery
 
     @MainActor
