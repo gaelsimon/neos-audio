@@ -26,34 +26,33 @@ struct MenuBarView: View {
 
             Divider()
 
-            // Speaker picker (compact)
+            // Speaker picker: every speaker visible, wrapping rather than scrolling off the edge
             if state.isConnected && state.displayPlayers.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: DS.Spacing.sm) {
-                        ForEach(state.displayPlayers) { player in
-                            Button(action: { speakerVM.selectPlayer(player) }) {
-                                Text(state.displayName(for: player))
-                                    .typography(.secondary)
-                                    .padding(.horizontal, DS.Spacing.sm)
-                                    .padding(.vertical, DS.Spacing.xs)
-                                    .background(
-                                        player.pid == state.selectedPlayerID
-                                            ? DS.Colors.accent.opacity(0.2)
-                                            : Color.clear,
-                                        in: Capsule()
-                                    )
-                                    .foregroundStyle(
-                                        player.pid == state.selectedPlayerID
-                                            ? DS.Colors.accent : .secondary
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("menuBar.speaker.\(player.pid)")
+                WrapLayout(spacing: DS.Spacing.sm) {
+                    ForEach(state.displayPlayers) { player in
+                        Button(action: { speakerVM.selectPlayer(player) }) {
+                            Text(state.displayName(for: player))
+                                .typography(.secondary)
+                                .lineLimit(1)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, DS.Spacing.xs)
+                                .background(
+                                    player.pid == state.selectedPlayerID
+                                        ? DS.Colors.accent.opacity(0.2)
+                                        : Color.clear,
+                                    in: Capsule()
+                                )
+                                .foregroundStyle(
+                                    player.pid == state.selectedPlayerID
+                                        ? DS.Colors.accent : .secondary
+                                )
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("menuBar.speaker.\(player.pid)")
                     }
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.sm)
                 }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
                 Divider()
             }
 

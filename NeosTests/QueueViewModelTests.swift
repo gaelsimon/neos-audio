@@ -96,6 +96,19 @@ final class QueueViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testLoadQueueClearsThePendingEdit() async {
+        let state = AppState()
+        let vm = QueueViewModel(service: MockAudioService(), state: state)
+        state.selectedPlayerID = 42
+        state.noteQueueEdit()
+
+        vm.loadQueue()
+        await waitUntil { !vm.isLoadingQueue }
+
+        XCTAssertFalse(state.playback.queueNeedsReload)
+    }
+
+    @MainActor
     func testLoadQueueSetsLoadingFlag() async {
         let state = AppState()
         let mock = MockAudioService()

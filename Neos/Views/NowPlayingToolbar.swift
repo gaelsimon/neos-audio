@@ -241,6 +241,20 @@ struct NowPlayingToolbar: View {
                 HStack(spacing: DS.Spacing.md) {
                     serviceOptionButtons
 
+                    if state.displayPlayers.count > 1, let target = state.playbackTargetName {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: DS.Icons.speaker)
+                                .font(DS.IconFont.sm)
+                            Text(target)
+                                .typography(.secondary)
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .frame(maxWidth: 240)
+                        .help("Playing on \(target)")
+                        .accessibilityIdentifier(AccessibilityID.Player.speakerName)
+                    }
+
                     if let quality = state.trackMetadata?.qualityDescription {
                         Text(quality)
                             .typography(.badge)

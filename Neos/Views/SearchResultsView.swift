@@ -302,6 +302,7 @@ struct SearchResultsView: View {
                     pid: pid, sid: effectiveSID, cid: cid,
                     mid: item.mid, criteria: .addToEnd
                 )
+                state.noteQueueEdit()
                 state.showToast("Added to queue", icon: DS.Icons.addedToQueue, style: .success)
             } catch {
                 state.showToast(

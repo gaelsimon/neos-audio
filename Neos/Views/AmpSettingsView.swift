@@ -33,13 +33,18 @@ struct AmpSettingsView: View {
 
     // MARK: - Section Card
 
-    private func sectionCard<Content: View>(
+    private func sectionCard<Content: View, Accessory: View>(
         header: String,
+        @ViewBuilder accessory: () -> Accessory = { EmptyView() },
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            Text(header)
-                .typography(.sectionHeader)
+            HStack {
+                Text(header)
+                    .typography(.sectionHeader)
+                Spacer()
+                accessory()
+            }
 
             VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 content()
@@ -123,10 +128,21 @@ struct AmpSettingsView: View {
     // MARK: - Groups Section
 
     private var groupsSection: some View {
-        sectionCard(header: "Speaker Groups") {
+        sectionCard(header: "Speaker Groups", accessory: { refreshButton }) {
             existingGroupsList
             createGroupForm
         }
+    }
+
+    private var refreshButton: some View {
+        HoverButton(action: { groupVM.refresh() }) { hovered in
+            Image(systemName: DS.Icons.refresh)
+                .typography(.bodyPrimary)
+                .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+        }
+        .disabled(groupVM.isLoadingGroups)
+        .help("Re-read players and groups from the device")
+        .accessibilityIdentifier(AccessibilityID.Group.refreshButton)
     }
 
     @ViewBuilder
@@ -155,11 +171,22 @@ struct AmpSettingsView: View {
                         .typography(.secondary)
                         .lineLimit(1)
                         .frame(width: 88, alignment: .leading)
-                    MemberVolumeSlider(state: state, groupVM: groupVM, pid: player.pid)
+                    LevelSlider(
+                        level: state.playerVolumes[player.pid],
+                        label: "Speaker volume",
+                        onDragging: { groupVM.setAdjustingMemberVolume(pid: player.pid, $0) }
+                    ) { groupVM.setMemberVolume(pid: player.pid, level: $0) }
                 }
             }
 
-            groupVolumeSlider(group)
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: DS.Icons.speakerActive)
+                    .font(DS.IconFont.sm)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                LevelSlider(level: state.groupVolumes[group.gid], label: "Group volume") {
+                    groupVM.setGroupVolume(gid: group.gid, level: $0)
+                }
+            }
 
             HStack {
                 Spacer()
@@ -177,54 +204,6 @@ struct AmpSettingsView: View {
         .onAppear { groupVM.loadMemberVolumes(for: group) }
     }
 
-    // MARK: - Group Volume Slider
-
-    @State private var groupVolume: Double = 50
-    @State private var isDraggingVolume = false
-
-    private func groupVolumeSlider(_ group: SpeakerGroup) -> some View {
-        HStack(spacing: DS.Spacing.sm) {
-            Image(systemName: DS.Icons.speakerActive)
-                .font(DS.IconFont.sm)
-                .foregroundStyle(DS.Colors.textSecondary)
-
-            GeometryReader { geo in
-                let width = geo.size.width
-                let fraction = groupVolume / 100
-
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.15))
-                        .frame(height: 4)
-
-                    Capsule()
-                        .fill(DS.Colors.accent)
-                        .frame(width: max(0, fraction * width), height: 4)
-                }
-                .frame(height: geo.size.height)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            isDraggingVolume = true
-                            let clamped = max(0, min(1, value.location.x / width))
-                            groupVolume = clamped * 100
-                            groupVM.setGroupVolume(gid: group.gid, level: Int(groupVolume))
-                        }
-                        .onEnded { _ in
-                            isDraggingVolume = false
-                        }
-                )
-            }
-            .frame(height: 14)
-
-            Text("\(Int(groupVolume))")
-                .typography(.secondary)
-                .monospacedDigit()
-                .frame(width: 24, alignment: .trailing)
-        }
-    }
-
     // MARK: - Create Group
 
     @ViewBuilder
@@ -237,7 +216,7 @@ struct AmpSettingsView: View {
                     .typography(.bodyMedium)
 
                 HStack {
-                    Text("Leader:")
+                    Text("Music from:")
                         .typography(.secondary)
                     Picker("", selection: leaderBinding) {
                         ForEach(state.players) { player in
@@ -248,8 +227,11 @@ struct AmpSettingsView: View {
                     .accessibilityIdentifier(AccessibilityID.Group.leaderPicker)
                 }
 
+                Text("Also play on:")
+                    .typography(.secondary)
+
                 ForEach(state.players) { player in
-                    if player.pid != selectedLeaderPID {
+                    if player.pid != leaderPID {
                         Toggle(isOn: memberBinding(for: player.pid)) {
                             HStack(spacing: DS.Spacing.sm) {
                                 Image(systemName: DS.Icons.speaker)
@@ -267,7 +249,7 @@ struct AmpSettingsView: View {
                 HStack {
                     Spacer()
                     Button {
-                        guard let leaderPID = selectedLeaderPID else { return }
+                        guard let leaderPID else { return }
                         groupVM.createGroup(leaderPID: leaderPID)
                     } label: {
                         if groupVM.isCreatingGroup {
@@ -333,15 +315,20 @@ struct AmpSettingsView: View {
         return state.selectedPlayer?.name ?? device.host
     }
 
+    /// The picker shows the first player before the user touches it; the form must agree.
+    private var leaderPID: Int? {
+        selectedLeaderPID ?? state.players.first?.pid
+    }
+
     private var canCreate: Bool {
-        guard let leaderPID = selectedLeaderPID else { return false }
+        guard let leaderPID else { return false }
         let members = groupVM.selectedMemberPIDs.filter { $0 != leaderPID }
         return !members.isEmpty
     }
 
     private var leaderBinding: Binding<Int> {
         Binding(
-            get: { selectedLeaderPID ?? (state.players.first?.pid ?? 0) },
+            get: { leaderPID ?? 0 },
             set: { newValue in
                 selectedLeaderPID = newValue
                 groupVM.selectedMemberPIDs.remove(newValue)
@@ -363,20 +350,20 @@ struct AmpSettingsView: View {
     }
 }
 
-/// One speaker's volume slider in a group card. Reads live volume from `playerVolumes[pid]`.
-private struct MemberVolumeSlider: View {
-    let state: AppState
-    let groupVM: GroupViewModel
-    let pid: Int
+/// A capsule level slider that follows the amp's `level` whenever the user is not dragging.
+private struct LevelSlider: View {
+    let level: Int?
+    let label: String
+    var onDragging: (Bool) -> Void = { _ in }
+    let onChange: (Int) -> Void
 
-    @State private var sliderVolume: Double = 0
+    @State private var value: Double = 0
     @State private var isDragging = false
 
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
             GeometryReader { geo in
                 let width = geo.size.width
-                let fraction = sliderVolume / 100
 
                 ZStack(alignment: .leading) {
                     Capsule()
@@ -384,40 +371,42 @@ private struct MemberVolumeSlider: View {
                         .frame(height: 4)
                     Capsule()
                         .fill(DS.Colors.accent)
-                        .frame(width: max(0, fraction * width), height: 4)
+                        .frame(width: max(0, value / 100 * width), height: 4)
                 }
                 .frame(height: geo.size.height)
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 0)
-                        .onChanged { value in
+                        .onChanged { drag in
                             if !isDragging {
                                 isDragging = true
-                                groupVM.setAdjustingMemberVolume(pid: pid, true)
+                                onDragging(true)
                             }
-                            let clamped = max(0, min(1, value.location.x / width))
-                            sliderVolume = clamped * 100
-                            groupVM.setMemberVolume(pid: pid, level: Int(sliderVolume))
+                            value = max(0, min(1, drag.location.x / width)) * 100
+                            onChange(Int(value))
                         }
                         .onEnded { _ in
                             isDragging = false
-                            groupVM.setAdjustingMemberVolume(pid: pid, false)
+                            onDragging(false)
                         }
                 )
             }
             .frame(height: 14)
 
-            Text("\(Int(sliderVolume))")
+            Text("\(Int(value))")
                 .typography(.secondary)
                 .monospacedDigit()
                 .frame(width: 24, alignment: .trailing)
         }
-        .onAppear { sliderVolume = Double(state.playerVolumes[pid] ?? 0) }
-        .onChange(of: state.playerVolumes[pid]) { _, newValue in
-            if !isDragging, let newValue { sliderVolume = Double(newValue) }
-        }
+        .onAppear { sync() }
+        .onChange(of: level) { sync() }
         .accessibilityElement()
-        .accessibilityLabel("Speaker volume")
-        .accessibilityValue("\(Int(sliderVolume)) percent")
+        .accessibilityLabel(label)
+        .accessibilityValue("\(Int(value)) percent")
+    }
+
+    private func sync() {
+        guard !isDragging, let level else { return }
+        value = Double(level)
     }
 }

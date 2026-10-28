@@ -44,6 +44,8 @@ final class AppState: StateUpdater {
     /// GIDs of multi-room groups (members stay listed). Empty until classified, so groups
     /// collapse by default.
     var multiRoomGroupIDs: Set<Int> = []
+    /// Stereo and surround seats by pid, read over UPnP; the CLI may list such a pair as one player.
+    var pairMemberships: [Int: PairMembership] = [:]
 
     // Playback (forwarded from sub-state)
     var playState: PlayState { playback.playState }
@@ -138,21 +140,31 @@ final class AppState: StateUpdater {
         players.collapsingGroups(groups, expanded: multiRoomGroupIDs)
     }
 
-    /// Discovery list with known stereo/surround followers hidden, so a pair shows as one card.
+    /// Discovery list with stereo/surround followers hidden, so a pair shows as one card: the seat the
+    /// device itself reported first, the remembered followers for devices that could not be asked.
     var visibleDiscoveredDevices: [DiscoveredDevice] {
-        discoveredDevices.hidingKnownFollowers(knownFollowerSerials, names: knownFollowerNames)
+        discoveredDevices
+            .filter { !($0.pair?.isChannelSeat == true && $0.pair?.role == .follower) }
+            .hidingKnownFollowers(knownFollowerSerials, names: knownFollowerNames)
     }
 
-    /// Group name when the player leads a *collapsed* group, else its own name.
+    /// The room name the device reported for its pair, else the group name when the player leads a
+    /// *collapsed* group, else its own name.
     func displayName(for player: Player) -> String {
+        if let roomName = pairMemberships[player.pid]?.roomName {
+            return roomName
+        }
         if let group = groups.group(ledBy: player.pid), !multiRoomGroupIDs.contains(group.gid) {
             return group.collapsedDisplayName
         }
         return player.name
     }
 
-    /// Pre-connect name for a discovered device; a known pair leader shows its room name.
+    /// Pre-connect name for a discovered device; a pair leader shows its room name.
     func displayName(for device: DiscoveredDevice) -> String {
+        if let roomName = device.pair?.roomName {
+            return roomName
+        }
         if !device.serialNumber.isEmpty, let paired = knownPairNames[device.serialNumber] {
             return paired
         }
@@ -162,6 +174,16 @@ final class AppState: StateUpdater {
     /// Display name for the current selection (group name for a collapsed leader).
     var selectedPlayerDisplayName: String? {
         selectedPlayer.map { displayName(for: $0) }
+    }
+
+    /// Where the music goes: the multi-room group's name, else the selection's display name.
+    var playbackTargetName: String? {
+        guard let player = selectedPlayer else { return nil }
+        if let group = groups.first(where: { $0.players.contains { $0.pid == player.pid } }),
+           multiRoomGroupIDs.contains(group.gid) {
+            return group.name
+        }
+        return displayName(for: player)
     }
 
     var isPlaying: Bool { playback.isPlaying }
@@ -215,6 +237,10 @@ final class AppState: StateUpdater {
             self.multiRoomGroupIDs = []
         }
         self.groups = groups
+    }
+
+    func setPairMemberships(_ memberships: [Int: PairMembership]) {
+        pairMemberships = memberships
     }
 
     func setMultiRoomGroups(_ gids: Set<Int>, unconfirmed: Set<Int>) {
@@ -403,6 +429,12 @@ final class AppState: StateUpdater {
 
     func setQueue(_ items: [QueueItem]) {
         playback.queue = items
+        playback.queueNeedsReload = false
+    }
+
+    /// The queue_changed fetch can be lost or time out, so the queue view refetches on its next visit.
+    func noteQueueEdit() {
+        playback.queueNeedsReload = true
     }
 
     func setSignedInUser(_ username: String?) {
@@ -461,9 +493,11 @@ final class AppState: StateUpdater {
         guard !device.host.contains(":") else { return }
 
         if let idx = discoveredDevices.firstIndex(where: { $0.host == device.host }) {
-            // Replace if new entry has richer metadata (e.g. friendly name from UPnP)
+            // Replace if new entry has richer metadata (e.g. friendly name from UPnP) or a newer seat
             let existing = discoveredDevices[idx]
             if existing.friendlyName == existing.host, device.friendlyName != device.host {
+                discoveredDevices[idx] = device
+            } else if device.pair != existing.pair, device.friendlyName != device.host {
                 discoveredDevices[idx] = device
             }
         } else {
