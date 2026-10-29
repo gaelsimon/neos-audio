@@ -45,8 +45,8 @@ final class GroupViewModel {
         })
     }
 
-    /// Re-reads players and groups from the device: the escape hatch when a speaker came back or a
-    /// pair broke up and the device never said so.
+    /// Re-reads players and groups from the device and reclassifies them; a plain `loadGroups`
+    /// drops the pair/multi-room split whenever the group set changes.
     func refresh() {
         let requestID = groupsTracker.next()
         isLoadingGroups = true
@@ -71,11 +71,12 @@ final class GroupViewModel {
                 try await service.createGroup(leaderPID: leaderPID, memberPIDs: memberPIDs)
                 guard !Task.isCancelled else { return }
                 selectedMemberPIDs = []
-                loadGroups()
+                refresh()
             } catch {
                 guard !Task.isCancelled else { return }
                 if await groupsAfterSettling().contains(where: { $0.leads(leaderPID, over: memberPIDs) }) {
                     selectedMemberPIDs = []
+                    refresh()
                 } else {
                     state.error = .groupFailed(error.localizedDescription)
                 }
@@ -91,11 +92,13 @@ final class GroupViewModel {
             do {
                 try await service.ungroup(pid: pid)
                 guard !Task.isCancelled else { return }
-                loadGroups()
+                refresh()
             } catch {
                 guard !Task.isCancelled else { return }
                 if await groupsAfterSettling().contains(where: { $0.leader?.pid == pid }) {
                     state.error = .groupFailed(error.localizedDescription)
+                } else {
+                    refresh()
                 }
             }
             guard !Task.isCancelled else { return }

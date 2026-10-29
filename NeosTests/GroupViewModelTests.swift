@@ -94,6 +94,19 @@ final class GroupViewModelTests: XCTestCase {
         XCTAssertTrue(vm.selectedMemberPIDs.isEmpty)
     }
 
+    @MainActor
+    func testCreateGroupRefreshesSpeakersOnSuccess() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+
+        vm.selectedMemberPIDs = [2]
+        vm.createGroup(leaderPID: 1)
+
+        await waitUntil { !vm.isCreatingGroup && !vm.isLoadingGroups }
+        XCTAssertEqual(mock.calls, ["createGroup:1:[2]", "refreshSpeakers"])
+    }
+
     // MARK: - loadGroups
 
     @MainActor
@@ -168,6 +181,21 @@ final class GroupViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testCreateGroupRefreshesSpeakersWhenTheGroupFormedAnyway() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.createGroupError = NSError(domain: "test", code: 1)
+        mock.groups = [formedGroup(leader: 1, members: [2])]
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
+
+        vm.selectedMemberPIDs = [2]
+        vm.createGroup(leaderPID: 1)
+
+        await waitUntil { !vm.isCreatingGroup && !vm.isLoadingGroups }
+        XCTAssertTrue(mock.calls.contains("refreshSpeakers"))
+    }
+
+    @MainActor
     func testCreateGroupErrorIsReportedWhenNoGroupFormed() async {
         let state = AppState()
         let mock = MockAudioService()
@@ -210,6 +238,32 @@ final class GroupViewModelTests: XCTestCase {
         await waitUntil { !vm.isUngrouping }
         XCTAssertNil(state.error)
         XCTAssertTrue(state.groups.isEmpty)
+    }
+
+    @MainActor
+    func testUngroupRefreshesSpeakersOnSuccess() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+
+        vm.ungroup(pid: 5)
+
+        await waitUntil { !vm.isUngrouping && !vm.isLoadingGroups }
+        XCTAssertEqual(mock.calls, ["ungroup:5", "refreshSpeakers"])
+    }
+
+    @MainActor
+    func testUngroupRefreshesSpeakersWhenTheGroupIsGone() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.ungroupError = NSError(domain: "test", code: 1)
+        state.groups = [formedGroup(leader: 5, members: [6])]
+        let vm = GroupViewModel(service: mock, state: state, groupSettleDelay: .zero)
+
+        vm.ungroup(pid: 5)
+
+        await waitUntil { !vm.isUngrouping && !vm.isLoadingGroups }
+        XCTAssertTrue(mock.calls.contains("refreshSpeakers"))
     }
 
     @MainActor
