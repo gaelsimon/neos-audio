@@ -235,6 +235,14 @@ enum AccessibilityID {
             "group.ungroupButton.\(gid)"
         }
 
+        static func renameButton(_ gid: Int) -> String {
+            "group.renameButton.\(gid)"
+        }
+
+        static func nameField(_ gid: Int) -> String {
+            "group.nameField.\(gid)"
+        }
+
         static func memberToggle(_ pid: Int) -> String {
             "group.memberToggle.\(pid)"
         }

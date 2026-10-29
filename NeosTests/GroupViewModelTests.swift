@@ -297,6 +297,68 @@ final class GroupViewModelTests: XCTestCase {
         XCTAssertEqual(state.groups.map(\.gid), [5])
     }
 
+    // MARK: - renameGroup
+
+    @MainActor
+    func testRenameGroupStoresTheAliasAndOffersItToTheDevices() async {
+        let state = AppState()
+        state.persistsDiscoveryCaches = false
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+        let group = formedGroup(leader: 1, members: [2])
+
+        vm.renameGroup(group, to: "  All  ")
+
+        await waitUntil { mock.calls.contains("renameGroup:1:All") }
+        XCTAssertEqual(state.displayName(for: group), "All")
+    }
+
+    @MainActor
+    func testRenameGroupKeepsTheAliasWhenTheDevicesRefuse() async {
+        let state = AppState()
+        state.persistsDiscoveryCaches = false
+        let mock = MockAudioService()
+        mock.renameGroupError = NSError(domain: "test", code: 1)
+        let vm = GroupViewModel(service: mock, state: state)
+        let group = formedGroup(leader: 1, members: [2])
+
+        vm.renameGroup(group, to: "All")
+
+        await waitUntil { !state.diagnostics.isEmpty }
+        XCTAssertEqual(state.displayName(for: group), "All")
+        XCTAssertNil(state.error)
+    }
+
+    @MainActor
+    func testRenameGroupTruncatesLongNames() async {
+        let state = AppState()
+        state.persistsDiscoveryCaches = false
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+        let group = formedGroup(leader: 1, members: [2])
+
+        vm.renameGroup(group, to: String(repeating: "a", count: 40))
+
+        await yieldForTask()
+        XCTAssertEqual(state.displayName(for: group).count, GroupViewModel.maxGroupNameLength)
+    }
+
+    @MainActor
+    func testRenameGroupToNothingForgetsTheAliasWithoutAskingTheDevices() async {
+        let state = AppState()
+        state.persistsDiscoveryCaches = false
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+        let group = formedGroup(leader: 1, members: [2])
+        vm.renameGroup(group, to: "All")
+
+        vm.renameGroup(group, to: " ")
+
+        await yieldForTask()
+        XCTAssertEqual(state.displayName(for: group), "Den + Bath")
+        XCTAssertEqual(mock.calls.filter { $0.hasPrefix("renameGroup") }, ["renameGroup:1:All"])
+    }
+
     // MARK: - Per-speaker volume
 
     @MainActor

@@ -78,6 +78,7 @@
 		59C9762C5F74DE702EE45D89 /* AppState+Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6DDCE5DDE926EB8A74142DB /* AppState+Playback.swift */; };
 		5AC55D31099ED2DEC166A362 /* LocalServerPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E39CCA6A39A4116E2272FF6 /* LocalServerPreferences.swift */; };
 		5B60A33010EECA43EF4A4DDD /* ImageURLUpscaler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562D253082EF88ADC2BBF521 /* ImageURLUpscaler.swift */; };
+		5BD750C74C7A2DEFA0BC1ED7 /* GroupNameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A85B993B559E305C55F10A /* GroupNameStore.swift */; };
 		5DDC996EDE9EF4E38A377837 /* BrowseScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0BC1A045C95358705B801F /* BrowseScreen.swift */; };
 		5DE09B1170937E688734E756 /* demo-jazz.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 54F5F50A0FC2EA248466141D /* demo-jazz.jpg */; };
 		605F834229643E50BDBE6FE0 /* QueueRollback.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8DBA0F8C29D0B4FCE68D86 /* QueueRollback.swift */; };
@@ -306,6 +307,7 @@
 		40DD05AB8B993AFFC2B5C458 /* StationImageStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationImageStoreTests.swift; sourceTree = "<group>"; };
 		416B6B4CFF107C8E0CC47932 /* InterpolatedPositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterpolatedPositionTests.swift; sourceTree = "<group>"; };
 		4202C12EE7B050402074A2F0 /* TrackListPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackListPresentation.swift; sourceTree = "<group>"; };
+		42A85B993B559E305C55F10A /* GroupNameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupNameStore.swift; sourceTree = "<group>"; };
 		433C5CFE4ADFEE18FE09CB86 /* ExternalLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalLinkTests.swift; sourceTree = "<group>"; };
 		434CB26F350B9F8F77A955BD /* DemoSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoSearchTests.swift; sourceTree = "<group>"; };
 		463C728E6FF945A9EA74B575 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
@@ -657,6 +659,7 @@
 				0ABFC3AC950F31B5B72C396B /* BrowseState.swift */,
 				9EA00DA8E807AB81B7B3B7D9 /* DeviceCache.swift */,
 				9031C15F4727281C9794BEDB /* FollowerCache.swift */,
+				42A85B993B559E305C55F10A /* GroupNameStore.swift */,
 				DAF7C9ED214C9AD984E3889B /* HomeCacheStore.swift */,
 				90E55AE0C7006ED130F8BF45 /* HomePreferences.swift */,
 				665534F8F9737292E81E1371 /* ImageCacheState.swift */,
@@ -1069,6 +1072,7 @@
 				7A456AB801CF1CD3DDECFCB0 /* FilterChipRow.swift in Sources */,
 				88900A9AAB8C56ECBB057C2A /* FollowerCache.swift in Sources */,
 				C66992ECEC3208E3271099EA /* Glass.swift in Sources */,
+				5BD750C74C7A2DEFA0BC1ED7 /* GroupNameStore.swift in Sources */,
 				98F8CB8CBC0F974CCA5B9E51 /* GroupViewModel.swift in Sources */,
 				545EE17BFB7BC135E6523EB3 /* HEOSConstants.swift in Sources */,
 				9B479F4EB7795F7142466D8A /* HeaderArtistLink.swift in Sources */,
@@ -1488,7 +1492,7 @@
 			repositoryURL = "https://github.com/gaelsimon/swift-heos";
 			requirement = {
 				kind = upToNextMinorVersion;
-				minimumVersion = 0.2.11;
+				minimumVersion = 0.2.12;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

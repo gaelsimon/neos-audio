@@ -33,6 +33,8 @@ final class AppState: StateUpdater {
     var persistsDiscoveryCaches = true
     /// Leader serial and leader name → pair room name, for naming a pair before connecting.
     var knownPairNames: [String: String] = FollowerCache.loadPairNames()
+    /// Short names chosen here for a set of speakers, keyed as `GroupNameStore` does.
+    var groupAliases: [String: String] = GroupNameStore.load()
 
     // Power
     var isPoweredOn: Bool = true
@@ -46,6 +48,8 @@ final class AppState: StateUpdater {
     var multiRoomGroupIDs: Set<Int> = []
     /// Stereo and surround seats by pid, read over UPnP; the CLI may list such a pair as one player.
     var pairMemberships: [Int: PairMembership] = [:]
+    /// Names the devices hold for their multi-room zones, by gid; the HEOS app's presets set them.
+    var zoneNames: [Int: String] = [:]
 
     // Playback (forwarded from sub-state)
     var playState: PlayState { playback.playState }
@@ -181,9 +185,21 @@ final class AppState: StateUpdater {
         guard let player = selectedPlayer else { return nil }
         if let group = groups.first(where: { $0.players.contains { $0.pid == player.pid } }),
            multiRoomGroupIDs.contains(group.gid) {
-            return group.name
+            return displayName(for: group)
         }
         return displayName(for: player)
+    }
+
+    /// The name chosen here for this set of speakers, else the one the devices hold for the zone,
+    /// else the "A + B" HEOS makes up.
+    func displayName(for group: SpeakerGroup) -> String {
+        if let alias = groupAliases[GroupNameStore.key(for: group)] {
+            return alias
+        }
+        if let zoneName = zoneNames[group.gid], !zoneName.isEmpty {
+            return zoneName
+        }
+        return group.name
     }
 
     var isPlaying: Bool { playback.isPlaying }
@@ -241,6 +257,22 @@ final class AppState: StateUpdater {
 
     func setPairMemberships(_ memberships: [Int: PairMembership]) {
         pairMemberships = memberships
+    }
+
+    func setZoneNames(_ names: [Int: String]) {
+        zoneNames = names
+    }
+
+    /// An empty alias forgets the set's name.
+    func setGroupAlias(_ alias: String, for group: SpeakerGroup) {
+        let key = GroupNameStore.key(for: group)
+        if alias.isEmpty {
+            groupAliases.removeValue(forKey: key)
+        } else {
+            groupAliases[key] = alias
+        }
+        guard persistsDiscoveryCaches else { return }
+        GroupNameStore.save(groupAliases)
     }
 
     func setMultiRoomGroups(_ gids: Set<Int>, unconfirmed: Set<Int>) {

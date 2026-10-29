@@ -12,6 +12,7 @@ final class GroupViewModel {
     private let loadGroupsTask = CancellableTaskHandle()
     private let createGroupTask = CancellableTaskHandle()
     private let ungroupTask = CancellableTaskHandle()
+    private let renameTask = CancellableTaskHandle()
     private let groupsTracker = RequestTracker()
 
     var selectedMemberPIDs: Set<Int> = []
@@ -103,6 +104,25 @@ final class GroupViewModel {
             }
             guard !Task.isCancelled else { return }
             isUngrouping = false
+        })
+    }
+
+    /// Short enough to show whole in the player bar.
+    static let maxGroupNameLength = 24
+
+    /// Keeps the name here for this set of speakers and offers it to the devices; a device that
+    /// refuses it changes nothing on screen.
+    func renameGroup(_ group: SpeakerGroup, to name: String) {
+        let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.maxGroupNameLength))
+        state.setGroupAlias(trimmed, for: group)
+        guard !trimmed.isEmpty else { return }
+        renameTask.replace(with: Task {
+            do {
+                try await service.renameGroup(gid: group.gid, name: trimmed)
+            } catch {
+                guard !Task.isCancelled else { return }
+                state.reportNonFatal(source: "group.rename", message: error.localizedDescription)
+            }
         })
     }
 

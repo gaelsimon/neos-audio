@@ -184,6 +184,13 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         if let error = ungroupError { throw error }
     }
 
+    var renameGroupError: Error?
+
+    func renameGroup(gid: Int, name: String) async throws {
+        calls.append("renameGroup:\(gid):\(name)")
+        if let error = renameGroupError { throw error }
+    }
+
     func setGroupVolume(gid: Int, level: Int) async throws {
         calls.append("setGroupVolume:\(gid):\(level)")
     }
