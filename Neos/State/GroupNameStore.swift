@@ -13,17 +13,17 @@ enum GroupNameStore {
         group.players.map(\.pid).sorted().map(String.init).joined(separator: ",")
     }
 
-    static func save(_ aliases: [String: String]) {
+    static func save(_ aliases: [String: String], in defaults: UserDefaults = .standard) {
         do {
             let data = try JSONEncoder().encode(aliases)
-            UserDefaults.standard.set(data, forKey: defaultsKey)
+            defaults.set(data, forKey: defaultsKey)
         } catch {
             groupNameLogger.warning("Failed to encode group names: \(error.localizedDescription)")
         }
     }
 
-    static func load() -> [String: String] {
-        guard let data = UserDefaults.standard.data(forKey: defaultsKey) else { return [:] }
+    static func load(from defaults: UserDefaults = .standard) -> [String: String] {
+        guard let data = defaults.data(forKey: defaultsKey) else { return [:] }
         do {
             return try JSONDecoder().decode([String: String].self, from: data)
         } catch {
