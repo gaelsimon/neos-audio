@@ -37,7 +37,7 @@ Using the Tidal desktop app with HEOS isn't great either. It only supports Tidal
 - Search across services with category filters (tracks, artists, albums)
 - Local music servers (MinimServer and other DLNA servers) with album covers and search; hide a server, or keep it out of search, from Settings
 - Switch your amp's inputs
-- Group speakers and set each one's volume; a stereo pair shows as one speaker
+- Group speakers, give the group a short name, and set each one's volume; a stereo pair shows as one speaker
 - Add your own radio stations by URL, with custom artwork
 - Full-screen Now Playing view with album art and queue panel
 - Click an artist or album name to jump to their page

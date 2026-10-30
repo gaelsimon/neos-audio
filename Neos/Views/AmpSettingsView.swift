@@ -7,6 +7,8 @@ struct AmpSettingsView: View {
     @Bindable var groupVM: GroupViewModel
 
     @State private var selectedLeaderPID: Int?
+    @State private var renamingGroupID: Int?
+    @State private var groupNameDraft = ""
 
     var body: some View {
         ScrollView {
@@ -159,8 +161,7 @@ struct AmpSettingsView: View {
 
     private func groupCard(_ group: SpeakerGroup) -> some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            Text(group.name)
-                .typography(.bodyMedium)
+            groupTitle(group)
 
             ForEach(group.players, id: \.pid) { player in
                 HStack(spacing: DS.Spacing.sm) {
@@ -202,6 +203,40 @@ struct AmpSettingsView: View {
         .padding(DS.Spacing.md)
         .background(DS.Colors.surfaceContainer, in: RoundedRectangle(cornerRadius: DS.Radius.medium))
         .onAppear { groupVM.loadMemberVolumes(for: group) }
+    }
+
+    @ViewBuilder
+    private func groupTitle(_ group: SpeakerGroup) -> some View {
+        if renamingGroupID == group.gid {
+            TextField("Group name", text: $groupNameDraft)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 240)
+                .onChange(of: groupNameDraft) { _, draft in
+                    groupNameDraft = String(draft.prefix(GroupViewModel.maxGroupNameLength))
+                }
+                .onSubmit {
+                    groupVM.renameGroup(group, to: groupNameDraft)
+                    renamingGroupID = nil
+                }
+                .onExitCommand { renamingGroupID = nil }
+                .accessibilityIdentifier(AccessibilityID.Group.nameField(group.gid))
+        } else {
+            HStack(spacing: DS.Spacing.sm) {
+                Text(state.displayName(for: group))
+                    .typography(.bodyMedium)
+                    .lineLimit(1)
+                HoverButton(action: {
+                    groupNameDraft = state.displayName(for: group)
+                    renamingGroupID = group.gid
+                }) { hovered in
+                    Image(systemName: DS.Icons.rename)
+                        .font(DS.IconFont.sm)
+                        .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                }
+                .help("Rename group")
+                .accessibilityIdentifier(AccessibilityID.Group.renameButton(group.gid))
+            }
+        }
     }
 
     // MARK: - Create Group

@@ -394,6 +394,82 @@ final class AppStateTests: XCTestCase {
         XCTAssertNil(AppState().playbackTargetName)
     }
 
+    // MARK: - Group names
+
+    private func denAndBath() -> SpeakerGroup {
+        SpeakerGroup(gid: 1, name: "Den + Bath", players: [
+            GroupPlayer(name: "Den", pid: 1, role: .leader),
+            GroupPlayer(name: "Bath", pid: 2, role: .member)
+        ])
+    }
+
+    @MainActor
+    func testGroupDisplayNameFallsBackToTheHEOSName() {
+        XCTAssertEqual(AppState().displayName(for: denAndBath()), "Den + Bath")
+    }
+
+    @MainActor
+    func testGroupDisplayNameUsesTheZoneNameTheDevicesHold() {
+        let state = AppState()
+        state.setZoneNames([1: "All Rooms"])
+
+        XCTAssertEqual(state.displayName(for: denAndBath()), "All Rooms")
+    }
+
+    @MainActor
+    func testGroupDisplayNameIgnoresAnEmptyZoneName() {
+        let state = AppState()
+        state.setZoneNames([1: ""])
+
+        XCTAssertEqual(state.displayName(for: denAndBath()), "Den + Bath")
+    }
+
+    @MainActor
+    func testGroupAliasWinsOverTheZoneName() {
+        let state = AppState()
+        state.persistsDiscoveryCaches = false
+        state.setZoneNames([1: "All Rooms"])
+        state.setGroupAlias("All", for: denAndBath())
+
+        XCTAssertEqual(state.displayName(for: denAndBath()), "All")
+    }
+
+    @MainActor
+    func testGroupAliasFollowsTheSpeakerSetWhoeverLeads() {
+        let state = AppState()
+        state.persistsDiscoveryCaches = false
+        state.setGroupAlias("All", for: denAndBath())
+        let bathLed = SpeakerGroup(gid: 2, name: "Bath + Den", players: [
+            GroupPlayer(name: "Bath", pid: 2, role: .leader),
+            GroupPlayer(name: "Den", pid: 1, role: .member)
+        ])
+
+        XCTAssertEqual(state.displayName(for: bathLed), "All")
+    }
+
+    @MainActor
+    func testEmptyGroupAliasForgetsTheName() {
+        let state = AppState()
+        state.persistsDiscoveryCaches = false
+        state.setGroupAlias("All", for: denAndBath())
+        state.setGroupAlias("", for: denAndBath())
+
+        XCTAssertEqual(state.displayName(for: denAndBath()), "Den + Bath")
+    }
+
+    @MainActor
+    func testPlaybackTargetNameUsesTheGroupAlias() {
+        let state = AppState()
+        state.persistsDiscoveryCaches = false
+        state.players = [Player(pid: 1, name: "Den"), Player(pid: 2, name: "Bath")]
+        state.groups = [denAndBath()]
+        state.multiRoomGroupIDs = [1]
+        state.selectedPlayerID = 2
+        state.setGroupAlias("All", for: denAndBath())
+
+        XCTAssertEqual(state.playbackTargetName, "All")
+    }
+
     // MARK: - queueNeedsReload
 
     @MainActor
