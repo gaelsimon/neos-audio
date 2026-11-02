@@ -1111,6 +1111,15 @@ final class AppStateTests: XCTestCase {
         PairMembership(groupUUID: "g1", role: role, channel: channel, name: name)
     }
 
+    @MainActor
+    func testPairRoomNameNamesAGroupMember() {
+        let state = AppState()
+        state.setPairMemberships([1: seat(.leader, "LEFT")])
+
+        XCTAssertEqual(state.displayName(for: GroupPlayer(name: "Kitchen Left", pid: 1, role: .leader)), "Kitchen")
+        XCTAssertEqual(state.displayName(for: GroupPlayer(name: "Bedroom", pid: 2, role: .member)), "Bedroom")
+    }
+
     /// Newer firmware lists a pair as one player and no group: the UPnP room name is all we have.
     @MainActor
     func testPairRoomNameNamesAPlayerTheCLIListsAlone() {
