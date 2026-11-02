@@ -105,15 +105,18 @@ struct AmpSettingsView: View {
             }
             .buttonStyle(.plain)
 
-            HoverButton(
-                action: { speakerVM.togglePower() },
-                accessibilityID: AccessibilityID.AmpSettings.powerButton
-            ) { hovered in
-                Image(systemName: DS.Icons.power)
-                    .font(DS.IconFont.lg)
-                    .foregroundStyle(hovered ? DS.Colors.accent : DS.Colors.textTertiary)
+            // Power is wired to the device the session is on, so only its row gets the button.
+            if player.ip == state.connectedDevice?.host {
+                HoverButton(
+                    action: { speakerVM.togglePower() },
+                    accessibilityID: AccessibilityID.AmpSettings.powerButton
+                ) { hovered in
+                    Image(systemName: DS.Icons.power)
+                        .font(DS.IconFont.lg)
+                        .foregroundStyle(hovered ? DS.Colors.accent : DS.Colors.textTertiary)
+                }
+                .help(state.isPoweredOn ? "Turn Off" : "Turn On")
             }
-            .help(state.isPoweredOn ? "Turn Off" : "Turn On")
         }
         .padding(.vertical, DS.Spacing.md)
         .accessibilityIdentifier(AccessibilityID.AmpSettings.playerRow(player.pid))
@@ -350,9 +353,9 @@ struct AmpSettingsView: View {
         return state.selectedPlayer.map { state.displayName(for: $0) } ?? device.host
     }
 
-    /// The picker shows the first player before the user touches it; the form must agree.
+    /// Before the user touches the picker it shows the playing speaker; the form must agree.
     private var leaderPID: Int? {
-        selectedLeaderPID ?? state.players.first?.pid
+        selectedLeaderPID ?? state.selectedPlayerID ?? state.players.first?.pid
     }
 
     private var canCreate: Bool {
