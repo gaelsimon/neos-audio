@@ -148,9 +148,7 @@ struct MainWindowView: View {
 
     /// Single splash view; content updates in place, no fading.
     private var connectionSplash: some View {
-        let deviceName = state.selectedPlayer?.name
-            ?? state.connectedDevice?.friendlyName
-            ?? "Speaker"
+        let deviceName = reconnectingDeviceName
 
         return VStack(spacing: DS.Spacing.md) {
             if state.isConnected {

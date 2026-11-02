@@ -34,7 +34,8 @@ struct ConnectionStatusView: View {
         switch state.connectionState {
         case .connected:
             if let device = state.connectedDevice {
-                return "Connected to \(device.friendlyName.isEmpty ? device.host : device.friendlyName)"
+                let name = state.displayName(for: device)
+                return "Connected to \(name.isEmpty ? device.host : name)"
             }
             return "Connected"
         case .connecting: return "Connecting..."
