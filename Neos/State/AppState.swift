@@ -164,6 +164,11 @@ final class AppState: StateUpdater {
         return player.name
     }
 
+    /// A group member's name; a pair leader shows its room name.
+    func displayName(for member: GroupPlayer) -> String {
+        pairMemberships[member.pid]?.roomName ?? member.name
+    }
+
     /// Pre-connect name for a discovered device; a pair leader shows its room name.
     func displayName(for device: DiscoveredDevice) -> String {
         if let roomName = device.pair?.roomName {

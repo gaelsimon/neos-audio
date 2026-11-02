@@ -105,15 +105,18 @@ struct AmpSettingsView: View {
             }
             .buttonStyle(.plain)
 
-            HoverButton(
-                action: { speakerVM.togglePower() },
-                accessibilityID: AccessibilityID.AmpSettings.powerButton
-            ) { hovered in
-                Image(systemName: DS.Icons.power)
-                    .font(DS.IconFont.lg)
-                    .foregroundStyle(hovered ? DS.Colors.accent : DS.Colors.textTertiary)
+            // Power is wired to the device the session is on, so only its row gets the button.
+            if player.ip == state.connectedDevice?.host {
+                HoverButton(
+                    action: { speakerVM.togglePower() },
+                    accessibilityID: AccessibilityID.AmpSettings.powerButton
+                ) { hovered in
+                    Image(systemName: DS.Icons.power)
+                        .font(DS.IconFont.lg)
+                        .foregroundStyle(hovered ? DS.Colors.accent : DS.Colors.textTertiary)
+                }
+                .help(state.isPoweredOn ? "Turn Off" : "Turn On")
             }
-            .help(state.isPoweredOn ? "Turn Off" : "Turn On")
         }
         .padding(.vertical, DS.Spacing.md)
         .accessibilityIdentifier(AccessibilityID.AmpSettings.playerRow(player.pid))
@@ -168,7 +171,7 @@ struct AmpSettingsView: View {
                     Image(systemName: player.role == .leader ? DS.Icons.star : DS.Icons.speaker)
                         .font(DS.IconFont.sm)
                         .foregroundStyle(player.role == .leader ? DS.Colors.accent : DS.Colors.textSecondary)
-                    Text(player.name)
+                    Text(state.displayName(for: player))
                         .typography(.secondary)
                         .lineLimit(1)
                         .frame(width: 88, alignment: .leading)
@@ -255,7 +258,7 @@ struct AmpSettingsView: View {
                         .typography(.secondary)
                     Picker("", selection: leaderBinding) {
                         ForEach(state.players) { player in
-                            Text(player.name).tag(player.pid)
+                            Text(state.displayName(for: player)).tag(player.pid)
                         }
                     }
                     .labelsHidden()
@@ -272,7 +275,7 @@ struct AmpSettingsView: View {
                                 Image(systemName: DS.Icons.speaker)
                                     .font(DS.IconFont.md)
                                     .foregroundStyle(DS.Colors.textSecondary)
-                                Text(player.name)
+                                Text(state.displayName(for: player))
                                     .typography(.bodyPrimary)
                             }
                         }
@@ -345,14 +348,14 @@ struct AmpSettingsView: View {
 
     private func connectionDisplayName(_ device: DiscoveredDevice) -> String {
         if !device.friendlyName.isEmpty, device.friendlyName != device.host {
-            return device.friendlyName
+            return state.displayName(for: device)
         }
-        return state.selectedPlayer?.name ?? device.host
+        return state.selectedPlayer.map { state.displayName(for: $0) } ?? device.host
     }
 
-    /// The picker shows the first player before the user touches it; the form must agree.
+    /// Before the user touches the picker it shows the playing speaker; the form must agree.
     private var leaderPID: Int? {
-        selectedLeaderPID ?? state.players.first?.pid
+        selectedLeaderPID ?? state.selectedPlayerID ?? state.players.first?.pid
     }
 
     private var canCreate: Bool {
