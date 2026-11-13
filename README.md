@@ -2,6 +2,7 @@
 
 A native macOS app for controlling Denon and Marantz HEOS speakers. Built with SwiftUI. No third-party dependencies. Open source, MIT licensed.
 
+[![Mac App Store](https://img.shields.io/badge/Mac%20App%20Store-Neos%20Audio-0d96f6?style=for-the-badge&logo=appstore&logoColor=white)](https://apps.apple.com/app/neos-audio/id6823660859)
 [![Download](https://img.shields.io/github/v/release/gaelsimon/neos-audio?label=Download&style=for-the-badge&logo=apple&logoColor=white)](https://github.com/gaelsimon/neos-audio/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/gaelsimon/neos-audio/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/gaelsimon/neos-audio/actions/workflows/ci.yml)
@@ -55,12 +56,16 @@ Neos has been primarily tested with **Tidal**, **SoundCloud**, **TuneIn**, and *
 
 **Requires** macOS 14.0 (Sonoma) or later and a Denon or Marantz speaker with HEOS built-in, on the same network.
 
+The easiest way is the [Mac App Store](https://apps.apple.com/app/neos-audio/id6823660859), where it is listed as Neos Audio and updates itself. App Store updates can land a few days after a GitHub release, while Apple reviews them.
+
+Or install the DMG:
+
 1. Download the latest DMG from [Releases](https://github.com/gaelsimon/neos-audio/releases/latest)
 2. Open the DMG and drag Neos to your Applications folder
 3. Launch Neos - it appears in your menu bar
 4. Your speaker should be discovered automatically
 
-Neos is signed with a Developer ID and notarized by Apple, so macOS opens it like any other app downloaded from the internet. Versions before 1.7.3 were unsigned and needed a right-click → **Open** on first launch.
+The DMG is signed with a Developer ID and notarized by Apple, so macOS opens it like any other app downloaded from the internet. Versions before 1.7.3 were unsigned and needed a right-click → **Open** on first launch.
 
 ## How It Works
 

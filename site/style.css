@@ -51,6 +51,8 @@ header.site nav a:hover { color: var(--text); text-decoration: none; }
   border-radius: 999px;
 }
 .button:hover { text-decoration: none; filter: brightness(1.08); }
+.button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.hero .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 .hero .meta { color: var(--text-tertiary); font-size: 14px; margin-top: 14px; }
 
 .shot {
