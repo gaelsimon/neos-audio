@@ -41,3 +41,20 @@ struct ToastView: View {
         .onAppear { AccessibilityNotification.Announcement(message.text).post() }
     }
 }
+
+/// The toast of the moment, sliding in from the bottom.
+struct ToastOverlay: View {
+    let state: AppState
+
+    var body: some View {
+        ZStack {
+            if let toast = state.toast {
+                ToastView(message: toast)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, DS.Spacing.lg)
+                    .id(toast.id)
+            }
+        }
+        .animation(.easeInOut(duration: DS.Animation.standard), value: state.toast)
+    }
+}

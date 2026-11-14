@@ -91,6 +91,67 @@ final class BrowseViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.canGoForward)
     }
 
+    // MARK: - Pages
+
+    @MainActor
+    func testAPageHandsANewPlaceOverInsteadOfLoadingIt() async {
+        let state = AppState()
+        var containerFetches = 0
+        let viewModel = BrowseViewModel(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            browseSource: { _ in BrowseResult(items: [BrowseItem(name: "Album", cid: "c1", browsable: true)]) },
+            browseContainer: { _, _, _ in
+                containerFetches += 1
+                return BrowseResult(items: [])
+            }
+        )
+        viewModel.selectSource(MusicSource(sid: 1, name: "TIDAL"))
+        await waitUntil { viewModel.items.map(\.name) == ["Album"] }
+        var opened: [BrowseLocation] = []
+        viewModel.openPage = { opened.append($0) }
+
+        viewModel.browseItem(BrowseItem(name: "Album", cid: "c1", browsable: true))
+        await yieldForTask()
+
+        XCTAssertEqual(opened.map { $0.browseStack.map(\.cid) }, [[nil, "c1"]])
+        XCTAssertEqual(viewModel.browseStack.count, 1)
+        XCTAssertEqual(viewModel.items.map(\.name), ["Album"])
+        XCTAssertEqual(containerFetches, 0)
+    }
+
+    @MainActor
+    func testAPageHandsSettingsOverAndStaysWhereItIs() {
+        let state = AppState()
+        let viewModel = BrowseViewModel(service: HEOSService(stateUpdater: state), state: state)
+        var opened: [BrowseLocation] = []
+        viewModel.openPage = { opened.append($0) }
+
+        viewModel.navigateToSettings()
+
+        XCTAssertEqual(opened.map(\.destination), [.settings])
+        XCTAssertEqual(viewModel.currentDestination, .home)
+    }
+
+    @MainActor
+    func testStartingAPageLoadsItsPlace() async {
+        let state = AppState()
+        let viewModel = BrowseViewModel(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, cid, _ in BrowseResult(items: [BrowseItem(name: "Track in \(cid)", mid: "m1", playable: true)]) }
+        )
+        let root = BrowseTarget(sid: 1, name: "TIDAL", serviceName: "TIDAL")
+        let album = BrowseTarget(sid: 1, cid: "c1", name: "Album", mediaType: .album, serviceName: "TIDAL")
+
+        viewModel.start(at: BrowseLocation(destination: .browse(root), browseStack: [root, album], searchContext: nil))
+        await waitUntil { viewModel.items.map(\.name) == ["Track in c1"] }
+
+        XCTAssertEqual(viewModel.browseStack, [root, album])
+        XCTAssertFalse(viewModel.canGoBack)
+    }
+
     // MARK: - Scroll Restoration
 
     @MainActor

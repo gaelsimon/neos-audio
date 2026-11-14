@@ -5,8 +5,9 @@ struct HomeCardRow: View {
     let items: [BrowseItem]
     let sid: Int
     var state: AppState?
-    var inset: CGFloat = DS.Layout.pageMargin
+    var inset: CGFloat?
     let onTap: (BrowseItem, Int) -> Void
+    @Environment(\.pageMargin) private var pageMargin
 
     var body: some View {
         FadingHorizontalScroll {
@@ -24,6 +25,6 @@ struct HomeCardRow: View {
                 }
             }
         }
-        .padding(.horizontal, inset)
+        .padding(.horizontal, inset ?? pageMargin)
     }
 }

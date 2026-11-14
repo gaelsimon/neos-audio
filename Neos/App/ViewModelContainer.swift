@@ -26,12 +26,18 @@ final class ViewModelContainer {
     let settingsVM: SettingsViewModel
     let groupVM: GroupViewModel
     let localServersVM: LocalServersViewModel
+    private let service: any AudioService
+    private let state: AppState
+    private let serverPreferences: LocalServerPreferences
 
     init(service: any AudioService, state: AppState) {
+        self.service = service
+        self.state = state
         self.playerVM = PlayerViewModel(service: service, state: state)
         self.speakerVM = SpeakerListViewModel(service: service, state: state)
         self.queueVM = QueueViewModel(service: service, state: state)
         let serverPreferences = LocalServerPreferences()
+        self.serverPreferences = serverPreferences
         self.browseVM = BrowseViewModel(service: service, state: state, serverPreferences: serverPreferences)
         self.homeVM = HomeViewModel(service: service, state: state)
         self.accountVM = AccountViewModel(service: service, state: state)
@@ -70,6 +76,11 @@ final class ViewModelContainer {
             guard let search, let browse else { return }
             search.tryRestore(atToken: browse.currentHistoryToken)
         }
+    }
+
+    /// A model for one page of the iPhone and iPad navigation, sharing the local server choices.
+    func makeBrowseModel() -> BrowseViewModel {
+        BrowseViewModel(service: service, state: state, serverPreferences: serverPreferences)
     }
 
     // MARK: - Navigation Commands

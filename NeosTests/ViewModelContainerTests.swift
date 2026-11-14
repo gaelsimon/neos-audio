@@ -17,6 +17,19 @@ final class ViewModelContainerTests: XCTestCase {
         container.searchVM.activateOverlay()
     }
 
+    // MARK: - Pages
+
+    @MainActor
+    func testEachPageModelStartsAtHomeAndApartFromTheWindowModel() {
+        let (container, _) = makeContainer()
+
+        let page = container.makeBrowseModel()
+
+        XCTAssertFalse(page === container.browseVM)
+        XCTAssertEqual(page.currentDestination, .home)
+        XCTAssertNil(page.openPage)
+    }
+
     // MARK: - Search Suspension Round-Trips
 
     @MainActor

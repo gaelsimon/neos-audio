@@ -6,28 +6,50 @@ struct QueueView: View {
     let viewModel: QueueViewModel
     let browseVM: BrowseViewModel
     @State private var showClearConfirmation = false
+    @Environment(\.listMargin) private var listMargin
+    /// Compact rows have no columns to label.
+    @Environment(\.isCompactLayout) private var isCompactLayout
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            #if os(macOS)
             queueHeader
 
             Divider()
+            #endif
 
             if state.queue.isEmpty && !viewModel.isLoadingQueue {
                 ContentUnavailableView("Queue Is Empty", systemImage: DS.Icons.playlists)
             } else {
                 // MARK: - Column Header
 
-                TrackListHeader(showArtist: true, showAlbum: true, trailingSlots: 2)
-                    .padding(.horizontal, DS.Spacing.xxl)
-                Divider()
-                    .foregroundStyle(DS.Colors.border)
-                    .padding(.horizontal, DS.Spacing.xxl)
+                if !isCompactLayout {
+                    TrackListHeader(showArtist: true, showAlbum: true, trailingSlots: 2)
+                        .listMargins()
+                    Divider()
+                        .foregroundStyle(DS.Colors.border)
+                        .listMargins()
+                }
 
                 queueList
-                    .contentMargins(.horizontal, DS.Spacing.xxl, for: .scrollContent)
+                    .contentMargins(.horizontal, listMargin, for: .scrollContent)
             }
         }
+        #if os(iOS)
+        .toolbar {
+            if viewModel.isLoadingQueue {
+                ToolbarItem(placement: .topBarTrailing) { ProgressView() }
+            }
+            if !state.queue.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Clear", role: .destructive) { showClearConfirmation = true }
+                        .disabled(viewModel.isClearing)
+                        .accessibilityIdentifier(AccessibilityID.Queue.clearButton)
+                        .modifier(clearConfirmation)
+                }
+            }
+        }
+        #endif
         .task(id: state.selectedPlayerID) {
             // EventRouter keeps a loaded queue current, unless an edit's fetch was lost on the way.
             if state.queue.isEmpty || state.playback.queueNeedsReload {
@@ -40,6 +62,8 @@ struct QueueView: View {
 
     // MARK: - Header
 
+    #if os(macOS)
+    /// The navigation bar carries the title and these actions on iPhone and iPad.
     private var queueHeader: some View {
         HStack {
             Text("Queue")
@@ -59,16 +83,18 @@ struct QueueView: View {
                     accessibilityID: AccessibilityID.Queue.clearButton
                 ) { showClearConfirmation = true }
                 .disabled(viewModel.isClearing)
-                .confirmationDialog("Clear Queue", isPresented: $showClearConfirmation) {
-                    Button("Clear Queue", role: .destructive) { viewModel.clearQueue() }
-                } message: {
-                    Text("This removes every track from the queue.")
-                }
+                .modifier(clearConfirmation)
             }
         }
-        .padding(.horizontal, DS.Spacing.xxl)
-        .padding(.top, DS.Spacing.xxl)
+        .pageMargins()
+        .padding(.top, DS.Layout.pageTop)
         .padding(.bottom, DS.Spacing.md)
+    }
+    #endif
+
+    /// On the Clear button itself, so an iPad popover points at it.
+    private var clearConfirmation: ClearQueueConfirmation {
+        ClearQueueConfirmation(isPresented: $showClearConfirmation) { viewModel.clearQueue() }
     }
 
     // MARK: - Queue Items
@@ -137,6 +163,19 @@ struct QueueView: View {
         }
         return {
             browseVM.pushArtistSearchNavigate(sid: sid, artistName: item.artist)
+        }
+    }
+}
+
+private struct ClearQueueConfirmation: ViewModifier {
+    @Binding var isPresented: Bool
+    let onClear: () -> Void
+
+    func body(content: Content) -> some View {
+        content.confirmationDialog("Clear Queue", isPresented: $isPresented) {
+            Button("Clear Queue", role: .destructive, action: onClear)
+        } message: {
+            Text("This removes every track from the queue.")
         }
     }
 }

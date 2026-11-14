@@ -16,10 +16,13 @@ struct NeosApp: App {
     var body: some Scene {
         WindowGroup {
             if let container {
-                MainWindowView(
-                    state: appState,
-                    container: container
-                )
+                Group {
+                    #if os(macOS)
+                    MainWindowView(state: appState, container: container)
+                    #else
+                    MobileRootView(state: appState, container: container)
+                    #endif
+                }
                 .onChange(of: scenePhase) { _, phase in
                     // Recover any playback events missed while the window was inactive.
                     if phase == .active { container.playerVM.resyncPlaybackState() }

@@ -64,9 +64,9 @@ struct GlassCapsule: View {
 extension View {
     /// A sub-header pinned under the top bar: one glass reaches up behind the bar, so the two never show a seam.
     func stickyHeaderGlass() -> some View {
-        padding(.top, DS.TopBar.height)
+        padding(.top, DS.Layout.topOverlay)
             .background(DarkGlass())
             .overlay(alignment: .bottom) { Rectangle().fill(DS.Colors.border).frame(height: 1) }
-            .padding(.top, -DS.TopBar.height)
+            .padding(.top, -DS.Layout.topOverlay)
     }
 }

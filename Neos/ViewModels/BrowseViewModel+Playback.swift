@@ -247,6 +247,21 @@ extension BrowseViewModel {
         return browseTracker.next()
     }
 
+    // MARK: - Errors
+
+    static func isAuthError(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return lower.contains("not logged in") || lower.contains("not signed in")
+    }
+
+    // The speaker drops its account without an event at times; the first refused browse is how Neos learns of it.
+    func reportBrowseError(_ error: Error) {
+        errorMessage = error.localizedDescription
+        if state.signedInUser != nil, Self.isAuthError(error.localizedDescription) {
+            state.setSignedInUser(nil)
+        }
+    }
+
     // MARK: - Scroll Position
 
     func resetScrollTracking() {

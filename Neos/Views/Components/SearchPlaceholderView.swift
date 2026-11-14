@@ -45,6 +45,6 @@ struct SearchPlaceholderView: View {
             RoundedRectangle(cornerRadius: DS.Radius.large)
                 .fill(DS.Colors.surfaceContainer)
         )
-        .padding(.horizontal, DS.Layout.pageMargin)
+        .pageMargins()
     }
 }

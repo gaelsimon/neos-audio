@@ -3,7 +3,7 @@ options:
   bundleIdPrefix: com.galela
   deploymentTarget:
     macOS: "14.0"
-    iOS: "17.0"
+    iOS: "18.0"
   xcodeVersion: "16.0"
   createIntermediateGroups: true
   defaultConfig: Release
@@ -46,6 +46,7 @@ targets:
       - path: Neos
         excludes:
           - Resources/Info.plist
+          - Views/iOS
     settings:
       base:
         INFOPLIST_FILE: Neos/Resources/Info.plist

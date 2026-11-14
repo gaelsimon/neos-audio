@@ -41,7 +41,22 @@ enum DS {
 
     // MARK: - Layout
     enum Layout {
+        #if os(macOS)
         static let pageMargin: CGFloat = Spacing.xxl
+        static let pageTop: CGFloat = Spacing.xxl
+        static let listOutdent: CGFloat = 0
+        /// The top bar floats over the page, which leaves this much room under it.
+        static let topOverlay: CGFloat = TopBar.height
+        #else
+        /// The navigation bar's margin on iPhone; the shell sets the iPad's through the environment.
+        static let pageMargin: CGFloat = Spacing.lg
+        static let regularPageMargin: CGFloat = 20
+        static let pageTop: CGFloat = Spacing.sm
+        /// Rows pad their own content by this much, so their text meets the title's edge.
+        static let listOutdent: CGFloat = Spacing.lg
+        /// The navigation bar keeps to the safe area instead of floating over the page.
+        static let topOverlay: CGFloat = 0
+        #endif
         static let surfaceInset: CGFloat = Spacing.lg
     }
 

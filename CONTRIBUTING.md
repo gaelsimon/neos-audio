@@ -146,7 +146,8 @@ Sample HEOS CLI responses live in `docs/samples/` and are useful test fixtures.
 
 - SwiftLint enforces the project style; `swiftlint` must pass before a PR can land.
 - Match existing patterns. Small focused files, MVVM, no force unwraps (`!`) outside test code.
-- Code only the Mac app needs goes in a `macOS` folder, which the iPhone and iPad target leaves out. A component that differs per platform keeps both versions in one file, behind `#if os(macOS)`.
+- Code only the Mac app needs goes in a `macOS` folder, which the iPhone and iPad target leaves out; code only the iPhone and iPad app needs goes in an `iOS` folder, which the Mac target leaves out. A component that differs per platform keeps both versions in one file, behind `#if os(macOS)`.
+- Pages pad their sides with `pageMargins()`, or `listMargins()` for rows that pad their own content, so everything lines up with the page title. On iPhone and iPad that title lives in the navigation bar, never in the page.
 - Tests for new behaviour. The app has over 400 unit tests and the protocol package has its own, keep that bar.
 
 ## Pull request process

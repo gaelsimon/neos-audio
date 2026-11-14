@@ -5,9 +5,14 @@ struct BrowseContentView: View {
     let state: AppState
     let browseVM: BrowseViewModel
 
-    @State private var showCompactHeader = false
+    @State var showCompactHeader = false
     @State private var stationImageTarget: BrowseItem?
     @State var showAddFavorite = false
+    @Environment(\.isCompactLayout) var isCompactLayout
+    #if os(iOS)
+    /// How far down the content the header's title ends: once scrolled past, the bar shows it.
+    @State var headerTitleBottom: CGFloat = .greatestFiniteMagnitude
+    #endif
 
     // MARK: - External Links
 
@@ -94,6 +99,9 @@ struct BrowseContentView: View {
             }
         }
         .accessibilityIdentifier(AccessibilityID.Browse.view)
+        #if os(iOS)
+        .toolbar { navigationBarItems }
+        #endif
         // Sheets, not popovers: the image picker becomes the key window, which dismisses a
         // transient popover before either form can be finished.
         .sheet(isPresented: $showAddFavorite) {
@@ -130,9 +138,15 @@ struct BrowseContentView: View {
                     if browseVM.isInContainer, let current = browseVM.browseStack.last {
                         containerHeader(current, backdropURL: backdropURL)
                     } else {
+                        // On iPhone and iPad the navigation bar's large title names a source.
+                        #if os(macOS)
                         sourceHeader
+                        #endif
                     }
                 }
+                #if os(iOS)
+                .coordinateSpace(name: Self.headerSpace)
+                #else
                 .overlay(
                     GeometryReader { geo in
                         let maxY = geo.frame(in: .named("browse_scroll")).maxY
@@ -140,9 +154,10 @@ struct BrowseContentView: View {
                     }
                 )
                 .onPreferenceChange(ScrollOffsetKey.self) { maxY in
-                    showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.TopBar.height) + 20
+                    showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.Layout.topOverlay) + 20
                     browseVM.isHeaderScrolledAway = showCompactHeader
                 }
+                #endif
 
                 if isInputSource {
                     // Input source: render card grid, skip track list header and column layout
@@ -165,7 +180,9 @@ struct BrowseContentView: View {
         // Back seeds the binding from history, and a new scroll view opens on that row.
         .scrollPosition(id: visibleTopID, anchor: .top)
         .coordinateSpace(name: "browse_scroll")
+        #if os(macOS)
         .ignoresSafeArea(edges: backdropURL == nil ? [] : .top)
+        // The navigation bar plays this part on iPhone and iPad.
         .overlay(alignment: .top) {
             if showCompactHeader {
                 if browseVM.isInContainer, let current = browseVM.browseStack.last {
@@ -175,6 +192,14 @@ struct BrowseContentView: View {
                 }
             }
         }
+        #else
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > headerTitleBottom
+        } action: { _, isPast in
+            showCompactHeader = isPast
+            browseVM.isHeaderScrolledAway = isPast
+        }
+        #endif
         .animation(.easeInOut(duration: 0.15), value: showCompactHeader)
         .id(browseVM.browseStack.map(\.stableID).joined(separator: "/"))
     }
@@ -280,7 +305,7 @@ struct BrowseContentView: View {
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, DS.Spacing.xxl)
+                .pageMargins()
                 .padding(.bottom, DS.Spacing.lg)
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -313,18 +338,18 @@ struct BrowseContentView: View {
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, DS.Spacing.xxl)
+                .listMargins()
             }
         }
 
-        // Track list header (only when there are playable items in track-list mode)
-        if isTrackList && !playableItems.isEmpty {
+        // Track list header (only when there are playable items in track-list mode; an iPhone row has no columns)
+        if isTrackList && !playableItems.isEmpty && !isCompactLayout {
             TrackListHeader(showArtist: showArtistColumn, showAlbum: showAlbumColumn)
                 .padding(.top, DS.Spacing.md)
-                .padding(.horizontal, DS.Spacing.xxl)
+                .listMargins()
             Divider()
                 .foregroundStyle(DS.Colors.border)
-                .padding(.horizontal, DS.Spacing.xxl)
+                .listMargins()
         }
 
         // List of playable items (songs, stations)
@@ -358,7 +383,7 @@ struct BrowseContentView: View {
                 }
             }
             .scrollTargetLayout()
-            .padding(.horizontal, DS.Spacing.xxl)
+            .listMargins()
         } else if browseVM.isLoadingMore {
             HStack {
                 Spacer()

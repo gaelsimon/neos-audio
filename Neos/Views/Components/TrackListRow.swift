@@ -36,6 +36,11 @@ struct TrackListRow: View {
     let onTap: () -> Void
 
     @State private var isHovered = false
+    /// No room for columns: the artist goes under the title and the album goes.
+    @Environment(\.isCompactLayout) private var isCompact
+
+    private var showsArtistColumn: Bool { showArtist && !isCompact }
+    private var showsAlbumColumn: Bool { showAlbum && !isCompact }
 
     private var effectiveImageURL: String {
         if let state, let imageKey {
@@ -45,7 +50,7 @@ struct TrackListRow: View {
     }
 
     private var textColumnWeights: [CGFloat] {
-        TrackListColumnWeights.textColumnWeights(showArtist: showArtist, showAlbum: showAlbum)
+        TrackListColumnWeights.textColumnWeights(showArtist: showsArtistColumn, showAlbum: showsAlbumColumn)
     }
 
     var body: some View {
@@ -55,11 +60,11 @@ struct TrackListRow: View {
             TrackListWeightedColumnsLayout(weights: textColumnWeights, spacing: DS.Spacing.sm) {
                 titleColumn
 
-                if showArtist {
+                if showsArtistColumn {
                     artistColumn
                 }
 
-                if showAlbum {
+                if showsAlbumColumn {
                     albumColumn
                 }
             }
@@ -248,11 +253,19 @@ struct TrackListRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
             }
 
-            Text(name.displayTitle)
-                .typography(.bodyPrimary)
-                .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
-                .lineLimit(1)
-                .accessibilityIdentifier(AccessibilityID.TrackList.title(index))
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                Text(name.displayTitle)
+                    .typography(.bodyPrimary)
+                    .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
+                    .lineLimit(1)
+                    .accessibilityIdentifier(AccessibilityID.TrackList.title(index))
+
+                if isCompact && showArtist, let artist, !artist.isEmpty {
+                    Text(artist)
+                        .typography(.secondary)
+                        .lineLimit(1)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .layoutPriority(3)

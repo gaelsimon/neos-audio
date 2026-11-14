@@ -66,7 +66,7 @@ struct SearchResultsView: View {
                     )
                 }
             }
-            .padding(.horizontal, DS.Spacing.xxl)
+            .pageMargins()
         }
     }
 
@@ -124,7 +124,7 @@ struct SearchResultsView: View {
             RoundedRectangle(cornerRadius: DS.Radius.large)
                 .fill(DS.Colors.surfaceContainer)
         )
-        .padding(.horizontal, DS.Layout.pageMargin)
+        .pageMargins()
     }
 
     // MARK: - Service Header

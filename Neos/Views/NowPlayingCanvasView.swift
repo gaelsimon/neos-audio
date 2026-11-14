@@ -56,6 +56,7 @@ struct NowPlayingCanvasView: View {
         .task(id: nowPlayingResolvedImageURL) {
             await updateColors()
         }
+        #if os(macOS)
         .focusable()
         .focusEffectDisabled()
         .focused($isFocused)
@@ -66,6 +67,7 @@ struct NowPlayingCanvasView: View {
         .onAppear {
             DispatchQueue.main.async { isFocused = true }
         }
+        #endif
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.NowPlayingCanvas.view)
     }
@@ -108,6 +110,11 @@ struct NowPlayingCanvasView: View {
                     .frame(width: 32, height: 32)
                     .background(DS.Colors.surfaceElevated.opacity(hovered ? 1 : 0.6), in: Circle())
             }
+            .accessibilityLabel("Close Player")
+            #if os(iOS)
+            // The Mac closes on Escape through the canvas's keyboard focus, which iOS cannot take.
+            .keyboardShortcut(.cancelAction)
+            #endif
         }
     }
 

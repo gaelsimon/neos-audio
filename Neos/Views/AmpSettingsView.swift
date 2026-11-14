@@ -13,16 +13,19 @@ struct AmpSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
+                // The navigation bar titles the page on iPhone and iPad.
+                #if os(macOS)
                 Text("Amp Settings")
                     .typography(.pageTitle)
                     .padding(.bottom, DS.Spacing.sm)
+                #endif
 
                 playersSection
                 groupsSection
                 connectionSection
             }
-            .padding(.horizontal, DS.Spacing.xxl)
-            .padding(.top, DS.Spacing.xxl)
+            .pageMargins()
+            .padding(.top, DS.Layout.pageTop)
             .padding(.bottom, DS.Spacing.xxxl)
             .frame(maxWidth: 640, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)

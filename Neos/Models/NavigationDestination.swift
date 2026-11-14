@@ -60,3 +60,16 @@ public struct BrowseTarget: Hashable, Sendable {
         "\(sid)\(cid ?? "")"
     }
 }
+
+/// Context for "See All" search results browsing (search API instead of container API).
+struct SearchResultsContext: Equatable {
+    let query: String
+    let scid: Int
+}
+
+/// A place in the app, as one page of the iPhone and iPad navigation shows it.
+struct BrowseLocation: Equatable {
+    let destination: NavigationDestination
+    let browseStack: [BrowseTarget]
+    let searchContext: SearchResultsContext?
+}

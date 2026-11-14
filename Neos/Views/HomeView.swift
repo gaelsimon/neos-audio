@@ -14,12 +14,17 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
+                #if os(macOS)
                 header
+                #endif
                 sections
             }
-            .padding(.top, DS.Spacing.xxl)
+            .padding(.top, DS.Layout.pageTop)
             .padding(.bottom, DS.Spacing.xxl)
         }
+        #if os(iOS)
+        .refreshable { homeVM.refresh() }
+        #endif
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityIdentifier(AccessibilityID.Home.view)
         .task {
@@ -29,6 +34,8 @@ struct HomeView: View {
 
     // MARK: - Header
 
+    #if os(macOS)
+    /// The navigation bar titles the page on iPhone and iPad, and pull to refresh reloads it.
     private var header: some View {
         HStack {
             Text("Home")
@@ -52,9 +59,10 @@ struct HomeView: View {
             .help("Refresh")
             .accessibilityIdentifier(AccessibilityID.Home.refreshButton)
         }
-        .padding(.horizontal, DS.Spacing.xxl)
+        .pageMargins()
         .accessibilityIdentifier(AccessibilityID.Home.header)
     }
+    #endif
 
     // MARK: - Sections
 
@@ -157,7 +165,7 @@ struct HomeView: View {
                 RoundedRectangle(cornerRadius: DS.Radius.large)
                     .fill(DS.Colors.surfaceContainer)
             )
-            .padding(.horizontal, DS.Layout.pageMargin)
+            .pageMargins()
         }
     }
 

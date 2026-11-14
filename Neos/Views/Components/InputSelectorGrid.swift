@@ -17,7 +17,7 @@ struct InputSelectorGrid: View {
                     inputCard(item)
                 }
             }
-            .padding(.horizontal, DS.Spacing.xxl)
+            .pageMargins()
             .padding(.top, DS.Spacing.xl)
             .accessibilityIdentifier(AccessibilityID.InputSelector.grid)
         }
