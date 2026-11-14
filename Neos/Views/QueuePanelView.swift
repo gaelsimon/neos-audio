@@ -133,7 +133,7 @@ struct QueuePanelView: View {
                             isStation: true,
                             isNowPlaying: false,
                             showRemoveButton: false,
-                            onTap: { viewModel.playHistoryStation(item) },
+                            onTap: { viewModel.playHistoryItem(item) },
                             externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
                             state: state
                         )

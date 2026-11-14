@@ -11,6 +11,21 @@ enum SignInErrorType {
     case timeout
     case unknown(String)
 
+    init(_ error: any Error) {
+        let message = error.localizedDescription.lowercased()
+        let authKeywords = ["user not found", "invalid", "credentials", "sign in", "password"]
+        let networkKeywords = ["network", "connection", "offline", "not connected"]
+        if authKeywords.contains(where: { message.contains($0) }) {
+            self = .authFailed
+        } else if message.contains("timeout") || message.contains("timed out") {
+            self = .timeout
+        } else if networkKeywords.contains(where: { message.contains($0) }) || error is URLError {
+            self = .networkError
+        } else {
+            self = .unknown(error.localizedDescription)
+        }
+    }
+
     var message: String {
         switch self {
         case .authFailed:
@@ -92,7 +107,7 @@ final class AccountViewModel {
                 return
             } catch {
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                signInError = Self.categorizeError(error)
+                signInError = SignInErrorType(error)
                 if case .authFailed = signInError { failedCredentials = "\(username)\n\(password)" }
             }
             guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
@@ -278,23 +293,5 @@ final class AccountViewModel {
             kSecAttrService as String: Self.legacyKeychainService,
         ].merging(Self.keychainScope) { $1 }
         SecItemDelete(deleteLegacy as CFDictionary)
-    }
-
-    // MARK: - Error Categorization
-
-    private static func categorizeError(_ error: Error) -> SignInErrorType {
-        let message = error.localizedDescription.lowercased()
-        let authKeywords = ["user not found", "invalid", "credentials", "sign in", "password"]
-        if authKeywords.contains(where: { message.contains($0) }) {
-            return .authFailed
-        }
-        if message.contains("timeout") || message.contains("timed out") {
-            return .timeout
-        }
-        let networkKeywords = ["network", "connection", "offline", "not connected"]
-        if networkKeywords.contains(where: { message.contains($0) }) || (error as? URLError) != nil {
-            return .networkError
-        }
-        return .unknown(error.localizedDescription)
     }
 }

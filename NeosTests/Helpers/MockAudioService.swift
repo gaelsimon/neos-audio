@@ -246,8 +246,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         }
     }
 
+    var historyError: Error?
+
     func getHistory(range: ClosedRange<Int>?) async throws -> BrowseResult {
         calls.append("getHistory")
+        if let error = historyError { throw error }
         return historyResult
     }
 
@@ -289,8 +292,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         if let error = signOutError { throw error }
     }
 
+    var checkAccountError: Error?
+
     func checkAccount() async throws -> String? {
         calls.append("checkAccount")
+        if let error = checkAccountError { throw error }
         return accountUser
     }
 
