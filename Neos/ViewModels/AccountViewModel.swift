@@ -198,7 +198,7 @@ final class AccountViewModel {
     }
 
     private func loadCredentials() {
-        guard rememberMe, !Self.isUnitTestHost else { return }
+        guard rememberMe, !DemoSession.isActive, !Self.isUnitTestHost else { return }
         migrateLegacyKeychainIfNeeded()
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
