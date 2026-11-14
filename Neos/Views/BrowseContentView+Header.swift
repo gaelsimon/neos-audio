@@ -129,7 +129,8 @@ extension BrowseContentView {
             if let backdropURL {
                 headerBackdrop(backdropURL)
                     #if os(iOS)
-                    .ignoresSafeArea(edges: .top)
+                    // The scroll view starts its content under the bars; reach back up behind them.
+                    .padding(.top, -scrollTopInset)
                     #endif
             }
         }
@@ -378,7 +379,7 @@ extension BrowseContentView {
     #if os(iOS)
     @ToolbarContentBuilder
     var navigationBarItems: some ToolbarContent {
-        if browseVM.isInContainer, let current = browseVM.browseStack.last {
+        if browseVM.opensOnArtwork, let current = browseVM.browseStack.last {
             // Appears once the header carrying the same title has scrolled away.
             ToolbarItem(placement: .principal) {
                 Text(current.name)

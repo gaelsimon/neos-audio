@@ -12,6 +12,8 @@ struct BrowseContentView: View {
     #if os(iOS)
     /// How far down the content the header's title ends: once scrolled past, the bar shows it.
     @State var headerTitleBottom: CGFloat = .greatestFiniteMagnitude
+    /// The bars' height, which the scroll view turns into a content inset the header's backdrop reaches up through.
+    @State var scrollTopInset: CGFloat = 0
     #endif
 
     // MARK: - External Links
@@ -33,23 +35,18 @@ struct BrowseContentView: View {
     // MARK: - Track List Detection
 
     /// True when the current browse result should render as a track list (column layout).
-    /// Uses MediaType-driven detection with heuristic fallback for .container type.
     private var isTrackList: Bool {
-        if let target = browseVM.browseStack.last {
-            switch target.mediaType {
-            case .album, .playlist:
-                return true
-            case .artist, .genre:
-                return false
-            default:
-                break  // fall through to heuristic for .container and others
-            }
-        }
-        // Heuristic fallback for .container type and when browseStack is empty
-        guard !browseVM.items.isEmpty else { return false }
-        let playableNonBrowsable = browseVM.items.filter { $0.playable && !$0.browsable }
-        return !playableNonBrowsable.isEmpty
-            && playableNonBrowsable.count >= browseVM.items.count / 2
+        TrackListPresentation.isTrackList(target: browseVM.browseStack.last, items: browseVM.items)
+    }
+
+    /// The Mac's header names every container. On iPhone and iPad the bar names a folder, so only a page about
+    /// one thing gets the header.
+    private var showsContainerHeader: Bool {
+        #if os(iOS)
+        browseVM.opensOnArtwork
+        #else
+        browseVM.isInContainer
+        #endif
     }
 
     private var showArtistColumn: Bool {
@@ -130,15 +127,15 @@ struct BrowseContentView: View {
 
     private var scrollableContent: some View {
         // Read here, not inside .background: @Observable only tracks browseVM.items from the body.
-        let backdropURL = browseVM.isInContainer ? browseVM.browseStack.last.flatMap(headerBackgroundURL) : nil
+        let backdropURL = showsContainerHeader ? browseVM.browseStack.last.flatMap(headerBackgroundURL) : nil
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Header (not lazy; GeometryReader stays active during scroll)
                 Group {
-                    if browseVM.isInContainer, let current = browseVM.browseStack.last {
+                    if showsContainerHeader, let current = browseVM.browseStack.last {
                         containerHeader(current, backdropURL: backdropURL)
                     } else {
-                        // On iPhone and iPad the navigation bar's large title names a source.
+                        // On iPhone and iPad the navigation bar's large title names a source or a folder.
                         #if os(macOS)
                         sourceHeader
                         #endif
@@ -198,6 +195,9 @@ struct BrowseContentView: View {
         } action: { _, isPast in
             showCompactHeader = isPast
             browseVM.isHeaderScrolledAway = isPast
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentInsets.top } action: { _, inset in
+            scrollTopInset = inset
         }
         #endif
         .animation(.easeInOut(duration: 0.15), value: showCompactHeader)

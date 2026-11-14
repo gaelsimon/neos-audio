@@ -38,8 +38,8 @@ struct PagedStack<Root: View>: View {
             .navigationDestination(for: BrowsePage.self) { page in
                 DestinationView(state: state, container: container, model: page.model)
                     .navigationTitle(page.model.currentLocationName)
-                    // A container's header carries its title, so the bar keeps a small one.
-                    .navigationBarTitleDisplayMode(page.model.isInContainer ? .inline : .large)
+                    // The artwork header carries the title, so the bar keeps a small one.
+                    .navigationBarTitleDisplayMode(page.model.opensOnArtwork ? .inline : .large)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { playerBar }
@@ -102,30 +102,17 @@ private struct AccountToolbar: ViewModifier {
                 }
             }
             .sheet(item: $sheet) { sheet in
-                NavigationStack {
-                    sheetContent(sheet)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Done") { self.sheet = nil }
-                            }
-                        }
+                switch sheet {
+                case .speakers:
+                    SpeakersSheet(state: state, container: container)
+                case .account:
+                    DoneSheet(title: "Settings") {
+                        AccountSettingsView(
+                            state: state, accountVM: container.accountVM, settingsVM: container.settingsVM,
+                            homeVM: container.homeVM, localServersVM: container.localServersVM
+                        )
+                    }
                 }
             }
-    }
-
-    @ViewBuilder
-    private func sheetContent(_ sheet: Sheet) -> some View {
-        switch sheet {
-        case .speakers:
-            AmpSettingsView(state: state, speakerVM: container.speakerVM, groupVM: container.groupVM)
-                .navigationTitle("Speakers")
-        case .account:
-            AccountSettingsView(
-                state: state, accountVM: container.accountVM, settingsVM: container.settingsVM,
-                homeVM: container.homeVM, localServersVM: container.localServersVM
-            )
-            .navigationTitle("Settings")
-        }
     }
 }

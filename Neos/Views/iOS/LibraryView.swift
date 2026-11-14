@@ -28,7 +28,7 @@ struct LibraryView: View {
                 libraryRow(sid: HEOSConstants.favoritesSID, name: "Favorites", icon: DS.Icons.radio)
                 libraryRow(sid: 1025, name: "Playlists", icon: DS.Icons.playlists)
                 libraryRow(sid: HEOSConstants.historySID, name: "History", icon: DS.Icons.historyUnfilled)
-                Button { model.selectQueue() } label: {
+                row { model.selectQueue() } label: {
                     Label("Queue", systemImage: DS.Icons.queue)
                 }
             }
@@ -37,7 +37,7 @@ struct LibraryView: View {
     }
 
     private func sourceRow(_ source: MusicSource) -> some View {
-        Button { model.selectSource(source) } label: {
+        row { model.selectSource(source) } label: {
             Label {
                 Text(source.name)
             } icon: {
@@ -49,8 +49,21 @@ struct LibraryView: View {
 
     private func libraryRow(sid: Int, name: String, icon: String) -> some View {
         let source = state.musicSources.first { $0.sid == sid } ?? MusicSource(sid: sid, name: name)
-        return Button { model.selectSource(source) } label: {
+        return row { model.selectSource(source) } label: {
             Label(name, systemImage: icon)
+        }
+    }
+
+    /// Every row opens a page, so it carries the chevron a `NavigationLink` would draw.
+    private func row<Content: View>(action: @escaping () -> Void, @ViewBuilder label: () -> Content) -> some View {
+        Button(action: action) {
+            HStack {
+                label()
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
         }
     }
 }

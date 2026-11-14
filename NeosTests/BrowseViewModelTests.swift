@@ -152,6 +152,32 @@ final class BrowseViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.canGoBack)
     }
 
+    @MainActor
+    func testAnAlbumPageOpensOnItsArtwork() async {
+        let state = AppState()
+        let viewModel = BrowseViewModel(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, _, _ in BrowseResult(items: [BrowseItem(name: "Track", mid: "m1", playable: true)]) }
+        )
+        let root = BrowseTarget(sid: 1, name: "TIDAL", serviceName: "TIDAL")
+        let album = BrowseTarget(sid: 1, cid: "c1", name: "Album", mediaType: .album, serviceName: "TIDAL")
+
+        viewModel.start(at: BrowseLocation(destination: .browse(root), browseStack: [root, album], searchContext: nil))
+        await waitUntil { !viewModel.items.isEmpty }
+
+        XCTAssertTrue(viewModel.opensOnArtwork)
+    }
+
+    @MainActor
+    func testAPageOutsideAContainerOpensOnItsTitle() {
+        let state = AppState()
+        let viewModel = BrowseViewModel(service: HEOSService(stateUpdater: state), state: state)
+
+        XCTAssertFalse(viewModel.opensOnArtwork)
+    }
+
     // MARK: - Scroll Restoration
 
     @MainActor

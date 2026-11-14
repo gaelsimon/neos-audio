@@ -39,16 +39,18 @@ struct AmpSettingsView: View {
     // MARK: - Section Card
 
     private func sectionCard<Content: View, Accessory: View>(
-        header: String,
+        header: String?,
         @ViewBuilder accessory: () -> Accessory = { EmptyView() },
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            HStack {
-                Text(header)
-                    .typography(.sectionHeader)
-                Spacer()
-                accessory()
+            if let header {
+                HStack {
+                    Text(header)
+                        .typography(.sectionHeader)
+                    Spacer()
+                    accessory()
+                }
             }
 
             VStack(alignment: .leading, spacing: DS.Spacing.lg) {
@@ -62,10 +64,19 @@ struct AmpSettingsView: View {
 
     // MARK: - Players Section
 
+    /// The sheet's bar already says it on iPhone and iPad.
+    private var speakersHeader: String? {
+        #if os(macOS)
+        "Speakers"
+        #else
+        nil
+        #endif
+    }
+
     private var playersSection: some View {
-        sectionCard(header: "Players") {
+        sectionCard(header: speakersHeader) {
             if state.players.isEmpty {
-                Text("No players found.")
+                Text("No speakers found.")
                     .typography(.secondary)
             } else {
                 VStack(spacing: 0) {

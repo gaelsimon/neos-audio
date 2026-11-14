@@ -110,7 +110,7 @@ struct SearchResultsView: View {
             } else {
                 ForEach(results, id: \.criteria.scid) { entry in
                     categorySection(
-                        criteriaName: entry.criteria.name,
+                        criteriaName: SearchCategoryName.plural(entry.criteria.name),
                         items: entry.items,
                         sid: sid,
                         scid: entry.criteria.scid,

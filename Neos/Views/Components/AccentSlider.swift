@@ -1,5 +1,10 @@
 import SwiftUI
 
+extension EnvironmentValues {
+    /// The filled part of the volume and progress sliders; white over the iPhone and iPad player's artwork colour.
+    @Entry var sliderFill: Color = DS.Colors.accent
+}
+
 /// The thin accent slider of the player bar and the amp page. VoiceOver sees a standard `Slider`.
 struct AccentSlider: View {
     let value: Double
@@ -9,6 +14,7 @@ struct AccentSlider: View {
     var onEditingChanged: (Bool) -> Void = { _ in }
     let onChange: (Double) -> Void
 
+    @Environment(\.sliderFill) private var fill
     @State private var isHovering = false
     @State private var isDragging = false
 
@@ -31,12 +37,12 @@ struct AccentSlider: View {
                     .frame(height: Self.trackHeight)
 
                 Capsule()
-                    .fill(DS.Colors.accent)
+                    .fill(fill)
                     .frame(width: max(0, fraction * width), height: Self.trackHeight)
 
                 if showsKnob && (isHovering || isDragging) {
                     Circle()
-                        .fill(DS.Colors.accent)
+                        .fill(fill)
                         .frame(width: Self.knobSize, height: Self.knobSize)
                         .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
                         .offset(x: fraction * width - Self.knobSize / 2)

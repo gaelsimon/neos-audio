@@ -3,35 +3,13 @@ import NeosDomain
 
 struct NowPlayingCanvasView: View {
     let state: AppState
+    /// Puts the speaker in the header in place of the artist, which the iPhone and iPad player name under the artwork.
+    var onShowSpeakers: (() -> Void)?
 
     private var dominantColors: [Color] { state.canvasDominantColors }
+    private var artwork: NowPlayingArtwork { NowPlayingArtwork(state: state) }
+    @Environment(\.isCompactLayout) private var isCompactLayout
     @FocusState private var isFocused: Bool
-
-    private var nowPlayingResolvedImageURL: String {
-        state.resolvedImageURL(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL)
-    }
-
-    // MARK: - Artwork URL
-
-    /// The artwork already known to load: what the player bar shows.
-    private var baseArtworkURL: URL? {
-        guard !nowPlayingResolvedImageURL.isEmpty else { return nil }
-        return URL(string: nowPlayingResolvedImageURL)
-    }
-
-    /// The track's own artwork, an upgrade over `baseArtworkURL` because it may fail to load.
-    private var artworkURL: URL? {
-        // A custom image is a deliberate choice; the track's own art must not replace it.
-        if state.hasCustomStationImage(forMID: state.nowPlaying.mid) { return nil }
-        let rawURL: String? = {
-            if let uri = state.trackMetadata?.albumArtURI, !uri.isEmpty { return uri }
-            if !nowPlayingResolvedImageURL.isEmpty { return nowPlayingResolvedImageURL }
-            return nil
-        }()
-        guard let rawURL else { return nil }
-        let resolved = ImageURLUpscaler.highResURL(from: rawURL) ?? ImageURLUpscaler.httpsURL(rawURL)
-        return URL(string: resolved)
-    }
 
     // MARK: - Body
 
@@ -44,7 +22,7 @@ struct NowPlayingCanvasView: View {
             Spacer(minLength: DS.Spacing.lg)
 
             heroArtwork
-                .padding(.horizontal, DS.Spacing.xxxl)
+                .padding(.horizontal, isCompactLayout ? DS.Spacing.xl : DS.Spacing.xxxl)
 
             Spacer(minLength: DS.Spacing.xl)
         }
@@ -53,9 +31,7 @@ struct NowPlayingCanvasView: View {
             AmbientBackground(colors: dominantColors)
                 .ignoresSafeArea()
         }
-        .task(id: nowPlayingResolvedImageURL) {
-            await updateColors()
-        }
+        .tracksArtworkColors(state)
         #if os(macOS)
         .focusable()
         .focusEffectDisabled()
@@ -76,10 +52,12 @@ struct NowPlayingCanvasView: View {
 
     private var canvasHeader: some View {
         HStack {
-            // Artist chip (Tidal style; pill with translucent background)
-            if !state.nowPlaying.artist.isEmpty {
+            if let onShowSpeakers {
+                speakerButton(action: onShowSpeakers)
+            } else if !state.nowPlaying.artist.isEmpty {
+                // Artist chip (Tidal style; pill with translucent background)
                 HStack(spacing: DS.Spacing.md) {
-                    CachedAsyncImage(url: artworkURL) {
+                    CachedAsyncImage(url: artwork.trackURL) {
                         Image(systemName: DS.Icons.personCircleFill)
                             .font(DS.IconFont.xxxl)
                             .foregroundStyle(DS.Colors.textTertiary)
@@ -118,10 +96,34 @@ struct NowPlayingCanvasView: View {
         }
     }
 
+    @ViewBuilder
+    private func speakerButton(action: @escaping () -> Void) -> some View {
+        if let target = state.playbackTargetName {
+            Button(action: action) {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: DS.Icons.speaker)
+                    Text(target)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(DS.IconFont.sm)
+                }
+                .typography(.bodyMedium)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(.white.opacity(0.12), in: Capsule())
+                .frame(minHeight: DS.HitTarget.button)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Playing on \(target)")
+            .accessibilityHint("Shows the speakers")
+        }
+    }
+
     // MARK: - Hero Artwork
 
     private var heroArtwork: some View {
-        CachedAsyncImage(url: baseArtworkURL ?? artworkURL, highResURL: artworkURL) {
+        CachedAsyncImage(url: artwork.baseURL ?? artwork.trackURL, highResURL: artwork.trackURL) {
             Image(systemName: DS.Icons.musicNote)
                 .font(DS.IconFont.mega)
                 .foregroundStyle(DS.Colors.textTertiary)
@@ -131,45 +133,22 @@ struct NowPlayingCanvasView: View {
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: 650)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artworkLarge))
+        .background {
+            GeometryReader { geo in
+                Color.clear.preference(key: NowPlayingArtworkWidthKey.self, value: geo.size.width)
+            }
+        }
         .shadow(color: .black.opacity(0.5), radius: 40, y: 10)
         .accessibilityIdentifier(AccessibilityID.NowPlayingCanvas.artwork)
     }
+}
 
-    // MARK: - Color Extraction
+/// The artwork's width, so a player can line its controls up under it.
+struct NowPlayingArtworkWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat? = nil
 
-    private func updateColors() async {
-        guard let url = artworkURL else {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                state.canvasDominantColors = DominantColorExtractor.defaultColors
-            }
-            return
-        }
-
-        // Same order as the view: the track's own image, then the one that always loads.
-        var artwork: PlatformImage?
-        for candidate in [url, baseArtworkURL].compactMap({ $0 }) {
-            if let cached = await ImageCache.shared.load(candidate) {
-                artwork = cached
-                break
-            }
-            if let data = try? await NeosURLSession.shared.data(from: candidate).0,
-               let downloaded = PlatformImage(data: data) {
-                artwork = downloaded
-                break
-            }
-        }
-
-        guard let artwork else {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                state.canvasDominantColors = DominantColorExtractor.defaultColors
-            }
-            return
-        }
-
-        let colors = await DominantColorExtractor.extractColors(from: artwork)
-        withAnimation(.easeInOut(duration: 0.5)) {
-            state.canvasDominantColors = colors
-        }
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        value = nextValue() ?? value
     }
 }
 
@@ -180,5 +159,10 @@ private struct AmbientBackground: View {
 
     var body: some View {
         (colors.first ?? DS.Colors.background)
+            #if os(iOS)
+            .overlay {
+                LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+            }
+            #endif
     }
 }
