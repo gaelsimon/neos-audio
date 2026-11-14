@@ -5,6 +5,10 @@ import NeosDomain
 @MainActor
 final class SettingsViewModel {
     private let state: AppState
+    /// The image cache and the clipboard are the app's own; tests hand in their stand-ins.
+    private let imageCacheBytes: () -> Int
+    private let clearImageCache: () -> Void
+    private let copyText: @MainActor (String) -> Void
 
     // MARK: - Volume Limit
 
@@ -46,7 +50,7 @@ final class SettingsViewModel {
         if !state.diagnostics.isEmpty {
             parts.append("\(state.diagnostics.count) diagnostic events")
         }
-        let imageDiskBytes = ImageCache.shared.diskSizeBytes()
+        let imageDiskBytes = imageCacheBytes()
         if imageDiskBytes > 0 {
             parts.append("\(ByteCountFormatter.string(fromByteCount: Int64(imageDiskBytes), countStyle: .file)) images")
         }
@@ -61,7 +65,7 @@ final class SettingsViewModel {
         state.serviceCapabilities = [:]
         state.searchCriteria = [:]
         state.diagnostics = []
-        ImageCache.shared.clearAll()
+        clearImageCache()
     }
 
     // MARK: - Diagnostics
@@ -73,13 +77,21 @@ final class SettingsViewModel {
             "[\(formatter.string(from: event.date))] [\(event.source)] \(event.message)"
         }
         let text = lines.joined(separator: "\n")
-        Clipboard.copy(text.isEmpty ? "No diagnostic events" : text)
+        copyText(text.isEmpty ? "No diagnostic events" : text)
     }
 
     // MARK: - Init
 
-    init(state: AppState) {
+    init(
+        state: AppState,
+        imageCacheBytes: @escaping () -> Int = { ImageCache.shared.diskSizeBytes() },
+        clearImageCache: @escaping () -> Void = { ImageCache.shared.clearAll() },
+        copyText: @escaping @MainActor (String) -> Void = { Clipboard.copy($0) }
+    ) {
         self.state = state
+        self.imageCacheBytes = imageCacheBytes
+        self.clearImageCache = clearImageCache
+        self.copyText = copyText
         self.volumeLimitEnabled = UserDefaults.standard.bool(forKey: "settings.volumeLimitEnabled")
         let savedValue = UserDefaults.standard.integer(forKey: "settings.volumeLimitValue")
         self.volumeLimitValue = savedValue > 0 ? savedValue : 80
