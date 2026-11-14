@@ -39,7 +39,7 @@ struct BrowseItemRow: View {
             Spacer()
 
             actionMenu
-                .opacity(isHovered && hasActions ? 1 : 0)
+                .opacity((isHovered || !DS.revealsControlsOnHover) && hasActions ? 1 : 0)
 
             if item.playable {
                 if isAddingToQueue {

@@ -66,7 +66,7 @@ struct TrackListRow: View {
             .frame(maxWidth: .infinity)
 
             actionMenu
-                .opacity(isHovered && hasActions ? 1 : 0)
+                .opacity((isHovered || !DS.revealsControlsOnHover) && hasActions ? 1 : 0)
 
             if let onRemove {
                 HoverButton(action: onRemove) { hovered in
@@ -75,7 +75,7 @@ struct TrackListRow: View {
                         .foregroundStyle(hovered ? DS.Colors.textSecondary : DS.Colors.textTertiary)
                         .frame(width: DS.TrackList.actionWidth, height: DS.TrackList.actionWidth)
                 }
-                .opacity(isHovered ? 1 : 0)
+                .opacity(isHovered || !DS.revealsControlsOnHover ? 1 : 0)
             }
         }
         .padding(.horizontal, DS.Spacing.lg)

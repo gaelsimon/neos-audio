@@ -66,7 +66,7 @@ struct AccentSlider: View {
                 }
             }
         }
-        .frame(height: Self.knobSize)
+        .frame(height: max(Self.knobSize, DS.HitTarget.slider))
         .accessibilityRepresentation {
             Slider(value: Binding(get: { value }, set: onChange), in: bounds) {
                 Text(label)

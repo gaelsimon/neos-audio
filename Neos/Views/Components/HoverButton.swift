@@ -9,7 +9,7 @@ struct HoverButton<Label: View>: View {
     var body: some View {
         Button(action: action) {
             label(isHovered)
-                .frame(minWidth: 36, minHeight: 36)
+                .frame(minWidth: DS.HitTarget.button, minHeight: DS.HitTarget.button)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -85,6 +85,28 @@ enum DS {
         static let expandedWidth: CGFloat = 200
     }
 
+    // MARK: - Hit Targets
+
+    /// Apple's touch minimum on iPhone and iPad; the Mac keeps its denser controls.
+    enum HitTarget {
+        #if os(iOS)
+        static let button: CGFloat = 44
+        static let slider: CGFloat = 44
+        #else
+        static let button: CGFloat = 36
+        static let slider: CGFloat = 14
+        #endif
+    }
+
+    /// Touch has no hover, so what hover reveals on the Mac stays visible there.
+    static let revealsControlsOnHover: Bool = {
+        #if os(iOS)
+        false
+        #else
+        true
+        #endif
+    }()
+
     // MARK: - Animation
     enum Animation {
         static let standard: Double = 0.25

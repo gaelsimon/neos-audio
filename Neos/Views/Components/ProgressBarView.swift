@@ -199,7 +199,7 @@ private struct SeekerPerformanceIsland: View {
                 withAnimation(.easeOut(duration: 0.15)) { isHovering = hovering }
             }
         }
-        .frame(height: 16)
+        .frame(height: max(16, DS.HitTarget.slider))
         .drawingGroup()
         .accessibilityRepresentation {
             Slider(value: Binding(get: { clamp(progress) }, set: { seek(to: $0) }), in: 0...1) {
