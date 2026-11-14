@@ -46,11 +46,9 @@ struct NowPlayingCanvasView: View {
 
             heroArtwork
                 .padding(.horizontal, DS.Spacing.xxxl)
-                .padding(.trailing, state.isQueuePanelOpen ? 350 : 0)
 
             Spacer(minLength: DS.Spacing.xl)
         }
-        .animation(.easeInOut(duration: DS.Animation.standard), value: state.isQueuePanelOpen)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             AmbientBackground(colors: dominantColors)

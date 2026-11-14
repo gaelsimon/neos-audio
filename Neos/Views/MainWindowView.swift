@@ -78,6 +78,11 @@ struct MainWindowView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: state.isNowPlayingCanvasOpen)
+        // Beside the full-screen player too, and above the player bar, which keeps the window's width.
+        .inspector(isPresented: Bindable(state).isQueuePanelOpen) {
+            QueuePanelView(state: state, viewModel: queuePanelVM)
+                .inspectorColumnWidth(min: 320, ideal: 380, max: 480)
+        }
         .safeAreaInset(edge: .bottom) {
             if presentation.showsContent && !showConnectedSplash {
                 // Transport is dead while reconnecting; dim it rather than let commands time out.
@@ -86,20 +91,6 @@ struct MainWindowView: View {
                     .opacity(state.isConnected ? 1 : 0.5)
             }
         }
-        // Single queue panel; adapts layout to canvas vs normal mode
-        .overlay(alignment: .trailing) {
-            if state.isQueuePanelOpen {
-                ZStack(alignment: .trailing) {
-                    QueuePanelView(state: state, viewModel: queuePanelVM)
-                        .frame(width: state.isNowPlayingCanvasOpen ? 380 + DS.Spacing.md * 2 : 380)
-                        .padding(.top, state.isNowPlayingCanvasOpen ? 60 : 48)
-                        .padding(.bottom, state.isNowPlayingCanvasOpen ? 120 : 108)
-                }
-                .transition(.move(edge: .trailing))
-            }
-        }
-        .animation(.easeInOut(duration: DS.Animation.standard), value: state.isQueuePanelOpen)
-        .animation(.easeInOut(duration: 0.35), value: state.isNowPlayingCanvasOpen)
         .frame(minWidth: 660, minHeight: 500)
         .preferredColorScheme(.dark)
         .background(WindowAccessor())
@@ -213,9 +204,6 @@ struct MainWindowView: View {
             .transition(.opacity)
             .animation(.easeInOut(duration: DS.Animation.viewTransition), value: browseVM.currentDestination)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Push content left when queue panel is open (normal mode only)
-            .padding(.trailing, !state.isNowPlayingCanvasOpen && state.isQueuePanelOpen ? 380 : 0)
-            .animation(.easeInOut(duration: DS.Animation.standard), value: state.isQueuePanelOpen)
             .background(DS.Colors.background)
         }
         // On the container, not on the identity-switching Group: a rebuild there recreated the search field mid-typing.

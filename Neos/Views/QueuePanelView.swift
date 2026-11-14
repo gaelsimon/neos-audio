@@ -60,24 +60,20 @@ struct QueuePanelView: View {
             }
         }
         .frame(maxHeight: .infinity)
+        // The column runs up under the title bar; the tabs line up with the top bar's controls.
+        .padding(.top, DS.Spacing.sm)
+        .ignoresSafeArea(edges: .top)
         .background {
-            if state.isNowPlayingCanvasOpen {
-                ZStack {
-                    RoundedRectangle(cornerRadius: DS.Radius.xl)
-                        .fill(canvasPanelColor)
-                    RoundedRectangle(cornerRadius: DS.Radius.xl)
-                        .fill(.black.opacity(0.5))
+            ZStack {
+                if state.isNowPlayingCanvasOpen {
+                    canvasPanelColor
+                    Color.black.opacity(0.5)
+                } else {
+                    DS.Colors.surfaceElevated
                 }
-            } else {
-                UnevenRoundedRectangle(topLeadingRadius: DS.Radius.large, bottomLeadingRadius: DS.Radius.large)
-                    .fill(DS.Colors.surfaceElevated)
             }
+            .ignoresSafeArea()
         }
-        .clipShape(state.isNowPlayingCanvasOpen
-            ? AnyShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-            : AnyShape(UnevenRoundedRectangle(topLeadingRadius: DS.Radius.large, bottomLeadingRadius: DS.Radius.large)))
-        .padding(state.isNowPlayingCanvasOpen ? DS.Spacing.md : 0)
-        .shadow(color: .black.opacity(0.3), radius: 8, x: -4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.QueuePanel.view)
         .accessibilityLabel("Queue and history panel")
