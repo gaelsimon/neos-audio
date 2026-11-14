@@ -84,7 +84,7 @@ struct HomeView: View {
             .accessibilityIdentifier(AccessibilityID.Home.recentlyPlayed)
         } else if homeVM.isLoadingRecents {
             HomeSection(title: "Recently Played") {
-                ShimmerCardRow()
+                PlaceholderCardRow()
             }
         }
     }
@@ -106,7 +106,7 @@ struct HomeView: View {
             .accessibilityIdentifier(AccessibilityID.Home.favorites)
         } else if homeVM.isLoadingFavorites {
             HomeSection(title: "Stations") {
-                ShimmerCardRow()
+                PlaceholderCardRow()
             }
         }
     }
@@ -149,7 +149,7 @@ struct HomeView: View {
                         serviceCategoryRow(source: source, categoryIndex: index)
                     }
                 } else {
-                    ShimmerCardRow(inset: DS.Layout.surfaceInset)
+                    PlaceholderCardRow(inset: DS.Layout.surfaceInset)
                 }
             }
             .padding(.vertical, DS.Spacing.xl)
@@ -242,7 +242,11 @@ struct HomeView: View {
         let isNotLoading = !homeVM.isLoadingRecents && !homeVM.isLoadingFavorites && homeVM.loadingServiceSIDs.isEmpty
 
         if hasNoContent && isNotLoading {
-            EmptyStateView(icon: DS.Icons.musicNoteHouse, message: "Select a source to start browsing")
+            ContentUnavailableView(
+                "Nothing Here Yet",
+                systemImage: DS.Icons.musicNoteHouse,
+                description: Text("Select a source to start browsing.")
+            )
                 .padding(.top, DS.Spacing.xxxl)
                 .accessibilityIdentifier(AccessibilityID.Home.emptyState)
         }

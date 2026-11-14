@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 import CommonCrypto
-import UniformTypeIdentifiers
 
 /// Editor for setting a custom artwork image on a station/track.
 /// The chosen image is copied to Application Support on save, for offline use.
@@ -34,12 +33,9 @@ struct StationImageEditor: View {
                 .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
                 .frame(maxWidth: .infinity)
 
-            // Choose image button
-            Button {
-                chooseLocalImage()
-            } label: {
-                Label("Choose Image…", systemImage: "folder")
-                    .frame(maxWidth: .infinity)
+            ImagePickerButton { image in
+                previewImage = image
+                pendingImage = image
             }
             .controlSize(.large)
 
@@ -114,19 +110,6 @@ struct StationImageEditor: View {
               let url = URL(string: existing),
               url.isFileURL else { return }
         previewImage = NSImage(contentsOf: url)
-    }
-
-    private func chooseLocalImage() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.message = "Choose an artwork image"
-
-        guard panel.runModal() == .OK, let sourceURL = panel.url else { return }
-        guard let image = NSImage(contentsOf: sourceURL) else { return }
-        previewImage = image
-        pendingImage = image
     }
 
     private func downloadFromURL() {

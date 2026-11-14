@@ -35,10 +35,12 @@ extension BrowseContentView {
     // MARK: - Error View
 
     func errorView(_ error: String) -> some View {
-        ErrorStateView(
-            message: error,
-            actionLabel: "Retry",
-            action: { browseVM.retry() }
-        )
+        ContentUnavailableView {
+            Label("Couldn't Load", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(error)
+        } actions: {
+            Button("Retry") { browseVM.retry() }
+        }
     }
 }

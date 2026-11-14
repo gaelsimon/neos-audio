@@ -75,9 +75,9 @@ struct SearchResultsView: View {
     @ViewBuilder
     private var resultsContent: some View {
         if searchVM.isSearching && searchVM.serviceResults.isEmpty {
-            SearchShimmerView()
+            SearchPlaceholderView()
         } else if !searchVM.isSearching && searchVM.serviceResults.isEmpty && !searchVM.query.isEmpty {
-            EmptyStateView(icon: DS.Icons.search, message: "No results found")
+            ContentUnavailableView.search(text: searchVM.query)
                 .padding(.top, DS.Spacing.xxxl)
         } else {
             ForEach(searchVM.filteredServiceSIDs, id: \.self) { sid in
@@ -100,11 +100,11 @@ struct SearchResultsView: View {
             }
 
             if results.isEmpty && isLoading {
-                // No old results to template from; generic shimmer fallback
-                ShimmerCardRow(cardCount: 3)
+                // No old results to template from, so generic placeholders
+                PlaceholderCardRow(cardCount: 3)
                 VStack(spacing: 0) {
                     ForEach(0..<3, id: \.self) { _ in
-                        ShimmerListRow()
+                        PlaceholderRow()
                     }
                 }
             } else {
@@ -188,11 +188,11 @@ struct SearchResultsView: View {
 
             if isServiceLoading {
                 if cardLayout {
-                    ShimmerCardRow(cardCount: min(items.count, searchVM.previewCount))
+                    PlaceholderCardRow(cardCount: min(items.count, searchVM.previewCount))
                 } else {
                     VStack(spacing: 0) {
                         ForEach(0..<min(items.count, searchVM.previewCount), id: \.self) { _ in
-                            ShimmerListRow()
+                            PlaceholderRow()
                         }
                     }
                 }

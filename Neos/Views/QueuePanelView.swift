@@ -26,7 +26,7 @@ struct QueuePanelView: View {
     var body: some View {
         Group {
             if viewModel.isEmpty && !viewModel.isLoadingHistory {
-                EmptyStateView(icon: DS.Icons.playlists, message: "Nothing playing")
+                ContentUnavailableView("Nothing Playing", systemImage: DS.Icons.playlists)
                     .accessibilityIdentifier(AccessibilityID.QueuePanel.emptyState)
             } else {
                 VStack(spacing: 0) {

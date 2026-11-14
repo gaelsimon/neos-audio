@@ -14,8 +14,7 @@ struct QueueView: View {
             Divider()
 
             if state.queue.isEmpty && !viewModel.isLoadingQueue {
-                EmptyStateView(icon: DS.Icons.playlists, message: "Queue is empty")
-                    .padding(20)
+                ContentUnavailableView("Queue Is Empty", systemImage: DS.Icons.playlists)
             } else {
                 // MARK: - Column Header
 

@@ -88,7 +88,7 @@ struct BrowseContentView: View {
                     errorView(error)
                 }
             } else if browseVM.items.isEmpty && !browseVM.isLoading {
-                EmptyStateView(icon: DS.Icons.musicNote, message: "No items")
+                ContentUnavailableView("No Items", systemImage: DS.Icons.musicNote)
             } else {
                 scrollableContent
             }

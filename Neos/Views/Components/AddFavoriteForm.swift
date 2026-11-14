@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 import NeosDomain
-import UniformTypeIdentifiers
 
 /// Form for adding a new favorite station by name and stream URL.
 struct AddFavoriteForm: View {
@@ -96,12 +95,7 @@ struct AddFavoriteForm: View {
                     .frame(maxWidth: .infinity)
             }
 
-            Button {
-                chooseLocalImage()
-            } label: {
-                Label("Choose Image…", systemImage: "folder")
-                    .frame(maxWidth: .infinity)
-            }
+            ImagePickerButton { previewImage = $0 }
 
             if showURLField {
                 HStack(spacing: DS.Spacing.sm) {
@@ -125,18 +119,6 @@ struct AddFavoriteForm: View {
     }
 
     // MARK: - Actions
-
-    private func chooseLocalImage() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.message = "Choose an artwork image"
-
-        guard panel.runModal() == .OK, let sourceURL = panel.url else { return }
-        guard let image = NSImage(contentsOf: sourceURL) else { return }
-        previewImage = image
-    }
 
     private func downloadImageFromURL() {
         let trimmed = imageURLText.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -34,8 +34,8 @@ final class DemoAddStationTests: DemoTestCase {
 
         form.click()
 
-        // The open panel is a separate key window; dismissing it must leave the form standing.
-        let panel = app.dialogs.firstMatch
+        // The open panel comes down as a sheet on the form's sheet; dismissing it must leave the form standing.
+        let panel = app.sheets["open-panel"]
         waitForElement(panel)
         app.typeKey(.escape, modifierFlags: [])
         waitForElementToDisappear(panel)

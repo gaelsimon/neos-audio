@@ -274,7 +274,7 @@ final class SearchViewModel {
         let requestID = searchTracker.next()
 
         isSearching = true
-        // Keep old serviceResults as shimmer layout template; don't clear.
+        // Keep old serviceResults as the placeholder layout template; don't clear.
         expandedCategories = []
         loadingMoreCategories = []
         loadingServiceSIDs = []

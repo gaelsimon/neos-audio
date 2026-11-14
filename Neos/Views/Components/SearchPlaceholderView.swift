@@ -1,54 +1,42 @@
 import SwiftUI
 
-/// Full-page shimmer skeleton mimicking search results layout.
-/// Shows 2 service blocks each with a card category and a list category.
-struct SearchShimmerView: View {
+/// The results page while a search runs: two service blocks, each with a card row and a few rows.
+struct SearchPlaceholderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
             serviceBlock
             serviceBlock
         }
+        .redacted(reason: .placeholder)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private var serviceBlock: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-            // Service header
             HStack(spacing: DS.Spacing.md) {
                 Circle()
                     .fill(.quaternary)
                     .frame(width: DS.ImageSize.serviceIconLarge, height: DS.ImageSize.serviceIconLarge)
-                    .shimmer()
-
-                RoundedRectangle(cornerRadius: DS.Radius.small)
-                    .fill(.quaternary)
-                    .frame(width: 100, height: 16)
-                    .shimmer()
-
+                Text("Service")
+                    .typography(.sectionHeader)
                 Spacer()
             }
             .padding(.horizontal, DS.Layout.surfaceInset)
 
-            // Card category (artists/albums)
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                RoundedRectangle(cornerRadius: DS.Radius.small)
-                    .fill(.quaternary)
-                    .frame(width: 80, height: 14)
-                    .shimmer()
+                Text("Albums")
+                    .typography(.sectionHeader)
                     .padding(.horizontal, DS.Layout.surfaceInset)
-
-                ShimmerCardRow(cardCount: 3)
+                PlaceholderCardRow(cardCount: 3)
             }
 
-            // List category (tracks)
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                RoundedRectangle(cornerRadius: DS.Radius.small)
-                    .fill(.quaternary)
-                    .frame(width: 60, height: 14)
-                    .shimmer()
+                Text("Tracks")
+                    .typography(.sectionHeader)
                     .padding(.horizontal, DS.Layout.surfaceInset)
-
                 ForEach(0..<4, id: \.self) { _ in
-                    ShimmerListRow()
+                    PlaceholderRow()
                 }
             }
         }
