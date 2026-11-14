@@ -159,10 +159,8 @@ private struct AmbientBackground: View {
 
     var body: some View {
         (colors.first ?? DS.Colors.background)
-            #if os(iOS)
             .overlay {
                 LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
             }
-            #endif
     }
 }

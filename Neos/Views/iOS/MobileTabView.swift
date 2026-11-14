@@ -1,5 +1,10 @@
 import SwiftUI
 
+extension EnvironmentValues {
+    /// The tab bar holds the mini player, so the pages leave it out.
+    @Entry var miniPlayerInTabBar = false
+}
+
 /// Tabs on iPhone and a sidebar on iPad, from one declaration.
 struct MobileTabView: View {
     enum Section: Hashable {
@@ -13,7 +18,24 @@ struct MobileTabView: View {
     @State private var selection: Section = .home
     @Environment(\.showsPadChrome) private var showsPadChrome
 
+    /// The device, not the window: the iPad keeps its player in the pages.
+    private var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
+
     var body: some View {
+        if #available(iOS 26, *), isPhone {
+            tabs
+                .tabViewBottomAccessory {
+                    MiniPlayerAccessory(state: state, playerVM: container.playerVM)
+                        .disabled(!state.isConnected)
+                }
+                .tabBarMinimizeBehavior(.onScrollDown)
+                .environment(\.miniPlayerInTabBar, true)
+        } else {
+            tabs
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: $selection) {
             Tab("Home", systemImage: "house", value: Section.home) {
                 PagedStack(state: state, container: container) { model in

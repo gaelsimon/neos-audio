@@ -289,11 +289,16 @@ extension BrowseContentView {
                let current = browseVM.browseStack.last,
                let root = browseVM.browseStack.first,
                let source = state.musicSources.first(where: { $0.sid == root.sid }) {
-                // A sub-level with no cid: an amp input or a DLNA server. Name it, not its source.
+                // A folder, an amp input or a DLNA server: its own name, then the path back to its parents.
                 ServiceBranding.serviceIcon(for: source, size: DS.ImageSize.serviceIcon)
-                Text(current.name)
-                    .typography(.pageTitle)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                    Text(current.name)
+                        .typography(.pageTitle)
+                        .lineLimit(1)
+                    BreadcrumbBar(stack: browseVM.browseStack) { index in
+                        browseVM.navigateToBreadcrumb(at: index)
+                    }
+                }
             } else if let target = browseVM.browseStack.first,
                let source = state.musicSources.first(where: { $0.sid == target.sid }) {
                 ServiceBranding.serviceLabel(

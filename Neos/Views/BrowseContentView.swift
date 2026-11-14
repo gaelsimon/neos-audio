@@ -39,14 +39,9 @@ struct BrowseContentView: View {
         TrackListPresentation.isTrackList(target: browseVM.browseStack.last, items: browseVM.items)
     }
 
-    /// The Mac's header names every container. On iPhone and iPad the bar names a folder, so only a page about
-    /// one thing gets the header.
+    /// Only a page about one thing gets the artwork header; a folder is named like a source.
     private var showsContainerHeader: Bool {
-        #if os(iOS)
         browseVM.opensOnArtwork
-        #else
-        browseVM.isInContainer
-        #endif
     }
 
     private var showArtistColumn: Bool {
@@ -182,7 +177,7 @@ struct BrowseContentView: View {
         // The navigation bar plays this part on iPhone and iPad.
         .overlay(alignment: .top) {
             if showCompactHeader {
-                if browseVM.isInContainer, let current = browseVM.browseStack.last {
+                if showsContainerHeader, let current = browseVM.browseStack.last {
                     compactContainerHeader(current)
                 } else {
                     compactSourceHeader

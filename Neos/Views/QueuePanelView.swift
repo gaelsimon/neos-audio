@@ -164,6 +164,7 @@ struct QueuePanelView: View {
                         state: state
                     )
                     .id("now-playing")
+                    .bareListRow()
                 } else {
                     // Standalone now playing (station or not in queue)
                     QueuePanelRow(
@@ -178,6 +179,7 @@ struct QueuePanelView: View {
                         state: state
                     )
                     .id("now-playing")
+                    .bareListRow()
                 }
             }
             .accessibilityIdentifier(AccessibilityID.QueuePanel.nowPlayingSection)
@@ -197,7 +199,7 @@ struct QueuePanelView: View {
                         imageURL: item.imageURL,
                         isStation: false,
                         isNowPlaying: false,
-                        showRemoveButton: true,
+                        showRemoveButton: Self.showsRemoveButton,
                         onTap: { viewModel.playQueueItem(item) },
                         onRemove: { viewModel.removeQueueItem(item) },
                         externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
@@ -205,6 +207,12 @@ struct QueuePanelView: View {
                     )
                     .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextRow(item.qid))
                     .accessibilityLabel("\(item.song) by \(item.artist), up next")
+                    .bareListRow()
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) { viewModel.removeQueueItem(item) } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                    }
                 }
             }
             .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextSection)
@@ -215,20 +223,39 @@ struct QueuePanelView: View {
                     .typography(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.lg)
+                    .bareListRow()
             }
         }
     }
 
     // MARK: - Tab Content
 
+    @ViewBuilder
     private var queueTabContent: some View {
+        #if os(iOS)
+        // A list, for the swipe that removes a track from Up Next on iPhone and iPad.
+        List {
+            nowPlayingSection
+            upNextSection
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        #else
         ScrollView {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                 nowPlayingSection
                 upNextSection
             }
         }
+        #endif
     }
+
+    /// iPhone and iPad remove an Up Next track by swiping it.
+    #if os(iOS)
+    private static let showsRemoveButton = false
+    #else
+    private static let showsRemoveButton = true
+    #endif
 
     private var recentlyPlayedTabContent: some View {
         ScrollView {
@@ -252,6 +279,7 @@ struct QueuePanelView: View {
             .padding(.bottom, DS.Spacing.sm)
         }
         .frame(maxWidth: .infinity)
+        .listRowInsets(EdgeInsets())
         .background(
             ZStack {
                 if state.isNowPlayingCanvasOpen {

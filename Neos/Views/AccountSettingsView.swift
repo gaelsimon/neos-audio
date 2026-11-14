@@ -12,38 +12,57 @@ struct AccountSettingsView: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-                // The navigation bar titles the page on iPhone and iPad.
-                #if os(macOS)
-                Text("Settings")
-                    .typography(.pageTitle)
-                    .padding(.bottom, DS.Spacing.sm)
-                #endif
-
-                accountSection
-                servicesSection
-                localServersSection
-                playbackSection
-                cacheSection
-                aboutSection
-                diagnosticsSection
+        Group {
+            #if os(iOS)
+            // The Settings app's grouped sections, where the Mac lays out cards.
+            Form {
+                sections
             }
-            .pageMargins()
-            .padding(.top, DS.Layout.pageTop)
-            .padding(.bottom, DS.Spacing.xxxl)
-            .frame(maxWidth: 640, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
+            #else
+            ScrollView {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
+                    // Only the Mac: iPhone and iPad title the page in the navigation bar.
+                    Text("Settings")
+                        .typography(.pageTitle)
+                        .padding(.bottom, DS.Spacing.sm)
+
+                    sections
+                }
+                .pageMargins()
+                .padding(.top, DS.Layout.pageTop)
+                .padding(.bottom, DS.Spacing.xxxl)
+                .frame(maxWidth: 640, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            #endif
         }
+        .task { await localServersVM.load() }
         .accessibilityIdentifier(AccessibilityID.Settings.view)
+    }
+
+    @ViewBuilder
+    private var sections: some View {
+        accountSection
+        servicesSection
+        localServersSection
+        playbackSection
+        cacheSection
+        aboutSection
+        diagnosticsSection
     }
 
     // MARK: - Section Card
 
+    @ViewBuilder
     private func sectionCard<Content: View>(
         header: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
+        #if os(iOS)
+        Section(header) {
+            content()
+        }
+        #else
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             Text(header)
                 .typography(.sectionHeader)
@@ -55,6 +74,7 @@ struct AccountSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.large))
         }
+        #endif
     }
 
     // MARK: - Account Section
@@ -190,7 +210,6 @@ struct AccountSettingsView: View {
                 LocalServerSettingsView(servers: localServersVM.servers, preferences: localServersVM.preferences)
             }
         }
-        .task { await localServersVM.load() }
     }
 
     // MARK: - Playback Section

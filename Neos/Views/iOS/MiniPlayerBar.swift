@@ -1,14 +1,9 @@
 import SwiftUI
 
-/// The player above the tabs on iPhone: what plays and where, play or pause, and next. A tap opens the full player.
+/// The player above the tabs on iPhone before iOS 26: a card in the artwork's colour. A tap opens the full player.
 struct MiniPlayerBar: View {
     let state: AppState
     let playerVM: PlayerViewModel
-
-    /// Named once there is a choice, as in the Mac's player bar.
-    private var speakerName: String? {
-        state.displayPlayers.count > 1 ? state.playbackTargetName : nil
-    }
 
     /// The artwork's colour, already dark enough for white text; grey until it is known.
     private var cardColor: Color {
@@ -17,6 +12,56 @@ struct MiniPlayerBar: View {
             return DS.Colors.surfaceElevated
         }
         return color
+    }
+
+    var body: some View {
+        MiniPlayerContent(state: state, playerVM: playerVM)
+            .padding(.leading, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.sm)
+            .background(cardColor, in: RoundedRectangle(cornerRadius: DS.Radius.medium))
+            .overlay(alignment: .bottom) {
+                PlaybackLine(state: state)
+                    .padding(.horizontal, DS.Spacing.sm)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
+            .onTapGesture { state.isNowPlayingCanvasOpen = true }
+            .padding(.horizontal, DS.Spacing.sm)
+            .padding(.bottom, DS.Spacing.xs)
+            .background {
+                // The page scrolls under the card; fade it out so none of it shows above the tabs.
+                LinearGradient(colors: [.clear, DS.Colors.background], startPoint: .top, endPoint: .bottom)
+            }
+            .tracksArtworkColors(state)
+    }
+}
+
+/// The mini player in the tab bar's glass on iOS 26, which moves it beside the tabs once they shrink on scroll.
+@available(iOS 26, *)
+struct MiniPlayerAccessory: View {
+    let state: AppState
+    let playerVM: PlayerViewModel
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    var body: some View {
+        MiniPlayerContent(state: state, playerVM: playerVM, artworkSize: 32, isInline: placement == .inline)
+            .padding(.leading, DS.Spacing.sm)
+            .contentShape(Rectangle())
+            .onTapGesture { state.isNowPlayingCanvasOpen = true }
+            .tracksArtworkColors(state)
+    }
+}
+
+/// What both mini players show: the artwork, the track and where it plays, play or pause, and next.
+private struct MiniPlayerContent: View {
+    let state: AppState
+    let playerVM: PlayerViewModel
+    var artworkSize: CGFloat = DS.ImageSize.listRow
+    /// Beside the shrunk tabs there is room for the title and play only.
+    var isInline = false
+
+    /// Named once there is a choice, as in the Mac's player bar.
+    private var speakerName: String? {
+        state.displayPlayers.count > 1 ? state.playbackTargetName : nil
     }
 
     var body: some View {
@@ -33,31 +78,17 @@ struct MiniPlayerBar: View {
             }
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
 
-            Button { playerVM.next() } label: {
-                Image(systemName: "forward.fill")
-                    .font(DS.IconFont.lg)
-                    .frame(width: DS.HitTarget.button, height: DS.HitTarget.button)
+            if !isInline {
+                Button { playerVM.next() } label: {
+                    Image(systemName: "forward.fill")
+                        .font(DS.IconFont.lg)
+                        .frame(width: DS.HitTarget.button, height: DS.HitTarget.button)
+                }
+                .accessibilityLabel("Next")
             }
-            .accessibilityLabel("Next")
         }
         .buttonStyle(.plain)
         .foregroundStyle(.primary)
-        .padding(.leading, DS.Spacing.sm)
-        .padding(.vertical, DS.Spacing.sm)
-        .background(cardColor, in: RoundedRectangle(cornerRadius: DS.Radius.medium))
-        .overlay(alignment: .bottom) {
-            PlaybackLine(state: state)
-                .padding(.horizontal, DS.Spacing.sm)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
-        .onTapGesture { state.isNowPlayingCanvasOpen = true }
-        .padding(.horizontal, DS.Spacing.sm)
-        .padding(.bottom, DS.Spacing.xs)
-        .background {
-            // The page scrolls under the card; fade it out so none of it shows above the tabs.
-            LinearGradient(colors: [.clear, DS.Colors.background], startPoint: .top, endPoint: .bottom)
-        }
-        .tracksArtworkColors(state)
     }
 
     private var artwork: some View {
@@ -69,7 +100,7 @@ struct MiniPlayerBar: View {
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
         }
-        .frame(width: DS.ImageSize.listRow, height: DS.ImageSize.listRow)
+        .frame(width: artworkSize, height: artworkSize)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
     }
 
@@ -78,7 +109,12 @@ struct MiniPlayerBar: View {
         let title = state.nowPlaying.displayedTitle
         let artist = state.nowPlaying.artist
         return VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-            if let speakerName {
+            if isInline {
+                Text(title)
+                    .foregroundStyle(.primary)
+                    .typography(.secondaryEmphasis)
+                    .lineLimit(1)
+            } else if let speakerName {
                 // The speaker takes the second line, so the artist joins the title's.
                 Group {
                     if artist.isEmpty {

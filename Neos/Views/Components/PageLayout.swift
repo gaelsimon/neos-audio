@@ -42,6 +42,13 @@ extension View {
     func serviceGroupSurface() -> some View {
         modifier(ServiceGroupSurface())
     }
+
+    /// A row that draws its own padding and background, inside a `List` kept for its swipe actions.
+    func bareListRow() -> some View {
+        listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+    }
 }
 
 private struct ServiceGroupSurface: ViewModifier {

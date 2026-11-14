@@ -11,24 +11,33 @@ struct AmpSettingsView: View {
     @State private var groupNameDraft = ""
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-                // The navigation bar titles the page on iPhone and iPad.
-                #if os(macOS)
-                Text("Amp Settings")
-                    .typography(.pageTitle)
-                    .padding(.bottom, DS.Spacing.sm)
-                #endif
-
+        Group {
+            #if os(iOS)
+            // The Settings app's grouped sections, where the Mac lays out cards.
+            Form {
                 playersSection
                 groupsSection
                 connectionSection
             }
-            .pageMargins()
-            .padding(.top, DS.Layout.pageTop)
-            .padding(.bottom, DS.Spacing.xxxl)
-            .frame(maxWidth: 640, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
+            #else
+            ScrollView {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
+                    // Only the Mac: iPhone and iPad title the page in the navigation bar.
+                    Text("Amp Settings")
+                        .typography(.pageTitle)
+                        .padding(.bottom, DS.Spacing.sm)
+
+                    playersSection
+                    groupsSection
+                    connectionSection
+                }
+                .pageMargins()
+                .padding(.top, DS.Layout.pageTop)
+                .padding(.bottom, DS.Spacing.xxxl)
+                .frame(maxWidth: 640, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            #endif
         }
         .accessibilityIdentifier(AccessibilityID.AmpSettings.view)
         .task {
@@ -38,11 +47,25 @@ struct AmpSettingsView: View {
 
     // MARK: - Section Card
 
+    @ViewBuilder
     private func sectionCard<Content: View, Accessory: View>(
         header: String?,
         @ViewBuilder accessory: () -> Accessory = { EmptyView() },
         @ViewBuilder content: () -> Content
     ) -> some View {
+        #if os(iOS)
+        Section {
+            content()
+        } header: {
+            if let header {
+                HStack {
+                    Text(header)
+                    Spacer()
+                    accessory()
+                }
+            }
+        }
+        #else
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             if let header {
                 HStack {
@@ -60,6 +83,7 @@ struct AmpSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.large))
         }
+        #endif
     }
 
     // MARK: - Players Section
@@ -79,6 +103,12 @@ struct AmpSettingsView: View {
                 Text("No speakers found.")
                     .typography(.secondary)
             } else {
+                #if os(iOS)
+                // One row each, so the form draws the separators.
+                ForEach(state.displayPlayers) { player in
+                    playerRow(player)
+                }
+                #else
                 VStack(spacing: 0) {
                     ForEach(state.displayPlayers) { player in
                         playerRow(player)
@@ -87,6 +117,7 @@ struct AmpSettingsView: View {
                         }
                     }
                 }
+                #endif
             }
         }
     }
@@ -135,7 +166,6 @@ struct AmpSettingsView: View {
         #if os(iOS)
         // As tall as the power button's touch target, so rows with and without one line up.
         .frame(minHeight: DS.HitTarget.button)
-        .padding(.vertical, DS.Spacing.xs)
         #else
         .padding(.vertical, DS.Spacing.md)
         #endif
@@ -223,8 +253,11 @@ struct AmpSettingsView: View {
                 .disabled(groupVM.isUngrouping)
             }
         }
+        // On iPhone and iPad the form's row is the card.
+        #if os(macOS)
         .padding(DS.Spacing.md)
         .background(DS.Colors.surfaceContainer, in: RoundedRectangle(cornerRadius: DS.Radius.medium))
+        #endif
         .onAppear { groupVM.loadMemberVolumes(for: group) }
     }
 
@@ -269,7 +302,10 @@ struct AmpSettingsView: View {
     @ViewBuilder
     private var createGroupForm: some View {
         if state.players.count >= 2 {
+            // The form separates its rows itself.
+            #if os(macOS)
             Divider().opacity(0.3)
+            #endif
 
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
                 Text("Create Group")

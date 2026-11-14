@@ -33,6 +33,8 @@ struct TrackListRow: View {
     var imageKey: String?
     var onSetCustomImage: (() -> Void)?
     var onRemove: (() -> Void)?
+    /// Off where the list removes a row by swiping it; the context menu keeps the action either way.
+    var showsRemoveButton = true
     let onTap: () -> Void
 
     @State private var isHovered = false
@@ -73,7 +75,7 @@ struct TrackListRow: View {
             actionMenu
                 .opacity((isHovered || !DS.revealsControlsOnHover) && hasActions ? 1 : 0)
 
-            if let onRemove {
+            if let onRemove, showsRemoveButton {
                 HoverButton(action: onRemove) { hovered in
                     Image(systemName: DS.Icons.dismiss)
                         .typography(.secondary)
@@ -84,7 +86,8 @@ struct TrackListRow: View {
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
-        .frame(height: DS.TrackList.rowHeight)
+        // A floor, not a fixed height: larger text sizes on iPhone and iPad need the room.
+        .frame(minHeight: DS.TrackList.rowHeight)
         .background(rowBackground, in: RoundedRectangle(cornerRadius: DS.Radius.small))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)

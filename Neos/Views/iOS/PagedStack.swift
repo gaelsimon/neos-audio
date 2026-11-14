@@ -22,6 +22,7 @@ struct PagedStack<Root: View>: View {
     @ViewBuilder let root: (BrowseViewModel) -> Root
 
     @Environment(\.showsPadChrome) private var showsPadChrome
+    @Environment(\.miniPlayerInTabBar) private var miniPlayerInTabBar
     @State private var rootModel: BrowseViewModel?
     @State private var pages: [BrowsePage] = []
 
@@ -57,7 +58,7 @@ struct PagedStack<Root: View>: View {
                 browseVM: rootModel ?? container.browseVM, searchVM: container.searchVM
             )
             .disabled(!state.isConnected)
-        } else {
+        } else if !miniPlayerInTabBar {
             MiniPlayerBar(state: state, playerVM: container.playerVM)
                 .disabled(!state.isConnected)
         }

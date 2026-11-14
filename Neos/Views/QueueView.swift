@@ -99,44 +99,83 @@ struct QueueView: View {
 
     // MARK: - Queue Items
 
+    @ViewBuilder
     private var queueList: some View {
+        #if os(iOS)
+        // A list, for the swipe that removes a row on iPhone and iPad.
+        List {
+            ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
+                queueRow(index: index, item: item)
+                    .bareListRow()
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) { viewModel.removeItem(item) } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                    }
+            }
+
+            if viewModel.isLoadingMore {
+                loadingMoreRow
+                    .bareListRow()
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        #else
         ScrollView {
             VStack(spacing: DS.TrackList.rowSpacing) {
                 ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
-                    TrackListRow(
-                        index: index + 1,
-                        name: item.song,
-                        artist: item.artist,
-                        album: item.album,
-                        imageURL: item.imageURL,
-                        isNowPlaying: state.nowPlaying.station == nil && item.qid == state.nowPlaying.qid,
-                        showArtist: true,
-                        showAlbum: true,
-                        onAlbumTap: albumTapHandler(for: item),
-                        onArtistTap: artistTapHandler(for: item),
-                        isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
-                        externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
-                        state: state,
-                        onRemove: { viewModel.removeItem(item) }
-                    ) {
-                        viewModel.playItem(item)
-                    }
-                    .onAppear {
-                        if index >= state.queue.count - 5 {
-                            viewModel.loadMoreQueue()
-                        }
-                    }
+                    queueRow(index: index, item: item)
                 }
 
                 if viewModel.isLoadingMore {
-                    HStack {
-                        Spacer()
-                        Spinner(size: 16, lineWidth: 2)
-                            .padding()
-                        Spacer()
-                    }
+                    loadingMoreRow
                 }
             }
+        }
+        #endif
+    }
+
+    private func queueRow(index: Int, item: QueueItem) -> some View {
+        TrackListRow(
+            index: index + 1,
+            name: item.song,
+            artist: item.artist,
+            album: item.album,
+            imageURL: item.imageURL,
+            isNowPlaying: state.nowPlaying.station == nil && item.qid == state.nowPlaying.qid,
+            showArtist: true,
+            showAlbum: true,
+            onAlbumTap: albumTapHandler(for: item),
+            onArtistTap: artistTapHandler(for: item),
+            isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
+            externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
+            state: state,
+            onRemove: { viewModel.removeItem(item) },
+            showsRemoveButton: Self.showsRemoveButton
+        ) {
+            viewModel.playItem(item)
+        }
+        .onAppear {
+            if index >= state.queue.count - 5 {
+                viewModel.loadMoreQueue()
+            }
+        }
+    }
+
+    /// iPhone and iPad remove a row by swiping it.
+    #if os(iOS)
+    private static let showsRemoveButton = false
+    #else
+    private static let showsRemoveButton = true
+    #endif
+
+    private var loadingMoreRow: some View {
+        HStack {
+            Spacer()
+            Spinner(size: 16, lineWidth: 2)
+                .padding()
+            Spacer()
         }
     }
 
