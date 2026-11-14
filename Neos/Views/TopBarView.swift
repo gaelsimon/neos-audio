@@ -172,6 +172,7 @@ struct TopBarView: View {
                 .frame(width: DS.TopBar.controlHeight, height: DS.TopBar.controlHeight)
                 .background { GlassCapsule() }
         }
+        .accessibilityLabel("Settings")
         .accessibilityIdentifier(AccessibilityID.TopBar.profileButton)
     }
 

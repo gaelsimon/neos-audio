@@ -96,7 +96,9 @@ struct NowPlayingToolbar: View {
         .frame(width: 72, height: 72)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artwork))
         .accessibilityIdentifier(AccessibilityID.Player.albumArt)
-        .accessibilityLabel(canBrowseAlbum ? "Go to album: \(state.nowPlaying.album)" : "Album artwork")
+        .accessibilityLabel("Full Screen Player")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { state.isNowPlayingCanvasOpen.toggle() }
         .overlay {
             if state.isLoadingTrack {
                 RoundedRectangle(cornerRadius: DS.Radius.artwork)

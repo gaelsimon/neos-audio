@@ -158,6 +158,10 @@ final class PlayerViewModel {
         })
     }
 
+    func stepVolume(by delta: Int) {
+        setVolume(max(0, state.volume + delta))
+    }
+
     func setAdjustingVolume(_ adjusting: Bool) {
         if adjusting {
             volumeGraceTask.cancel()

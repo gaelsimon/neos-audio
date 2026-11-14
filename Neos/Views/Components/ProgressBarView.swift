@@ -188,11 +188,7 @@ private struct SeekerPerformanceIsland: View {
                         dragProgress = clamp(value.location.x / geo.size.width)
                     }
                     .onEnded { value in
-                        let finalProgress = clamp(value.location.x / geo.size.width)
-                        let seekTime = finalProgress * Double(playbackDuration) / 1000.0
-                        lastSeekDate = Date()
-                        pendingSeekProgress = finalProgress
-                        onSeek(seekTime)
+                        seek(to: clamp(value.location.x / geo.size.width))
                         withAnimation(.easeOut(duration: 0.15)) {
                             isDragging = false
                             dragProgress = nil
@@ -205,8 +201,18 @@ private struct SeekerPerformanceIsland: View {
         }
         .frame(height: 16)
         .drawingGroup()
-        .accessibilityLabel("Playback position")
-        .accessibilityValue(formatTime(Int(clamp(progress) * Double(playbackDuration))))
+        .accessibilityRepresentation {
+            Slider(value: Binding(get: { clamp(progress) }, set: { seek(to: $0) }), in: 0...1) {
+                Text("Playback position")
+            }
+            .accessibilityValue(formatTime(Int(clamp(progress) * Double(playbackDuration))))
+        }
+    }
+
+    private func seek(to progress: Double) {
+        lastSeekDate = Date()
+        pendingSeekProgress = progress
+        onSeek(progress * Double(playbackDuration) / 1000.0)
     }
 
     // MARK: - Time Labels

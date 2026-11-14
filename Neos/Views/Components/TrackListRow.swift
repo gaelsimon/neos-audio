@@ -83,9 +83,12 @@ struct TrackListRow: View {
         .frame(height: DS.TrackList.rowHeight)
         .background(rowBackground, in: RoundedRectangle(cornerRadius: DS.Radius.small))
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onTap() }
         .onTapGesture(perform: onTap)
         .onHover { isHovered = $0 }
-        .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
+        .contextMenu(hasActions || onRemove != nil ? ContextMenu { menuItems } : nil)
         .accessibilityIdentifier(AccessibilityID.TrackList.row(index))
     }
 
@@ -162,6 +165,15 @@ struct TrackListRow: View {
             externalLinkItems
 
             artworkItems
+
+            if let onRemove {
+                if hasActions {
+                    Divider()
+                }
+                Button(role: .destructive) { onRemove() } label: {
+                    Label("Remove from Queue", systemImage: DS.Icons.close)
+                }
+            }
         }
     }
 

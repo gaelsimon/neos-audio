@@ -38,7 +38,7 @@ struct NeosApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 700, height: 500)
-        .commands { playbackCommands }
+        .commands { AppCommands(state: appState, container: container) }
 
         // Menu bar quick controls
         MenuBarExtra {
@@ -65,41 +65,6 @@ struct NeosApp: App {
                 .onAppear { initializeServices() }
         }
         .menuBarExtraStyle(.window)
-    }
-
-    // MARK: - Menu Commands
-
-    /// Play/Pause carries no shortcut: `SpaceKeyMonitor` owns Space so typing still works.
-    @CommandsBuilder
-    private var playbackCommands: some Commands {
-        CommandMenu("Playback") {
-            Button(appState.isPlaying ? "Pause" : "Play") {
-                container?.playerVM.togglePlayPause()
-            }
-            .disabled(container == nil || !appState.isConnected)
-
-            Divider()
-
-            Button("Back") { container?.goBack() }
-                .keyboardShortcut("[", modifiers: .command)
-                .disabled(container?.canGoBack != true)
-
-            Button("Forward") { container?.goForward() }
-                .keyboardShortcut("]", modifiers: .command)
-                .disabled(container?.canGoForward != true)
-
-            Divider()
-
-            Button("Search") { appState.isSearchFieldFocused = true }
-                .keyboardShortcut("f", modifiers: .command)
-                .disabled(container == nil || !appState.isConnected)
-
-            Button(appState.isNowPlayingCanvasOpen ? "Exit Full Screen Player" : "Full Screen Player") {
-                appState.isNowPlayingCanvasOpen.toggle()
-            }
-            .keyboardShortcut("f", modifiers: [.command, .shift])
-            .disabled(container == nil || !appState.isConnected)
-        }
     }
 
     private var menuBarIcon: NSImage {

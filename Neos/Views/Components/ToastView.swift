@@ -38,5 +38,6 @@ struct ToastView: View {
         .background(.regularMaterial, in: Capsule())
         .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
         .accessibilityIdentifier(AccessibilityID.Toast.view)
+        .onAppear { AccessibilityNotification.Announcement(message.text).post() }
     }
 }

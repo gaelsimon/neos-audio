@@ -29,6 +29,9 @@ struct QueuePanelRow: View {
         .frame(height: 54)
         .background(rowBackground, in: RoundedRectangle(cornerRadius: DS.Radius.small))
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(onTap == nil ? [] : .isButton)
+        .accessibilityAction { onTap?() }
         .onTapGesture { onTap?() }
         .onHover { isHovered = $0 }
         .contextMenu(hasActions ? ContextMenu { menuItems } : nil)

@@ -14,7 +14,6 @@ struct VolumeControlView: View {
 
     @State private var sliderVolume: Double = 0
     @State private var isDragging = false
-    @State private var isHovering = false
     @State private var showPopover = false
     @State private var dismissTask: Task<Void, Never>?
     @State private var panelState = VolumePanelState()
@@ -32,11 +31,6 @@ struct VolumeControlView: View {
                 bottomBarLayout
             }
         }
-        .onChange(of: sliderVolume) { _, newValue in
-            if isDragging {
-                viewModel.setVolume(Int(newValue))
-            }
-        }
         .onChange(of: state.volume) { _, newValue in
             if !isDragging {
                 sliderVolume = Double(newValue)
@@ -52,7 +46,7 @@ struct VolumeControlView: View {
     private var fullLayout: some View {
         HStack(spacing: DS.Spacing.sm) {
             muteButton
-            customSlider
+            slider
             dBLabel
         }
         .padding(.horizontal, DS.Spacing.lg)
@@ -63,7 +57,7 @@ struct VolumeControlView: View {
     private var compactLayout: some View {
         HStack(spacing: DS.Spacing.sm) {
             muteButton
-            customSlider
+            slider
             dBLabel
         }
     }
@@ -140,70 +134,23 @@ struct VolumeControlView: View {
         .accessibilityIdentifier(AccessibilityID.Player.volumeMute)
     }
 
-    // MARK: - Custom Slider
+    // MARK: - Slider
 
-    private static let trackHeight: CGFloat = 4
-    private static let thumbSize: CGFloat = 14
-
-    private var showThumb: Bool { isHovering || isDragging }
-
-    private var customSlider: some View {
-        GeometryReader { geo in
-            let width = geo.size.width
-            let fraction = sliderVolume / effectiveMax
-            let thumbX = fraction * width
-
-            ZStack(alignment: .leading) {
-                // Background track
-                Capsule()
-                    .fill(Color.white.opacity(0.15))
-                    .frame(height: Self.trackHeight)
-
-                // Filled track
-                Capsule()
-                    .fill(DS.Colors.accent)
-                    .frame(width: max(0, thumbX), height: Self.trackHeight)
-
-                // Thumb (visible on hover/drag only)
-                if showThumb {
-                    Circle()
-                        .fill(DS.Colors.accent)
-                        .frame(width: Self.thumbSize, height: Self.thumbSize)
-                        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-                        .offset(x: thumbX - Self.thumbSize / 2)
-                        .transition(.scale.combined(with: .opacity))
-                }
+    private var slider: some View {
+        AccentSlider(
+            value: sliderVolume,
+            bounds: 0...max(effectiveMax, 1),
+            label: "Volume",
+            onEditingChanged: { editing in
+                isDragging = editing
+                viewModel.setAdjustingVolume(editing)
+            },
+            onChange: { level in
+                sliderVolume = level
+                viewModel.setVolume(Int(level))
             }
-            .frame(height: geo.size.height)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        if !isDragging {
-                            isDragging = true
-                            viewModel.setAdjustingVolume(true)
-                        }
-                        let clamped = max(0, min(1, value.location.x / width))
-                        sliderVolume = clamped * effectiveMax
-                    }
-                    .onEnded { value in
-                        let clamped = max(0, min(1, value.location.x / width))
-                        sliderVolume = clamped * effectiveMax
-                        viewModel.setVolume(Int(sliderVolume))
-                        isDragging = false
-                        viewModel.setAdjustingVolume(false)
-                    }
-            )
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    isHovering = hovering
-                }
-            }
-        }
-        .frame(height: Self.thumbSize)
+        )
         .accessibilityIdentifier(AccessibilityID.Player.volumeSlider)
-        .accessibilityLabel("Volume")
-        .accessibilityValue("\(Int(sliderVolume)) percent")
     }
 
     /// The HEOS level as the device reports it; a dB figure would only hold for one amp model.

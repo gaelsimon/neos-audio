@@ -41,6 +41,7 @@ struct FilterChip: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier(accessibilityID ?? "filterChip.\(label)")
     }
 

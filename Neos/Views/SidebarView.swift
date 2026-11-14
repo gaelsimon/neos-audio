@@ -114,6 +114,7 @@ struct SidebarView: View {
         }
         .buttonStyle(.plain)
         .opacity(source.available ? 1 : 0.6)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier(AccessibilityID.Sidebar.source(source.sid))
     }
 
@@ -138,6 +139,7 @@ struct SidebarView: View {
             .sidebarItemStyle(isSelected: isSelected)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func libraryRow(sid: Int, name: String, icon: String) -> some View {
@@ -178,6 +180,7 @@ struct SidebarView: View {
             .sidebarItemStyle(isSelected: isSelected)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier(AccessibilityID.Sidebar.queue)
     }
 }

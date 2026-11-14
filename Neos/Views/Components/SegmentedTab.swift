@@ -57,5 +57,6 @@ struct SegmentedTab<Tab: Hashable>: View {
                 }
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(selection == tab ? .isSelected : [])
     }
 }

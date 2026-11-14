@@ -11,14 +11,7 @@ final class DemoBreadcrumbTests: DemoTestCase {
         resetToHome()
     }
 
-    // Rows carry no identifier of their own, so they are reached through their icon.
-    private func clickFirstContainerRow() {
-        let folder = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier == 'folder'")).firstMatch
-        waitForElement(folder)
-        folder.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
-    }
-
+    // Rows and tiles carry no identifier of their own: each is one button labelled from its texts.
     private func clickRow(labelled label: String) {
         let row = app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
         waitForElement(row)
@@ -33,7 +26,7 @@ final class DemoBreadcrumbTests: DemoTestCase {
 
     private func openFirstCategory() {
         openDeezerRoot()
-        clickFirstContainerRow()
+        clickRow(labelled: "Albums")
         waitForElement(browse.breadcrumb)
     }
 

@@ -59,6 +59,8 @@ struct MainWindowView: View {
                     .background(DS.Colors.background)
             }
         }
+        // The full-screen player covers the window, so VoiceOver must not reach what lies under it.
+        .accessibilityHidden(state.isNowPlayingCanvasOpen)
         .overlay(alignment: .top) {
             if presentation.showsReconnectingBanner {
                 ReconnectingBanner(

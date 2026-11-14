@@ -166,6 +166,48 @@ final class PlayerViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testStepVolumeMovesFromTheCurrentLevel() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setVolume(40)
+        state.setMaxVolume(100)
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.stepVolume(by: 5)
+
+        XCTAssertEqual(state.volume, 45)
+        await yieldForTask()
+        XCTAssertTrue(mock.calls.contains("setVolume:1:45"))
+    }
+
+    @MainActor
+    func testStepVolumeStopsAtTheVolumeLimit() {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setVolume(48)
+        state.setMaxVolume(50)
+        let vm = PlayerViewModel(service: MockAudioService(), state: state)
+
+        vm.stepVolume(by: 5)
+
+        XCTAssertEqual(state.volume, 50)
+    }
+
+    @MainActor
+    func testStepVolumeStopsAtZero() {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setVolume(3)
+        state.setMaxVolume(100)
+        let vm = PlayerViewModel(service: MockAudioService(), state: state)
+
+        vm.stepVolume(by: -5)
+
+        XCTAssertEqual(state.volume, 0)
+    }
+
+    @MainActor
     func testSetVolumeNoOpWithoutPlayer() {
         let state = AppState()
         let mock = MockAudioService()

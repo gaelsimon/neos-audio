@@ -74,6 +74,8 @@ struct PlayerControlView: View {
                     .foregroundStyle(state.shuffleMode == .on ? DS.Colors.accent : hovered ? .primary : DS.Colors.textSecondary)
             }
             .help("Shuffle")
+            .accessibilityLabel("Shuffle")
+            .accessibilityValue(state.shuffleMode == .on ? "On" : "Off")
             .accessibilityIdentifier(AccessibilityID.Player.shuffle)
 
             HoverButton(action: { viewModel.previous() }) { hovered in
@@ -84,6 +86,7 @@ struct PlayerControlView: View {
             .disabled(viewModel.isSkipping)
             .opacity(viewModel.isSkipping ? 0.5 : 1)
             .help("Previous")
+            .accessibilityLabel("Previous")
             .accessibilityIdentifier(AccessibilityID.Player.previous)
 
             HoverButton(action: { viewModel.togglePlayPause() }) { hovered in
@@ -94,6 +97,7 @@ struct PlayerControlView: View {
                     .contentShape(Rectangle())
             }
             .help(state.isPlaying ? "Pause" : "Play")
+            .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
             .accessibilityIdentifier(AccessibilityID.Player.playPause)
 
             HoverButton(action: { viewModel.next() }) { hovered in
@@ -104,6 +108,7 @@ struct PlayerControlView: View {
             .disabled(viewModel.isSkipping)
             .opacity(viewModel.isSkipping ? 0.5 : 1)
             .help("Next")
+            .accessibilityLabel("Next")
             .accessibilityIdentifier(AccessibilityID.Player.next)
 
             HoverButton(action: { viewModel.cycleRepeatMode() }) { hovered in
@@ -112,7 +117,17 @@ struct PlayerControlView: View {
                     .foregroundStyle(state.repeatMode != .off ? DS.Colors.accent : hovered ? .primary : DS.Colors.textSecondary)
             }
             .help("Repeat")
+            .accessibilityLabel("Repeat")
+            .accessibilityValue(repeatDescription)
             .accessibilityIdentifier(AccessibilityID.Player.repeatMode)
+        }
+    }
+
+    private var repeatDescription: String {
+        switch state.repeatMode {
+        case .off: "Off"
+        case .onAll: "All"
+        case .onOne: "One"
         }
     }
 

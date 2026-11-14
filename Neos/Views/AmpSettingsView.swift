@@ -400,47 +400,28 @@ private struct LevelSlider: View {
 
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
-            GeometryReader { geo in
-                let width = geo.size.width
-
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.15))
-                        .frame(height: 4)
-                    Capsule()
-                        .fill(DS.Colors.accent)
-                        .frame(width: max(0, value / 100 * width), height: 4)
+            AccentSlider(
+                value: value,
+                label: label,
+                showsKnob: false,
+                onEditingChanged: { editing in
+                    isDragging = editing
+                    onDragging(editing)
+                },
+                onChange: { newValue in
+                    value = newValue
+                    onChange(Int(newValue))
                 }
-                .frame(height: geo.size.height)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { drag in
-                            if !isDragging {
-                                isDragging = true
-                                onDragging(true)
-                            }
-                            value = max(0, min(1, drag.location.x / width)) * 100
-                            onChange(Int(value))
-                        }
-                        .onEnded { _ in
-                            isDragging = false
-                            onDragging(false)
-                        }
-                )
-            }
-            .frame(height: 14)
+            )
 
             Text("\(Int(value))")
                 .typography(.secondary)
                 .monospacedDigit()
                 .frame(width: 24, alignment: .trailing)
+                .accessibilityHidden(true)
         }
         .onAppear { sync() }
         .onChange(of: level) { sync() }
-        .accessibilityElement()
-        .accessibilityLabel(label)
-        .accessibilityValue("\(Int(value)) percent")
     }
 
     private func sync() {

@@ -73,6 +73,9 @@ struct BrowseItemRow: View {
             in: RoundedRectangle(cornerRadius: DS.Radius.small)
         )
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onTap() }
         .onTapGesture(perform: onTap)
         .onHover { isHovered = $0 }
         .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
