@@ -176,6 +176,62 @@ struct NowPlayingToolbar: View {
         })
     }
 
+    private func trailingControls(showsSpeakerName: Bool, showsQuality: Bool, inlineVolume: Bool) -> some View {
+        HStack(spacing: DS.Spacing.md) {
+            serviceOptionButtons
+
+            if state.displayPlayers.count > 1, let target = state.playbackTargetName {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: DS.Icons.speaker)
+                        .font(DS.IconFont.sm)
+                    if showsSpeakerName {
+                        Text(target)
+                            .typography(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .foregroundStyle(DS.Colors.textSecondary)
+                .frame(maxWidth: showsSpeakerName ? 240 : nil, alignment: .trailing)
+                .help("Playing on \(target)")
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Playing on \(target)")
+                .accessibilityIdentifier(AccessibilityID.Player.speakerName)
+            }
+
+            if showsQuality, let quality = state.trackMetadata?.qualityDescription {
+                qualityBadge(quality)
+            }
+
+            VolumeControlView(state: state, viewModel: playerVM, style: inlineVolume ? .bottomBar : .bottomBarButton)
+
+            HoverButton(action: { state.isQueuePanelOpen.toggle() }) { hovered in
+                Image(systemName: DS.Icons.queue)
+                    .font(DS.IconFont.lg)
+                    .foregroundStyle(
+                        state.isQueuePanelOpen ? DS.Colors.accent :
+                        hovered ? .white : DS.Colors.textSecondary
+                    )
+            }
+            .help("Queue")
+            .accessibilityIdentifier(AccessibilityID.QueuePanel.toggleButton)
+            .accessibilityLabel("Toggle queue panel")
+        }
+    }
+
+    private func qualityBadge(_ quality: String) -> some View {
+        Text(quality)
+            .typography(.badge)
+            .foregroundStyle(DS.Colors.textSecondary)
+            .fixedSize()
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
+            .background(
+                RoundedRectangle(cornerRadius: DS.Radius.small)
+                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+            )
+            .accessibilityIdentifier(AccessibilityID.Player.qualityBadge)
+    }
+
     // MARK: - Background
 
     private static let scrimTop: Double = 0.18
@@ -225,9 +281,6 @@ struct NowPlayingToolbar: View {
                 }
                 .clipped()
                 .contentShape(Rectangle())
-                .onHover { hovering in
-                    if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                }
                 .onTapGesture { state.isNowPlayingCanvasOpen.toggle() }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -239,49 +292,12 @@ struct NowPlayingToolbar: View {
                 }
                 .frame(maxWidth: 550)
 
-                // Right: service options + quality badge + volume (equal flex column, content trailing)
-                HStack(spacing: DS.Spacing.md) {
-                    serviceOptionButtons
-
-                    if state.displayPlayers.count > 1, let target = state.playbackTargetName {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: DS.Icons.speaker)
-                                .font(DS.IconFont.sm)
-                            Text(target)
-                                .typography(.secondary)
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(DS.Colors.textSecondary)
-                        .frame(maxWidth: 240)
-                        .help("Playing on \(target)")
-                        .accessibilityIdentifier(AccessibilityID.Player.speakerName)
-                    }
-
-                    if let quality = state.trackMetadata?.qualityDescription {
-                        Text(quality)
-                            .typography(.badge)
-                            .foregroundStyle(DS.Colors.textSecondary)
-                            .padding(.horizontal, DS.Spacing.md)
-                            .padding(.vertical, DS.Spacing.sm)
-                            .background(
-                                RoundedRectangle(cornerRadius: DS.Radius.small)
-                                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
-                            )
-                            .accessibilityIdentifier(AccessibilityID.Player.qualityBadge)
-                    }
-                    VolumeControlView(state: state, viewModel: playerVM, style: .bottomBar)
-
-                    HoverButton(action: { state.isQueuePanelOpen.toggle() }) { hovered in
-                        Image(systemName: DS.Icons.queue)
-                            .font(DS.IconFont.lg)
-                            .foregroundStyle(
-                                state.isQueuePanelOpen ? DS.Colors.accent :
-                                hovered ? .white : DS.Colors.textSecondary
-                            )
-                    }
-                    .help("Queue")
-                    .accessibilityIdentifier(AccessibilityID.QueuePanel.toggleButton)
-                    .accessibilityLabel("Toggle queue panel")
+                // Right: what does not fit goes in this order: the speaker's name, the quality badge, the inline slider.
+                ViewThatFits(in: .horizontal) {
+                    trailingControls(showsSpeakerName: true, showsQuality: true, inlineVolume: true)
+                    trailingControls(showsSpeakerName: false, showsQuality: true, inlineVolume: true)
+                    trailingControls(showsSpeakerName: false, showsQuality: false, inlineVolume: true)
+                    trailingControls(showsSpeakerName: false, showsQuality: false, inlineVolume: false)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -331,20 +347,7 @@ private struct NowPlayingCrossLink: View {
             .typography(.secondary)
             .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
             .lineLimit(1)
-            .onHover { hovering in
-                isHovered = hovering
-                if hovering {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .onDisappear {
-                if isHovered {
-                    NSCursor.pop()
-                    isHovered = false
-                }
-            }
+            .pointingHandCursor(isHovered: $isHovered)
             .onTapGesture(perform: onTap)
             .accessibilityAddTraits(.isLink)
     }

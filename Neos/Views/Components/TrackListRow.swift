@@ -336,20 +336,7 @@ private struct CrossLinkText: View {
             .typography(.secondary)
             .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
             .lineLimit(1)
-            .onHover { hovering in
-                isHovered = hovering
-                if hovering {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .onDisappear {
-                if isHovered {
-                    NSCursor.pop()
-                    isHovered = false
-                }
-            }
+            .pointingHandCursor(isHovered: $isHovered)
             .onTapGesture(perform: onTap)
             .accessibilityAddTraits(.isLink)
     }

@@ -5,7 +5,8 @@ struct VolumeControlView: View {
     enum Style {
         case full      // MenuBar: mute button, flexible slider, dB label
         case compact   // Panel: dynamic icon, flexible slider, dB label
-        case bottomBar // Main window bottom bar: icon + vertical popover
+        case bottomBar // Main window bottom bar: icon and a short slider
+        case bottomBarButton // Narrow bottom bar: icon opening the slider in a popover
     }
 
     let state: AppState
@@ -14,9 +15,7 @@ struct VolumeControlView: View {
 
     @State private var sliderVolume: Double = 0
     @State private var isDragging = false
-    @State private var showPopover = false
-    @State private var dismissTask: Task<Void, Never>?
-    @State private var panelState = VolumePanelState()
+    @State private var showsPopover = false
 
     private var effectiveMax: Double { Double(state.maxVolume ?? 100) }
 
@@ -29,6 +28,8 @@ struct VolumeControlView: View {
                 compactLayout
             case .bottomBar:
                 bottomBarLayout
+            case .bottomBarButton:
+                bottomBarButtonLayout
             }
         }
         .onChange(of: state.volume) { _, newValue in
@@ -62,55 +63,32 @@ struct VolumeControlView: View {
         }
     }
 
-    // MARK: - Bottom Bar Layout (AppKit hover zone + vertical popover)
+    // MARK: - Bottom Bar Layout
 
-    private func scheduleDismiss() {
-        dismissTask?.cancel()
-        dismissTask = Task {
-            try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled else { return }
-            if !isDragging && !(panelState.checkMouseInside?() ?? false) {
-                withAnimation(.easeOut(duration: 0.15)) {
-                    showPopover = false
-                }
-            }
+    private var bottomBarLayout: some View {
+        HStack(spacing: DS.Spacing.xs) {
+            muteButton
+            slider
+                .frame(minWidth: 56, idealWidth: 96, maxWidth: 96)
         }
     }
 
-    private var bottomBarLayout: some View {
-        muteButton
-            .background {
-                VolumeHoverZone(
-                    isExpanded: showPopover,
-                    panelState: panelState,
-                    onHoverChanged: { hovering in
-                        if hovering {
-                            dismissTask?.cancel()
-                            if !showPopover {
-                                panelState.volume = sliderVolume
-                                panelState.effectiveMax = effectiveMax
-                                panelState.setVolume = { [viewModel] v in viewModel.setVolume(v) }
-                                panelState.setAdjustingVolume = { [viewModel] a in viewModel.setAdjustingVolume(a) }
-                                showPopover = true
-                            }
-                        } else if !panelState.isDragging {
-                            scheduleDismiss()
-                        }
-                    }
-                )
-            }
-            .onChange(of: panelState.isDragging) { _, newValue in
-                isDragging = newValue
-                if !newValue { scheduleDismiss() }
-            }
-            .onChange(of: panelState.volume) { _, newValue in
-                sliderVolume = newValue
-            }
-            .onChange(of: state.volume) { _, newValue in
-                if !panelState.isDragging {
-                    panelState.volume = Double(newValue)
-                }
-            }
+    private var bottomBarButtonLayout: some View {
+        Button { showsPopover = true } label: {
+            Image(systemName: volumeIcon)
+                .font(DS.IconFont.xl)
+                .foregroundStyle(state.isMuted ? .red : DS.Colors.textSecondary)
+                .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .help("Volume")
+        .accessibilityLabel("Volume")
+        .accessibilityIdentifier(AccessibilityID.Player.volumeMute)
+        .popover(isPresented: $showsPopover) {
+            fullLayout
+                .frame(width: 280)
+                .padding(.vertical, DS.Spacing.lg)
+        }
     }
 
     // MARK: - Shared Components

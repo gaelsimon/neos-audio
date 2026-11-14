@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct HoverButton<Label: View>: View {
@@ -14,23 +13,8 @@ struct HoverButton<Label: View>: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .pointingHandCursor(isHovered: $isHovered)
+        .onHover { isHovered = $0 }
         .modifier(OptionalAccessibilityID(id: accessibilityID))
-    }
-}
-
-extension View {
-    // A view removed under the pointer never gets its hover exit, so it pops the cursor itself.
-    func pointingHandCursor(isHovered: Binding<Bool>) -> some View {
-        onHover { hovering in
-            isHovered.wrappedValue = hovering
-            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-        }
-        .onDisappear {
-            guard isHovered.wrappedValue else { return }
-            NSCursor.pop()
-            isHovered.wrappedValue = false
-        }
     }
 }
 

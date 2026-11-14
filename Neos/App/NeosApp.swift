@@ -37,7 +37,7 @@ struct NeosApp: App {
             }
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 700, height: 500)
+        .defaultSize(width: 1280, height: 800)
         .commands { AppCommands(state: appState, container: container) }
 
         // Menu bar quick controls

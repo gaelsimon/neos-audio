@@ -68,10 +68,7 @@ struct CircularIconButton: View {
         }
         .buttonStyle(.plain)
         .contentShape(Circle())
-        .onHover { hovering in
-            isHovered = hovering
-            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-        }
+        .onHover { isHovered = $0 }
         .animation(.easeInOut(duration: DS.Animation.quick), value: isHovered)
     }
 }

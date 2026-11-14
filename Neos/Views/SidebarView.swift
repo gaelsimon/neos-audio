@@ -199,10 +199,7 @@ private struct SidebarItemStyleModifier: ViewModifier {
                 backgroundColor,
                 in: RoundedRectangle(cornerRadius: DS.Sidebar.cornerRadius)
             )
-            .onHover { hovering in
-                isHovered = hovering
-                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-            }
+            .onHover { isHovered = $0 }
     }
 
     private var backgroundColor: Color {
