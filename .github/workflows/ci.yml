@@ -104,3 +104,35 @@ jobs:
           curl -sSf -u "$SONAR_TOKEN:" \
             "https://sonarcloud.io/api/issues/search?componentKeys=$PROJECT&pullRequest=$PR_NUMBER&issueStatuses=OPEN,CONFIRMED&ps=100" \
             | jq -r '.issues[] | "::warning file=\(.component | sub("^[^:]+:";"")),line=\(.line // 1),title=Sonar \(.rule)::\(.message)"'
+
+  ios-build:
+    name: iOS build & tests
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
+
+      - name: Install tools
+        run: brew install xcodegen xcbeautify
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      # Any available iPhone will do: runner images change which simulators they ship.
+      - name: Unit tests on an iPhone simulator
+        run: |
+          set -o pipefail
+          UDID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
+          xcodebuild test \
+            -project Neos.xcodeproj \
+            -scheme NeosMobile \
+            -destination "id=$UDID" \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM= \
+            | xcbeautify

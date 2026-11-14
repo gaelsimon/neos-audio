@@ -29,6 +29,9 @@ open Neos.xcodeproj
 
 # Or build from the command line
 xcodebuild -project Neos.xcodeproj -scheme Neos -configuration Release build
+
+# The iPhone and iPad app, built from the same sources
+xcodebuild -project Neos.xcodeproj -scheme NeosMobile -destination 'generic/platform=iOS Simulator' build
 ```
 
 ### Running tests
@@ -36,6 +39,9 @@ xcodebuild -project Neos.xcodeproj -scheme Neos -configuration Release build
 ```bash
 # App + UI tests
 xcodebuild test -project Neos.xcodeproj -scheme Neos -destination 'platform=macOS'
+
+# The shared unit tests on iOS
+xcodebuild test -project Neos.xcodeproj -scheme NeosMobile -destination 'platform=iOS Simulator,name=<an iPhone simulator>'
 
 # The HEOS protocol layer has its own tests, in its own repository
 git clone https://github.com/gaelsimon/swift-heos && cd swift-heos && swift test
@@ -140,6 +146,7 @@ Sample HEOS CLI responses live in `docs/samples/` and are useful test fixtures.
 
 - SwiftLint enforces the project style; `swiftlint` must pass before a PR can land.
 - Match existing patterns. Small focused files, MVVM, no force unwraps (`!`) outside test code.
+- Code only the Mac app needs goes in a `macOS` folder, which the iPhone and iPad target leaves out. A component that differs per platform keeps both versions in one file, behind `#if os(macOS)`.
 - Tests for new behaviour. The app has over 400 unit tests and the protocol package has its own, keep that bar.
 
 ## Pull request process

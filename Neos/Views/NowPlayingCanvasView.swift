@@ -19,8 +19,7 @@ struct NowPlayingCanvasView: View {
         return URL(string: nowPlayingResolvedImageURL)
     }
 
-    /// The better artwork, when the track carries its own. It may fail to load, so it is
-    /// offered as an upgrade over `baseArtworkURL` rather than replacing it.
+    /// The track's own artwork, an upgrade over `baseArtworkURL` because it may fail to load.
     private var artworkURL: URL? {
         // A custom image is a deliberate choice; the track's own art must not replace it.
         if state.hasCustomStationImage(forMID: state.nowPlaying.mid) { return nil }
@@ -139,29 +138,28 @@ struct NowPlayingCanvasView: View {
             return
         }
 
-        // Colours come from whichever artwork is actually on screen, so try the same
-        // order the view does: the track's own image, then the one that always loads.
-        var nsImage: NSImage?
+        // Same order as the view: the track's own image, then the one that always loads.
+        var artwork: PlatformImage?
         for candidate in [url, baseArtworkURL].compactMap({ $0 }) {
             if let cached = await ImageCache.shared.load(candidate) {
-                nsImage = cached
+                artwork = cached
                 break
             }
             if let data = try? await NeosURLSession.shared.data(from: candidate).0,
-               let downloaded = NSImage(data: data) {
-                nsImage = downloaded
+               let downloaded = PlatformImage(data: data) {
+                artwork = downloaded
                 break
             }
         }
 
-        guard let nsImage else {
+        guard let artwork else {
             withAnimation(.easeInOut(duration: 0.5)) {
                 state.canvasDominantColors = DominantColorExtractor.defaultColors
             }
             return
         }
 
-        let colors = await DominantColorExtractor.extractColors(from: nsImage)
+        let colors = await DominantColorExtractor.extractColors(from: artwork)
         withAnimation(.easeInOut(duration: 0.5)) {
             state.canvasDominantColors = colors
         }

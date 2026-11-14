@@ -16,11 +16,14 @@ struct QueuePanelView: View {
     /// Solid background color for canvas mode, derived from the most vibrant dominant artwork color.
     private var canvasPanelColor: Color {
         state.canvasDominantColors
-            .max { lhs, rhs in
-                let ls = NSColor(lhs).saturationComponent
-                let rs = NSColor(rhs).saturationComponent
-                return ls < rs
-            } ?? Color(white: 0.06)
+            .max { Self.saturation(of: $0) < Self.saturation(of: $1) } ?? Color(white: 0.06)
+    }
+
+    private static func saturation(of color: Color) -> Float {
+        let rgb = color.resolve(in: EnvironmentValues())
+        let brightest = max(rgb.red, rgb.green, rgb.blue)
+        guard brightest > 0 else { return 0 }
+        return (brightest - min(rgb.red, rgb.green, rgb.blue)) / brightest
     }
 
     var body: some View {
@@ -60,9 +63,11 @@ struct QueuePanelView: View {
             }
         }
         .frame(maxHeight: .infinity)
+        #if os(macOS)
         // The column runs up under the title bar; the tabs line up with the top bar's controls.
         .padding(.top, DS.Spacing.sm)
         .ignoresSafeArea(edges: .top)
+        #endif
         .background {
             ZStack {
                 if state.isNowPlayingCanvasOpen {

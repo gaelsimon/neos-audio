@@ -1,9 +1,7 @@
 import XCTest
-import AppKit
 @testable import Neos
 
-/// Pins the split that keeps a scroll off the disk: the synchronous entry point is memory-only,
-/// and only the async one is allowed to read and decode a file.
+/// The synchronous lookup stays in memory; only the async one may read and decode a file.
 final class ImageCacheTests: XCTestCase {
 
     private func makeURL() -> URL {
@@ -11,17 +9,9 @@ final class ImageCacheTests: XCTestCase {
     }
 
     private func makePNG() -> Data {
-        let image = NSImage(size: NSSize(width: 8, height: 8), flipped: false) { rect in
-            NSColor.orange.setFill()
-            rect.fill()
-            return true
-        }
-        let rep = NSBitmapImageRep(data: image.tiffRepresentation!)!
-        return rep.representation(using: .png, properties: [:])!
+        TestImages.png()
     }
 
-    /// The bug: `CachedAsyncImage.init` called a lookup that reached the disk, so every row
-    /// scrolling in paid a stat, a full decode and an mtime write on the main thread.
     func testMemoryOnlyDoesNotReachTheDisk() async {
         let url = makeURL()
         let stored = await ImageCache.shared.store(makePNG(), for: url)
@@ -37,7 +27,6 @@ final class ImageCacheTests: XCTestCase {
         )
     }
 
-    /// The other half: dropping the disk read from the fast path must not lose the cache.
     func testLoadStillFindsTheFileAfterMemoryIsDropped() async {
         let url = makeURL()
         _ = await ImageCache.shared.store(makePNG(), for: url)

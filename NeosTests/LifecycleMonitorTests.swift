@@ -1,5 +1,4 @@
 import XCTest
-import AppKit
 import NeosDomain
 @testable import Neos
 
@@ -26,7 +25,7 @@ final class LifecycleMonitorTests: XCTestCase {
         let (monitor, service, center, _) = makeMonitor()
         defer { monitor.stop() }
 
-        center.post(name: NSWorkspace.willSleepNotification, object: nil)
+        center.post(name: LifecycleMonitor.suspendNotification, object: nil)
         await waitForCall("suspend", on: service)
 
         XCTAssertTrue(service.calls.contains("suspend"))
@@ -36,7 +35,7 @@ final class LifecycleMonitorTests: XCTestCase {
         let (monitor, service, center, _) = makeMonitor()
         defer { monitor.stop() }
 
-        center.post(name: NSWorkspace.didWakeNotification, object: nil)
+        center.post(name: LifecycleMonitor.resumeNotification, object: nil)
         await waitForCall("resume", on: service)
 
         XCTAssertTrue(service.calls.contains("resume"))
@@ -46,10 +45,22 @@ final class LifecycleMonitorTests: XCTestCase {
         let (monitor, service, center, _) = makeMonitor()
         monitor.stop()
 
-        center.post(name: NSWorkspace.willSleepNotification, object: nil)
+        center.post(name: LifecycleMonitor.suspendNotification, object: nil)
         await waitForCall("suspend", on: service)
 
         XCTAssertFalse(service.calls.contains("suspend"))
+    }
+
+    func testDefaultCenterIsTheOneThePlatformPostsTo() async {
+        let service = MockAudioService()
+        let monitor = LifecycleMonitor(service: service, state: AppState(), monitorsNetworkPath: false)
+        monitor.start()
+        defer { monitor.stop() }
+
+        LifecycleMonitor.systemNotificationCenter.post(name: LifecycleMonitor.suspendNotification, object: nil)
+        await waitForCall("suspend", on: service)
+
+        XCTAssertTrue(service.calls.contains("suspend"))
     }
 
     func testRestoredNetworkPathResumesAReconnectingSession() async {

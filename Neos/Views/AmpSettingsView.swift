@@ -221,7 +221,9 @@ struct AmpSettingsView: View {
                     groupVM.renameGroup(group, to: groupNameDraft)
                     renamingGroupID = nil
                 }
+                #if os(macOS)
                 .onExitCommand { renamingGroupID = nil }
+                #endif
                 .accessibilityIdentifier(AccessibilityID.Group.nameField(group.gid))
         } else {
             HStack(spacing: DS.Spacing.sm) {
@@ -279,7 +281,9 @@ struct AmpSettingsView: View {
                                     .typography(.bodyPrimary)
                             }
                         }
+                        #if os(macOS)
                         .toggleStyle(.checkbox)
+                        #endif
                         .accessibilityIdentifier(AccessibilityID.Group.memberToggle(player.pid))
                     }
                 }

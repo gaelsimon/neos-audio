@@ -9,6 +9,7 @@ struct AccountSettingsView: View {
     let localServersVM: LocalServersViewModel
 
     @State private var showSignOutConfirmation = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         ScrollView {
@@ -336,7 +337,7 @@ struct AccountSettingsView: View {
     private func aboutLink(_ title: String, icon: Image, tint: Color, url: String, accessibilityID: String) -> some View {
         Button(action: {
             if let url = URL(string: url) {
-                NSWorkspace.shared.open(url)
+                openURL(url)
             }
         }) {
             HStack(spacing: DS.Spacing.sm) {

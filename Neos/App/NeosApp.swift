@@ -8,11 +8,12 @@ struct NeosApp: App {
     @State private var service: HEOSService?
     @State private var container: ViewModelContainer?
     @State private var lifecycleMonitor: LifecycleMonitor?
+    #if os(macOS)
     @State private var spaceKeyMonitor: SpaceKeyMonitor?
+    #endif
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
-        // Main app window
         WindowGroup {
             if let container {
                 MainWindowView(
@@ -36,11 +37,13 @@ struct NeosApp: App {
                 }
             }
         }
+        #if os(macOS)
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1280, height: 800)
         .commands { AppCommands(state: appState, container: container) }
+        #endif
 
-        // Menu bar quick controls
+        #if os(macOS)
         MenuBarExtra {
             if let container {
                 MenuBarView(
@@ -65,8 +68,10 @@ struct NeosApp: App {
                 .onAppear { initializeServices() }
         }
         .menuBarExtraStyle(.window)
+        #endif
     }
 
+    #if os(macOS)
     private var menuBarIcon: NSImage {
         menuBarVinyl(connectionState: appState.connectionState, isPlaying: appState.isPlaying).image()
     }
@@ -77,13 +82,16 @@ struct NeosApp: App {
         monitor.start()
         self.spaceKeyMonitor = monitor
     }
+    #else
+    /// iOS has neither a menu bar nor a key monitor to install.
+    private func installSpaceKeyMonitor(for _: ViewModelContainer) {}
+    #endif
 
     /// Idempotent: whichever scene appears first boots the services.
     private func initializeServices() {
         guard container == nil else { return }
 
-        // Demo mode takes priority; always initialize even when hosted by XCTest
-        // Debug builds only: the demo never ships.
+        // Debug only, and ahead of the XCTest check: the demo initialises even under tests.
         #if DEBUG
         if DemoSession.isActive {
             let svc = DemoAudioService()

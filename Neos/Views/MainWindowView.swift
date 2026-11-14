@@ -91,16 +91,17 @@ struct MainWindowView: View {
                     .opacity(state.isConnected ? 1 : 0.5)
             }
         }
-        .frame(minWidth: 660, minHeight: 500)
         .preferredColorScheme(.dark)
+        #if os(macOS)
+        .frame(minWidth: 660, minHeight: 500)
         .background(WindowAccessor())
+        #endif
         .onChange(of: state.isConnected) { _, isConnected in
             guard isConnected else {
                 showConnectedSplash = false
                 return
             }
-            // The splash belongs to the first connect only: a reconnection is announced by the
-            // banner, and covering the session for 1.5 s would undo the point of keeping it up.
+            // First connect only: a reconnection gets the banner, and a splash would hide the kept session.
             guard !hasShownConnectedSplash else { return }
             hasShownConnectedSplash = true
             showConnectedSplash = true
@@ -109,8 +110,7 @@ struct MainWindowView: View {
                 showConnectedSplash = false
             }
         }
-        // A reconnection keeps panels open; only a real disconnect closes them, and that
-        // transition is reconnecting -> disconnected, which never moves `isConnected`.
+        // Only a real disconnect closes panels; reconnecting -> disconnected never moves `isConnected`.
         .onChange(of: state.connectionState) { _, connectionState in
             guard connectionState == .disconnected else { return }
             hasShownConnectedSplash = false
@@ -181,7 +181,9 @@ struct MainWindowView: View {
                         browseVM: browseVM,
                         service: searchVM.service
                     )
+                    #if os(macOS)
                     .onExitCommand { searchVM.dismissOverlay() }
+                    #endif
                 } else {
                     switch browseVM.currentDestination {
                     case .home:
@@ -208,7 +210,9 @@ struct MainWindowView: View {
         }
         // On the container, not on the identity-switching Group: a rebuild there recreated the search field mid-typing.
         .safeAreaInset(edge: .top, spacing: 0) { TopBarView(state: state, container: container) }
+        #if os(macOS)
         .ignoresSafeArea(edges: .top)
+        #endif
         .overlay(alignment: .bottom) {
             toastOverlay
                 .animation(.easeInOut(duration: DS.Animation.standard), value: state.toast)

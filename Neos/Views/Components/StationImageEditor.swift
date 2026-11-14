@@ -1,9 +1,7 @@
 import SwiftUI
-import AppKit
 import CommonCrypto
 
-/// Editor for setting a custom artwork image on a station/track.
-/// The chosen image is copied to Application Support on save, for offline use.
+/// The chosen image is copied to Application Support on save, so it shows offline.
 struct StationImageEditor: View {
     let mid: String
     let name: String
@@ -11,9 +9,9 @@ struct StationImageEditor: View {
     let state: AppState
     let onDismiss: () -> Void
 
-    @State private var previewImage: NSImage?
+    @State private var previewImage: PlatformImage?
     /// Set once the user picks or fetches an image, and copied to disk only on save.
-    @State private var pendingImage: NSImage?
+    @State private var pendingImage: PlatformImage?
     @State private var showURLField = false
     @State private var urlText = ""
     @State private var isDownloading = false
@@ -88,7 +86,7 @@ struct StationImageEditor: View {
     @ViewBuilder
     private var imagePreview: some View {
         if let previewImage {
-            Image(nsImage: previewImage)
+            Image(platformImage: previewImage)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
         } else {
@@ -109,7 +107,7 @@ struct StationImageEditor: View {
         guard let existing = state.customStationImages[mid],
               let url = URL(string: existing),
               url.isFileURL else { return }
-        previewImage = NSImage(contentsOf: url)
+        previewImage = PlatformImage.load(contentsOf: url)
     }
 
     private func downloadFromURL() {
@@ -122,7 +120,7 @@ struct StationImageEditor: View {
         Task {
             do {
                 let (data, _) = try await NeosURLSession.shared.data(from: url)
-                guard let image = NSImage(data: data) else {
+                guard let image = PlatformImage(data: data) else {
                     isDownloading = false
                     return
                 }
@@ -157,13 +155,9 @@ struct StationImageEditor: View {
 
     // MARK: - File Helpers
 
-    /// The file name mixes the media id with the image bytes, so a replacement lands on a new URL.
-    /// Reusing one name per station would leave the previous bitmap in the image cache, which is
-    /// keyed by URL, and the row would keep showing the artwork the user just replaced.
-    static func copyToAppSupport(image: NSImage, forMID mid: String) -> URL? {
-        guard let tiff = image.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return nil }
+    /// Named from the media id and the image bytes: the URL-keyed image cache would keep a replaced artwork.
+    static func copyToAppSupport(image: PlatformImage, forMID mid: String) -> URL? {
+        guard let png = image.pngRepresentation() else { return nil }
 
         let dir = URL.applicationSupportDirectory.appendingPathComponent("Neos/CustomArtwork", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

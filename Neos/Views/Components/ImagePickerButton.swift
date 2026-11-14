@@ -1,10 +1,14 @@
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(iOS)
+import PhotosUI
+#endif
 
-/// Picks artwork from disk.
+/// Picks artwork from disk on macOS and from the photo library on iOS.
 struct ImagePickerButton: View {
-    let onPick: (NSImage) -> Void
+    let onPick: (PlatformImage) -> Void
 
+    #if os(macOS)
     @State private var isChoosingFile = false
 
     var body: some View {
@@ -20,7 +24,27 @@ struct ImagePickerButton: View {
     private func load(_ url: URL) {
         let isScoped = url.startAccessingSecurityScopedResource()
         defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
-        guard let image = NSImage(contentsOf: url) else { return }
+        guard let image = PlatformImage.load(contentsOf: url) else { return }
         onPick(image)
     }
+    #else
+    @State private var selection: PhotosPickerItem?
+
+    var body: some View {
+        PhotosPicker(selection: $selection, matching: .images) {
+            Label("Choose Image…", systemImage: "photo")
+                .frame(maxWidth: .infinity)
+        }
+        .onChange(of: selection) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    onPick(image)
+                }
+                selection = nil
+            }
+        }
+    }
+    #endif
 }

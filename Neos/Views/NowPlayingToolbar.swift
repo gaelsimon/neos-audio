@@ -1,6 +1,5 @@
 import SwiftUI
 import NeosDomain
-import AppKit
 
 struct NowPlayingToolbar: View {
     let state: AppState
@@ -314,9 +313,7 @@ struct NowPlayingToolbar: View {
 
 // MARK: - Observation Island
 
-/// Isolates progress-related AppState reads so that frequent
-/// playbackPosition/lastProgressUpdate changes only re-render
-/// the progress bar, not the entire toolbar.
+/// Holds the frequent progress reads, so they re-render the bar and leave the toolbar alone.
 private struct ToolbarProgressSection: View {
     let state: AppState
     let playerVM: PlayerViewModel

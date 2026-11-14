@@ -1,6 +1,5 @@
 import SwiftUI
 import NeosDomain
-import AppKit
 
 func isLinkableArtist(_ name: String?) -> Bool {
     guard let name, !name.isEmpty else { return false }

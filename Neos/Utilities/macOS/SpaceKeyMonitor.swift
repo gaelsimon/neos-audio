@@ -1,7 +1,6 @@
 import AppKit
 
-/// Space toggles playback. A menu key equivalent cannot: it is matched before the responder
-/// chain, so it would swallow the Space the user typed into a text field.
+/// Space toggles playback; a menu key equivalent would swallow the Space typed into a text field.
 @MainActor
 final class SpaceKeyMonitor {
     private let state: AppState

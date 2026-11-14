@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 import NeosDomain
 
 /// Form for adding a new favorite station by name and stream URL.
@@ -13,7 +12,7 @@ struct AddFavoriteForm: View {
     @State private var isSaving = false
 
     // Artwork, held in memory until the station is actually added.
-    @State private var previewImage: NSImage?
+    @State private var previewImage: PlatformImage?
     @State private var showURLField = false
     @State private var imageURLText = ""
     @State private var isDownloadingImage = false
@@ -87,7 +86,7 @@ struct AddFavoriteForm: View {
                 .typography(.secondary)
 
             if let previewImage {
-                Image(nsImage: previewImage)
+                Image(platformImage: previewImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 80, height: 80)
@@ -130,7 +129,7 @@ struct AddFavoriteForm: View {
         Task {
             do {
                 let (data, _) = try await NeosURLSession.shared.data(from: url)
-                guard let image = NSImage(data: data) else {
+                guard let image = PlatformImage(data: data) else {
                     isDownloadingImage = false
                     return
                 }

@@ -1,5 +1,4 @@
 import Foundation
-import AppKit
 import NeosDomain
 
 @Observable
@@ -74,8 +73,7 @@ final class SettingsViewModel {
             "[\(formatter.string(from: event.date))] [\(event.source)] \(event.message)"
         }
         let text = lines.joined(separator: "\n")
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text.isEmpty ? "No diagnostic events" : text, forType: .string)
+        Clipboard.copy(text.isEmpty ? "No diagnostic events" : text)
     }
 
     // MARK: - Init

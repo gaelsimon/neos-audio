@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 /// Circular icon button with size variants, matching Qobuz/Tidal style.

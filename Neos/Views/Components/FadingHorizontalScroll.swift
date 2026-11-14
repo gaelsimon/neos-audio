@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A horizontal scroll view that shows gradient edge shadows when content
-/// overflows, and navigation arrows on hover for page-by-page scrolling.
+#if os(macOS)
+/// Fades an edge while content overflows it, with page arrows on hover.
 struct FadingHorizontalScroll<Content: View>: View {
     var gradientColor: Color = DS.Colors.background
     @ViewBuilder let content: () -> Content
@@ -97,8 +97,7 @@ struct FadingHorizontalScroll<Content: View>: View {
 
 // MARK: - NSScrollView Observer
 
-/// Invisible helper that finds the enclosing NSScrollView and observes
-/// its clip-view bounds to report whether the user can scroll left/right.
+/// Reports whether the enclosing NSScrollView can scroll further left or right.
 private struct ScrollEdgeObserver: NSViewRepresentable {
     @Binding var canScrollLeft: Bool
     @Binding var canScrollRight: Bool
@@ -212,3 +211,16 @@ private struct ScrollEdgeObserver: NSViewRepresentable {
         }
     }
 }
+#else
+/// A finger scrolls the row directly, so there are no page arrows to offer.
+struct FadingHorizontalScroll<Content: View>: View {
+    var gradientColor: Color = DS.Colors.background
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            content()
+        }
+    }
+}
+#endif

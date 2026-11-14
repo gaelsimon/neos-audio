@@ -1,4 +1,5 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
 
 struct NoRingTextField: NSViewRepresentable {
@@ -115,3 +116,30 @@ class FocusTrackingTextField: NSTextField {
         addCursorRect(bounds, cursor: .iBeam)
     }
 }
+#else
+struct NoRingTextField: View {
+    var placeholder: String
+    @Binding var text: String
+    @Binding var isFocused: Bool
+    var accessibilityID: String?
+
+    @FocusState private var hasFocus: Bool
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            .textFieldStyle(.plain)
+            .foregroundStyle(.white)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .submitLabel(.search)
+            .focused($hasFocus)
+            .onSubmit { isFocused = false }
+            .onAppear { hasFocus = isFocused }
+            .onChange(of: isFocused) { _, focused in hasFocus = focused }
+            .onChange(of: hasFocus) { _, focused in
+                if isFocused != focused { isFocused = focused }
+            }
+            .modifier(OptionalAccessibilityID(id: accessibilityID))
+    }
+}
+#endif

@@ -1,4 +1,5 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
 
 /// AppKit backdrop, so the blur radius can be chosen: the SwiftUI materials expose no such knob.
@@ -17,6 +18,20 @@ struct BackdropBlur: NSViewRepresentable {
         view.material = material
     }
 }
+#else
+struct BackdropBlur: View {
+    enum Style {
+        case hudWindow
+        case popover
+    }
+
+    let material: Style
+
+    var body: some View {
+        Rectangle().fill(material == .popover ? SwiftUI.Material.thin : SwiftUI.Material.ultraThin)
+    }
+}
+#endif
 
 struct DarkGlass: View {
     var body: some View {
