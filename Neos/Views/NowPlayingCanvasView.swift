@@ -3,8 +3,13 @@ import NeosDomain
 
 struct NowPlayingCanvasView: View {
     let state: AppState
-    /// Puts the speaker in the header in place of the artist, which the iPhone and iPad player name under the artwork.
-    var onShowSpeakers: (() -> Void)?
+    /// What leads the header: the artist on the Mac; the speaker on iPhone and iPad, which name the artist under the artwork.
+    enum HeaderLead {
+        case artist
+        case speaker(open: () -> Void)
+    }
+
+    var headerLead: HeaderLead = .artist
 
     private var dominantColors: [Color] { state.canvasDominantColors }
     private var artwork: NowPlayingArtwork { NowPlayingArtwork(state: state) }
@@ -52,9 +57,10 @@ struct NowPlayingCanvasView: View {
 
     private var canvasHeader: some View {
         HStack {
-            if let onShowSpeakers {
-                speakerButton(action: onShowSpeakers)
-            } else if !state.nowPlaying.artist.isEmpty {
+            switch headerLead {
+            case .speaker(let open):
+                speakerButton(action: open)
+            case .artist where !state.nowPlaying.artist.isEmpty:
                 // Artist chip (Tidal style; pill with translucent background)
                 HStack(spacing: DS.Spacing.md) {
                     CachedAsyncImage(url: artwork.trackURL) {
@@ -74,6 +80,8 @@ struct NowPlayingCanvasView: View {
                 .padding(.leading, DS.Spacing.xs)
                 .padding(.vertical, DS.Spacing.xs)
                 .background(.white.opacity(0.12), in: Capsule())
+            case .artist:
+                EmptyView()
             }
 
             Spacer()

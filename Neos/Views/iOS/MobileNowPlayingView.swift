@@ -12,7 +12,7 @@ struct MobileNowPlayingView: View {
     private var playerVM: PlayerViewModel { container.playerVM }
 
     var body: some View {
-        NowPlayingCanvasView(state: state, onShowSpeakers: { showsSpeakers = true })
+        NowPlayingCanvasView(state: state, headerLead: .speaker { showsSpeakers = true })
             .safeAreaInset(edge: .bottom, spacing: 0) { controls }
             .onPreferenceChange(NowPlayingArtworkWidthKey.self) { artworkWidth = $0 }
             .sheet(isPresented: $showsSpeakers) {

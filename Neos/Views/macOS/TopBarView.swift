@@ -13,6 +13,7 @@ struct TopBarView: View {
             HStack(spacing: 0) {
                 navArrowButton(
                     icon: DS.Icons.back,
+                    label: "Back",
                     enabled: container.canGoBack,
                     accessibilityID: AccessibilityID.TopBar.backButton,
                     action: { container.goBack() }
@@ -20,6 +21,7 @@ struct TopBarView: View {
 
                 navArrowButton(
                     icon: DS.Icons.forward,
+                    label: "Forward",
                     enabled: container.canGoForward,
                     accessibilityID: AccessibilityID.TopBar.forwardButton,
                     action: { container.goForward() }
@@ -178,7 +180,9 @@ struct TopBarView: View {
 
     // MARK: - Navigation Arrow
 
-    private func navArrowButton(icon: String, enabled: Bool, accessibilityID: String, action: @escaping () -> Void) -> some View {
+    private func navArrowButton(
+        icon: String, label: String, enabled: Bool, accessibilityID: String, action: @escaping () -> Void
+    ) -> some View {
         HoverButton(action: action) { hovered in
             Image(systemName: icon)
                 .font(DS.TopBar.arrowFont)
@@ -191,6 +195,8 @@ struct TopBarView: View {
                 )
         }
         .disabled(!enabled)
+        .accessibilityLabel(label)
+        .help(label)
         .accessibilityIdentifier(accessibilityID)
     }
 }

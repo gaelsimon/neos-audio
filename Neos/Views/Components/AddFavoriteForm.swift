@@ -44,7 +44,7 @@ struct AddFavoriteForm: View {
             VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 Text("Stream URL")
                     .typography(.secondary)
-                TextField("https://example.com/stream.mp3", text: $streamURL)
+                TextField("Stream URL", text: $streamURL, prompt: Text(verbatim: "https://example.com/stream.mp3"))
                     .textFieldStyle(.roundedBorder)
             }
 
@@ -56,8 +56,10 @@ struct AddFavoriteForm: View {
                 Spacer()
 
                 Button("Cancel", action: onDismiss)
+                    .keyboardShortcut(.cancelAction)
 
                 Button("Add") { save() }
+                    .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .tint(DS.Colors.accent)
                     .disabled(!isValid || isSaving)
@@ -98,7 +100,7 @@ struct AddFavoriteForm: View {
 
             if showURLField {
                 HStack(spacing: DS.Spacing.sm) {
-                    TextField("https://example.com/image.png", text: $imageURLText)
+                    TextField("Image URL", text: $imageURLText, prompt: Text(verbatim: "https://example.com/image.png"))
                         .textFieldStyle(.roundedBorder)
                         .onSubmit { downloadImageFromURL() }
                     if isDownloadingImage {

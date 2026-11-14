@@ -5,6 +5,12 @@ extension EnvironmentValues {
     @Entry var showsPadChrome = false
 }
 
+/// The device, not the window: rotating or resizing must not swap the player's presentation or move the
+/// mini player under the user.
+enum DeviceIdiom {
+    static var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+}
+
 /// The iPhone and iPad app: discovery until a speaker answers, then the tabs.
 struct MobileRootView: View {
     let state: AppState
@@ -12,8 +18,7 @@ struct MobileRootView: View {
     @State private var showConnectedSplash = false
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    /// The device, not the window: rotating or resizing must not swap the player's presentation under the user.
-    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var isPad: Bool { DeviceIdiom.isPad }
 
     var body: some View {
         ConnectionGate(state: state, speakerVM: container.speakerVM, isHoldingSplash: $showConnectedSplash) {

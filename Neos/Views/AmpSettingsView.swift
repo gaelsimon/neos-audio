@@ -11,49 +11,26 @@ struct AmpSettingsView: View {
     @State private var groupNameDraft = ""
 
     var body: some View {
-        Group {
-            #if os(iOS)
-            // The Settings app's grouped sections, where the Mac lays out cards.
-            Form {
-                playersSection
-                groupsSection
-                connectionSection
-            }
-            #else
-            ScrollView {
-                VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-                    // Only the Mac: iPhone and iPad title the page in the navigation bar.
-                    Text("Amp Settings")
-                        .typography(.pageTitle)
-                        .padding(.bottom, DS.Spacing.sm)
-
-                    playersSection
-                    groupsSection
-                    connectionSection
-                }
-                .pageMargins()
-                .padding(.top, DS.Layout.pageTop)
-                .padding(.bottom, DS.Spacing.xxxl)
-                .frame(maxWidth: 640, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-            #endif
+        Form {
+            playersSection
+            groupsSection
+            connectionSection
         }
+        .settingsForm()
+        .pageHeading("Amp Settings")
         .accessibilityIdentifier(AccessibilityID.AmpSettings.view)
         .task {
             groupVM.loadGroups()
         }
     }
 
-    // MARK: - Section Card
+    // MARK: - Section
 
-    @ViewBuilder
-    private func sectionCard<Content: View, Accessory: View>(
+    private func formSection<Content: View, Accessory: View>(
         header: String?,
         @ViewBuilder accessory: () -> Accessory = { EmptyView() },
         @ViewBuilder content: () -> Content
     ) -> some View {
-        #if os(iOS)
         Section {
             content()
         } header: {
@@ -65,25 +42,6 @@ struct AmpSettingsView: View {
                 }
             }
         }
-        #else
-        VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            if let header {
-                HStack {
-                    Text(header)
-                        .typography(.sectionHeader)
-                    Spacer()
-                    accessory()
-                }
-            }
-
-            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                content()
-            }
-            .padding(DS.Spacing.xl)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.large))
-        }
-        #endif
     }
 
     // MARK: - Players Section
@@ -98,26 +56,14 @@ struct AmpSettingsView: View {
     }
 
     private var playersSection: some View {
-        sectionCard(header: speakersHeader) {
+        formSection(header: speakersHeader) {
             if state.players.isEmpty {
                 Text("No speakers found.")
                     .typography(.secondary)
             } else {
-                #if os(iOS)
-                // One row each, so the form draws the separators.
                 ForEach(state.displayPlayers) { player in
                     playerRow(player)
                 }
-                #else
-                VStack(spacing: 0) {
-                    ForEach(state.displayPlayers) { player in
-                        playerRow(player)
-                        if player.id != state.displayPlayers.last?.id {
-                            Divider().opacity(0.2)
-                        }
-                    }
-                }
-                #endif
             }
         }
     }
@@ -163,12 +109,8 @@ struct AmpSettingsView: View {
                 .help(state.isPoweredOn ? "Turn Off" : "Turn On")
             }
         }
-        #if os(iOS)
-        // As tall as the power button's touch target, so rows with and without one line up.
+        // As tall as the power button's target, so rows with and without one line up.
         .frame(minHeight: DS.HitTarget.button)
-        #else
-        .padding(.vertical, DS.Spacing.md)
-        #endif
         .accessibilityIdentifier(AccessibilityID.AmpSettings.playerRow(player.pid))
         .accessibilityValue(player.pid == state.selectedPlayerID ? "selected" : "unselected")
     }
@@ -183,7 +125,7 @@ struct AmpSettingsView: View {
     // MARK: - Groups Section
 
     private var groupsSection: some View {
-        sectionCard(header: "Speaker Groups", accessory: { refreshButton }) {
+        formSection(header: "Speaker Groups", accessory: { refreshButton }) {
             existingGroupsList
             createGroupForm
         }
@@ -253,11 +195,6 @@ struct AmpSettingsView: View {
                 .disabled(groupVM.isUngrouping)
             }
         }
-        // On iPhone and iPad the form's row is the card.
-        #if os(macOS)
-        .padding(DS.Spacing.md)
-        .background(DS.Colors.surfaceContainer, in: RoundedRectangle(cornerRadius: DS.Radius.medium))
-        #endif
         .onAppear { groupVM.loadMemberVolumes(for: group) }
     }
 
@@ -302,11 +239,6 @@ struct AmpSettingsView: View {
     @ViewBuilder
     private var createGroupForm: some View {
         if state.players.count >= 2 {
-            // The form separates its rows itself.
-            #if os(macOS)
-            Divider().opacity(0.3)
-            #endif
-
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
                 Text("Create Group")
                     .typography(.bodyMedium)
@@ -314,7 +246,7 @@ struct AmpSettingsView: View {
                 HStack {
                     Text("Music from:")
                         .typography(.secondary)
-                    Picker("", selection: leaderBinding) {
+                    Picker("Music from", selection: leaderBinding) {
                         ForEach(state.players) { player in
                             Text(state.displayName(for: player)).tag(player.pid)
                         }
@@ -373,7 +305,7 @@ struct AmpSettingsView: View {
     // MARK: - Connection Section
 
     private var connectionSection: some View {
-        sectionCard(header: "Connection") {
+        formSection(header: "Connection") {
             if let device = state.connectedDevice {
                 HStack(spacing: DS.Spacing.md) {
                     Image(systemName: DS.Icons.speakerFill)

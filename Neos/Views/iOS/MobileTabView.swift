@@ -18,11 +18,9 @@ struct MobileTabView: View {
     @State private var selection: Section = .home
     @Environment(\.showsPadChrome) private var showsPadChrome
 
-    /// The device, not the window: the iPad keeps its player in the pages.
-    private var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
-
     var body: some View {
-        if #available(iOS 26, *), isPhone {
+        // The iPad keeps its player in the pages.
+        if #available(iOS 26, *), !DeviceIdiom.isPad {
             tabs
                 .tabViewBottomAccessory {
                     MiniPlayerAccessory(state: state, playerVM: container.playerVM)

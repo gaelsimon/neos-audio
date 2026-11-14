@@ -12,75 +12,25 @@ struct AccountSettingsView: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        Group {
-            #if os(iOS)
-            // The Settings app's grouped sections, where the Mac lays out cards.
-            Form {
-                sections
-            }
-            #else
-            ScrollView {
-                VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-                    // Only the Mac: iPhone and iPad title the page in the navigation bar.
-                    Text("Settings")
-                        .typography(.pageTitle)
-                        .padding(.bottom, DS.Spacing.sm)
-
-                    sections
-                }
-                .pageMargins()
-                .padding(.top, DS.Layout.pageTop)
-                .padding(.bottom, DS.Spacing.xxxl)
-                .frame(maxWidth: 640, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .center)
-            }
-            #endif
+        Form {
+            accountSection
+            servicesSection
+            localServersSection
+            playbackSection
+            cacheSection
+            aboutSection
+            diagnosticsSection
         }
+        .settingsForm()
+        .pageHeading("Settings")
         .task { await localServersVM.load() }
         .accessibilityIdentifier(AccessibilityID.Settings.view)
-    }
-
-    @ViewBuilder
-    private var sections: some View {
-        accountSection
-        servicesSection
-        localServersSection
-        playbackSection
-        cacheSection
-        aboutSection
-        diagnosticsSection
-    }
-
-    // MARK: - Section Card
-
-    @ViewBuilder
-    private func sectionCard<Content: View>(
-        header: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        #if os(iOS)
-        Section(header) {
-            content()
-        }
-        #else
-        VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            Text(header)
-                .typography(.sectionHeader)
-
-            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                content()
-            }
-            .padding(DS.Spacing.xl)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.large))
-        }
-        #endif
     }
 
     // MARK: - Account Section
 
     private var accountSection: some View {
-        sectionCard(header: "Account") {
+        Section("Account") {
             if let user = state.signedInUser {
                 signedInView(user: user)
             } else {
@@ -183,7 +133,7 @@ struct AccountSettingsView: View {
 
     private var servicesSection: some View {
         let services = MusicSource.listed(homeVM.streamingSources, signedIn: state.signedInUser != nil)
-        return sectionCard(header: "Services") {
+        return Section("Services") {
             if services.isEmpty {
                 Text("No services available. Connect to a speaker to see your music services.")
                     .typography(.secondary)
@@ -200,7 +150,7 @@ struct AccountSettingsView: View {
     // MARK: - Local Music Servers Section
 
     private var localServersSection: some View {
-        sectionCard(header: "Local Music Servers") {
+        Section("Local Music Servers") {
             if localServersVM.servers.isEmpty {
                 if localServersVM.hasLoaded {
                     Text("No local music servers found.")
@@ -215,26 +165,21 @@ struct AccountSettingsView: View {
     // MARK: - Playback Section
 
     private var playbackSection: some View {
-        sectionCard(header: "Playback") {
-            HStack {
+        Section("Playback") {
+            Toggle(isOn: Binding(
+                get: { settingsVM.volumeLimitEnabled },
+                set: { settingsVM.volumeLimitEnabled = $0 }
+            )) {
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     Text("Volume Limit")
                         .typography(.bodyMedium)
                     Text("Set a maximum volume to prevent accidentally playing too loud.")
                         .typography(.secondary)
                 }
-
-                Spacer()
-
-                Toggle("", isOn: Binding(
-                    get: { settingsVM.volumeLimitEnabled },
-                    set: { settingsVM.volumeLimitEnabled = $0 }
-                ))
-                .toggleStyle(.switch)
-                .tint(DS.Colors.accent)
-                .labelsHidden()
-                .accessibilityIdentifier(AccessibilityID.Settings.volumeLimitToggle)
             }
+            .toggleStyle(.switch)
+            .tint(DS.Colors.accent)
+            .accessibilityIdentifier(AccessibilityID.Settings.volumeLimitToggle)
 
             if settingsVM.volumeLimitEnabled {
                 HStack(spacing: DS.Spacing.md) {
@@ -261,7 +206,7 @@ struct AccountSettingsView: View {
     // MARK: - Cache Section
 
     private var cacheSection: some View {
-        sectionCard(header: "Cache") {
+        Section("Cache") {
             HStack {
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     Text("Cached Data")
@@ -296,7 +241,7 @@ struct AccountSettingsView: View {
     // MARK: - About Section
 
     private var aboutSection: some View {
-        sectionCard(header: "About") {
+        Section("About") {
             VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 Image("NeosLogo")
                     .resizable()
@@ -379,7 +324,7 @@ struct AccountSettingsView: View {
     // MARK: - Diagnostics Section
 
     private var diagnosticsSection: some View {
-        sectionCard(header: "Diagnostics") {
+        Section("Diagnostics") {
             if state.diagnostics.isEmpty {
                 Text("No diagnostic events recorded.")
                     .typography(.secondary)

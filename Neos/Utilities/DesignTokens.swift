@@ -122,6 +122,15 @@ enum DS {
         #endif
     }()
 
+    /// A touch screen removes a row by swiping it; the Mac shows a remove button on the row instead.
+    static let removesRowsBySwiping: Bool = {
+        #if os(iOS)
+        true
+        #else
+        false
+        #endif
+    }()
+
     // MARK: - Animation
     enum Animation {
         static let standard: Double = 0.25

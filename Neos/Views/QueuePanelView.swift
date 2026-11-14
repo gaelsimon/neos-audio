@@ -199,7 +199,7 @@ struct QueuePanelView: View {
                         imageURL: item.imageURL,
                         isStation: false,
                         isNowPlaying: false,
-                        showRemoveButton: Self.showsRemoveButton,
+                        showRemoveButton: !DS.removesRowsBySwiping,
                         onTap: { viewModel.playQueueItem(item) },
                         onRemove: { viewModel.removeQueueItem(item) },
                         externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
@@ -250,12 +250,6 @@ struct QueuePanelView: View {
         #endif
     }
 
-    /// iPhone and iPad remove an Up Next track by swiping it.
-    #if os(iOS)
-    private static let showsRemoveButton = false
-    #else
-    private static let showsRemoveButton = true
-    #endif
 
     private var recentlyPlayedTabContent: some View {
         ScrollView {

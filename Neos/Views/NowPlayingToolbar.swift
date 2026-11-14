@@ -179,7 +179,7 @@ struct NowPlayingToolbar: View {
         HStack(spacing: DS.Spacing.md) {
             serviceOptionButtons
 
-            if state.displayPlayers.count > 1, let target = state.playbackTargetName {
+            if let target = state.speakerNameIfChoice {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: DS.Icons.speaker)
                         .font(DS.IconFont.sm)

@@ -43,6 +43,19 @@ extension View {
         modifier(ServiceGroupSurface())
     }
 
+    /// A settings page: the platform's grouped form over the page's own background, no wider than reads well.
+    func settingsForm() -> some View {
+        formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
+    }
+
+    /// The Mac titles a page above its content; iPhone and iPad title it in the navigation bar.
+    func pageHeading(_ title: String) -> some View {
+        modifier(PageHeading(title: title))
+    }
+
     /// A row that draws its own padding and background, inside a `List` kept for its swipe actions.
     func bareListRow() -> some View {
         listRowInsets(EdgeInsets())
@@ -75,5 +88,23 @@ private struct SideMargins: ViewModifier {
 
     func body(content: Content) -> some View {
         content.padding(.horizontal, margin)
+    }
+}
+
+private struct PageHeading: ViewModifier {
+    let title: String
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text(title)
+                .typography(.pageTitle)
+                .pageMargins()
+                .padding(.top, DS.Layout.pageTop)
+            content
+        }
+        #else
+        content
+        #endif
     }
 }

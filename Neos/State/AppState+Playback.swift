@@ -4,6 +4,11 @@ import NeosDomain
 // MARK: - Play State
 
 extension AppState {
+    /// Where the music plays, named only when there is more than one speaker to choose from.
+    var speakerNameIfChoice: String? {
+        displayPlayers.count > 1 ? playbackTargetName : nil
+    }
+
     /// The amp reporting what it is doing.
     func setPlayState(_ state: PlayState) {
         applyPlayState(state, confirmedByDevice: true)

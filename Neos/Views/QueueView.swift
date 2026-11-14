@@ -152,7 +152,7 @@ struct QueueView: View {
             externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
             state: state,
             onRemove: { viewModel.removeItem(item) },
-            showsRemoveButton: Self.showsRemoveButton
+            showsRemoveButton: !DS.removesRowsBySwiping
         ) {
             viewModel.playItem(item)
         }
@@ -163,12 +163,6 @@ struct QueueView: View {
         }
     }
 
-    /// iPhone and iPad remove a row by swiping it.
-    #if os(iOS)
-    private static let showsRemoveButton = false
-    #else
-    private static let showsRemoveButton = true
-    #endif
 
     private var loadingMoreRow: some View {
         HStack {

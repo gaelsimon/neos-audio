@@ -149,6 +149,8 @@ Sample HEOS CLI responses live in `docs/samples/` and are useful test fixtures.
 - Code only the Mac app needs goes in a `macOS` folder, which the iPhone and iPad target leaves out; code only the iPhone and iPad app needs goes in an `iOS` folder, which the Mac target leaves out. A component that differs per platform keeps both versions in one file, behind `#if os(macOS)`.
 - Pages pad their sides with `pageMargins()`, or `listMargins()` for rows that pad their own content, so everything lines up with the page title. On iPhone and iPad that title lives in the navigation bar, never in the page.
 - On iPhone and iPad the app's tint is white, so bars, buttons and links stay neutral. Anything that marks a state, such as the playing track, a selection or a switch, sets `DS.Colors.accent` itself.
+- Where the platforms differ, decide in one place. A capability of the platform, such as hover or swipe to remove, is a `DS` constant (`DS.revealsControlsOnHover`, `DS.removesRowsBySwiping`). A layout decision follows the size class through an environment value in `PageLayout.swift`. The device itself comes from `DeviceIdiom`. A rule about the app's state, such as when to name the speaker, belongs on `AppState` with a test, not in a view.
+- Prefer the platform's own controls: `Form` for settings, labelled `Toggle`, `Picker` and `TextField`, `.keyboardShortcut` for Return and Escape in sheets. A custom control needs a reason the native one cannot meet, written next to it.
 - Tests for new behaviour. The app has over 400 unit tests and the protocol package has its own, keep that bar.
 
 ## Pull request process

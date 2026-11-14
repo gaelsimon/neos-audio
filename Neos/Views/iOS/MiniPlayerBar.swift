@@ -59,10 +59,7 @@ private struct MiniPlayerContent: View {
     /// Beside the shrunk tabs there is room for the title and play only.
     var isInline = false
 
-    /// Named once there is a choice, as in the Mac's player bar.
-    private var speakerName: String? {
-        state.displayPlayers.count > 1 ? state.playbackTargetName : nil
-    }
+    private var speakerName: String? { state.speakerNameIfChoice }
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {

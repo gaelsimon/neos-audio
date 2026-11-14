@@ -9,6 +9,8 @@ struct Spinner: View {
     var body: some View {
         SpinnerArc(lineWidth: lineWidth, color: color)
             .frame(width: size, height: size)
+            .accessibilityElement()
+            .accessibilityLabel("Loading")
     }
 }
 

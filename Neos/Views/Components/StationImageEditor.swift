@@ -40,7 +40,7 @@ struct StationImageEditor: View {
             // Optional URL input
             if showURLField {
                 HStack(spacing: DS.Spacing.sm) {
-                    TextField("https://example.com/image.png", text: $urlText)
+                    TextField("Image URL", text: $urlText, prompt: Text(verbatim: "https://example.com/image.png"))
                         .textFieldStyle(.roundedBorder)
                         .onSubmit { downloadFromURL() }
                     if isDownloading {
@@ -69,8 +69,10 @@ struct StationImageEditor: View {
                 Spacer()
 
                 Button("Cancel", action: onDismiss)
+                    .keyboardShortcut(.cancelAction)
 
                 Button("Save") { save() }
+                    .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .tint(DS.Colors.accent)
                     .disabled(pendingImage == nil)
