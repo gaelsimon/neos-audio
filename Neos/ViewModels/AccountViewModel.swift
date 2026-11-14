@@ -49,7 +49,7 @@ final class AccountViewModel {
     var signInError: SignInErrorType?
     var rememberMe: Bool {
         didSet {
-            if !Self.isUnitTestHost {
+            if !Self.isTestHost {
                 UserDefaults.standard.set(rememberMe, forKey: "settings.rememberMe")
             }
             if !rememberMe {
@@ -69,7 +69,7 @@ final class AccountViewModel {
     init(service: any AudioService, state: AppState) {
         self.service = service
         self.state = state
-        self.rememberMe = Self.isUnitTestHost ? true : UserDefaults.standard.object(forKey: "settings.rememberMe") as? Bool ?? true
+        self.rememberMe = Self.isTestHost ? true : UserDefaults.standard.object(forKey: "settings.rememberMe") as? Bool ?? true
         loadCredentials()
     }
 
@@ -158,8 +158,8 @@ final class AccountViewModel {
 
     // MARK: - Keychain
 
-    /// Unit tests must neither prompt for the keychain password nor overwrite the developer's saved login.
-    private static let isUnitTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    /// Tests, UI tests included, must neither prompt for the keychain password nor overwrite the developer's saved login.
+    private static let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || CommandLine.arguments.contains("--uitesting")
 
     private static let keychainService = "com.galela.neos.heos-account"
     private static let legacyKeychainService = "com.neos.heos-account"
@@ -179,7 +179,7 @@ final class AccountViewModel {
     }()
 
     private func saveCredentials() {
-        guard !DemoSession.isActive, !Self.isUnitTestHost, storedCredentials != "\(username)\n\(password)" else { return }
+        guard !DemoSession.isActive, !Self.isTestHost, storedCredentials != "\(username)\n\(password)" else { return }
         let payload = ["u": username, "p": password]
         guard let data = try? JSONEncoder().encode(payload) else { return }
         let query: [String: Any] = [
@@ -198,7 +198,7 @@ final class AccountViewModel {
     }
 
     private func loadCredentials() {
-        guard rememberMe, !DemoSession.isActive, !Self.isUnitTestHost else { return }
+        guard rememberMe, !DemoSession.isActive, !Self.isTestHost else { return }
         migrateLegacyKeychainIfNeeded()
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -236,7 +236,7 @@ final class AccountViewModel {
             password = ""
             storedCredentials = nil
         }
-        guard !Self.isUnitTestHost else { return }
+        guard !Self.isTestHost else { return }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
