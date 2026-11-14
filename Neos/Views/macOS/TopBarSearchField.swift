@@ -1,25 +1,29 @@
-import SwiftUI
-#if os(macOS)
 import AppKit
+import SwiftUI
 
-struct NoRingTextField: NSViewRepresentable {
-    var placeholder: String
+/// AppKit because SwiftUI's search field needs macOS 15 to take focus from a shortcut.
+struct TopBarSearchField: NSViewRepresentable {
     @Binding var text: String
     @Binding var isFocused: Bool
-    var accessibilityID: String?
+    /// The clear button resets the filters too; deleting the text keeps them.
+    let onClear: () -> Void
 
-    func makeNSView(context: Context) -> FocusTrackingTextField {
-        let field = FocusTrackingTextField()
-        field.placeholderString = placeholder
+    func makeNSView(context: Context) -> FocusTrackingSearchField {
+        let field = FocusTrackingSearchField()
+        field.placeholderString = "Search"
         field.isBordered = false
+        field.isBezeled = false
         field.drawsBackground = false
         field.focusRingType = .none
         field.font = .systemFont(ofSize: NSFont.systemFontSize)
         field.textColor = .white
         field.delegate = context.coordinator
         field.cell?.lineBreakMode = .byTruncatingTail
-        if let accessibilityID {
-            field.setAccessibilityIdentifier(accessibilityID)
+        field.setAccessibilityIdentifier(AccessibilityID.TopBar.searchField)
+        if let cancelButton = (field.cell as? NSSearchFieldCell)?.cancelButtonCell {
+            cancelButton.target = context.coordinator
+            cancelButton.action = #selector(Coordinator.clear)
+            cancelButton.setAccessibilityIdentifier(AccessibilityID.Search.clearButton)
         }
         field.onFocusChange = { focused in
             DispatchQueue.main.async {
@@ -29,7 +33,8 @@ struct NoRingTextField: NSViewRepresentable {
         return field
     }
 
-    func updateNSView(_ field: FocusTrackingTextField, context: Context) {
+    func updateNSView(_ field: FocusTrackingSearchField, context: Context) {
+        context.coordinator.parent = self
         if field.stringValue != text {
             field.stringValue = text
         }
@@ -49,10 +54,10 @@ struct NoRingTextField: NSViewRepresentable {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, NSTextFieldDelegate {
-        var parent: NoRingTextField
+    final class Coordinator: NSObject, NSSearchFieldDelegate {
+        var parent: TopBarSearchField
 
-        init(_ parent: NoRingTextField) {
+        init(_ parent: TopBarSearchField) {
             self.parent = parent
         }
 
@@ -60,10 +65,14 @@ struct NoRingTextField: NSViewRepresentable {
             guard let field = obj.object as? NSTextField else { return }
             parent.text = field.stringValue
         }
+
+        @objc func clear() {
+            parent.onClear()
+        }
     }
 }
 
-class FocusTrackingTextField: NSTextField {
+final class FocusTrackingSearchField: NSSearchField {
     var onFocusChange: ((Bool) -> Void)?
     private var outsideClickMonitor: Any?
 
@@ -108,38 +117,13 @@ class FocusTrackingTextField: NSTextField {
         outsideClickMonitor = nil
     }
 
+    // Escape leaves the field and keeps the query, where a search field would clear it.
     override func cancelOperation(_ sender: Any?) {
         window?.makeFirstResponder(nil)
     }
 
     override func resetCursorRects() {
-        addCursorRect(bounds, cursor: .iBeam)
+        guard let cell = cell as? NSSearchFieldCell else { return super.resetCursorRects() }
+        addCursorRect(cell.searchTextRect(forBounds: bounds), cursor: .iBeam)
     }
 }
-#else
-struct NoRingTextField: View {
-    var placeholder: String
-    @Binding var text: String
-    @Binding var isFocused: Bool
-    var accessibilityID: String?
-
-    @FocusState private var hasFocus: Bool
-
-    var body: some View {
-        TextField(placeholder, text: $text)
-            .textFieldStyle(.plain)
-            .foregroundStyle(.white)
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
-            .submitLabel(.search)
-            .focused($hasFocus)
-            .onSubmit { isFocused = false }
-            .onAppear { hasFocus = isFocused }
-            .onChange(of: isFocused) { _, focused in hasFocus = focused }
-            .onChange(of: hasFocus) { _, focused in
-                if isFocused != focused { isFocused = focused }
-            }
-            .modifier(OptionalAccessibilityID(id: accessibilityID))
-    }
-}
-#endif

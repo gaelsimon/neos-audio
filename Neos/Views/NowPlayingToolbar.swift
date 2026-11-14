@@ -142,30 +142,15 @@ struct NowPlayingToolbar: View {
                             .lineLimit(1)
                     }
                     .accessibilityIdentifier(AccessibilityID.Player.artistName)
-                } else if canBrowseArtist {
-                    NowPlayingCrossLink(
-                        text: state.nowPlaying.artist,
-                        onTap: { navigateToArtist() }
-                    )
-                    .accessibilityIdentifier(AccessibilityID.Player.artistName)
                 } else {
-                    Text(state.nowPlaying.artist)
-                        .typography(.secondary)
+                    CrossLink(state.nowPlaying.artist, action: canBrowseArtist ? navigateToArtist : nil)
                         .lineLimit(1)
                         .accessibilityIdentifier(AccessibilityID.Player.artistName)
                 }
             }
             if !state.nowPlaying.album.isEmpty, state.nowPlaying.station == nil {
-                if canBrowseAlbum {
-                    NowPlayingCrossLink(
-                        text: state.nowPlaying.album,
-                        onTap: { navigateToAlbum() }
-                    )
-                } else {
-                    Text(state.nowPlaying.album)
-                        .typography(.secondary)
-                        .lineLimit(1)
-                }
+                CrossLink(state.nowPlaying.album, action: canBrowseAlbum ? navigateToAlbum : nil)
+                    .lineLimit(1)
             }
         }
         .frame(maxWidth: 220, alignment: .leading)
@@ -329,23 +314,5 @@ private struct ToolbarProgressSection: View {
             showTrack: true,
             inlineTimeLabels: true
         )
-    }
-}
-
-// MARK: - Now Playing Cross Link
-
-private struct NowPlayingCrossLink: View {
-    let text: String
-    let onTap: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Text(text)
-            .typography(.secondary)
-            .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
-            .lineLimit(1)
-            .pointingHandCursor(isHovered: $isHovered)
-            .onTapGesture(perform: onTap)
-            .accessibilityAddTraits(.isLink)
     }
 }

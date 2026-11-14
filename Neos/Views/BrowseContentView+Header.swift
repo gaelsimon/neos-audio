@@ -210,7 +210,8 @@ extension BrowseContentView {
     private func containerSubtitle(_ target: BrowseTarget, centered: Bool) -> some View {
         VStack(alignment: centered ? .center : .leading, spacing: DS.Spacing.sm) {
             if let artist = sharedArtist {
-                HeaderArtistLink(artist: artist, onTap: trackRows.first.flatMap(artistViewHandler))
+                CrossLink(artist, typography: .sectionHeader, action: trackRows.first.flatMap(artistViewHandler))
+                    .accessibilityIdentifier(AccessibilityID.Browse.containerArtist)
             }
 
             if centered {

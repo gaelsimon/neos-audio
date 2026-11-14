@@ -51,29 +51,8 @@ struct BreadcrumbBar: View {
     }
 
     private func crumb(_ target: BrowseTarget, at index: Int) -> some View {
-        BreadcrumbLink(title: target.name) { onSelect(index) }
+        CrossLink(target.name, hover: .underline) { onSelect(index) }
+            .lineLimit(1)
             .accessibilityIdentifier(AccessibilityID.Browse.breadcrumbItem(index))
-    }
-}
-
-// MARK: - Breadcrumb Link
-
-/// Hover shows as an underline: a weight or colour change would reflow the row under the cursor.
-private struct BreadcrumbLink: View {
-    let title: String
-    let action: () -> Void
-
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .typography(.secondary)
-                .lineLimit(1)
-                .underline(isHovered)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor(isHovered: $isHovered)
     }
 }

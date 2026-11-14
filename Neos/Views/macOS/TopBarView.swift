@@ -49,38 +49,22 @@ struct TopBarView: View {
     // MARK: - Search Field
 
     private var searchField: some View {
-        HStack(spacing: DS.Spacing.sm) {
-            Image(systemName: DS.Icons.search)
-                .font(DS.IconFont.body)
-                .foregroundStyle(DS.Colors.textSecondary)
-            NoRingTextField(
-                placeholder: "Search",
-                text: Binding(
-                    get: { searchVM.query },
-                    set: { searchVM.onQueryChanged($0) }
-                ),
-                isFocused: Binding(
-                    get: { state.isSearchFieldFocused },
-                    set: { state.isSearchFieldFocused = $0 }
-                ),
-                accessibilityID: AccessibilityID.TopBar.searchField
-            )
-            .accessibilityIdentifier(AccessibilityID.TopBar.searchField)
-            if !searchVM.query.isEmpty {
-                HoverButton(action: { searchVM.clearSearch() }) { hovered in
-                    Image(systemName: DS.Icons.close)
-                        .font(DS.IconFont.mdEmphasis)
-                        .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
-                }
-                .accessibilityIdentifier(AccessibilityID.Search.clearButton)
-            }
-        }
-        .padding(.horizontal, DS.Spacing.lg)
+        TopBarSearchField(
+            text: Binding(
+                get: { searchVM.query },
+                set: { searchVM.onQueryChanged($0) }
+            ),
+            isFocused: Binding(
+                get: { state.isSearchFieldFocused },
+                set: { state.isSearchFieldFocused = $0 }
+            ),
+            onClear: { searchVM.clearSearch() }
+        )
+        .padding(.horizontal, DS.Spacing.md)
         .frame(minWidth: DS.TopBar.searchMinWidth, maxWidth: DS.TopBar.searchWidth)
         .frame(height: DS.TopBar.controlHeight)
         .contentShape(Capsule())
-        // The text field is narrower than the capsule, so clicking the magnifier or the padding
-        // used to do nothing. Simultaneous so a click inside the field still places the cursor.
+        // A click on the padding focuses the field too; simultaneous, so a click in the field still places the cursor.
         .simultaneousGesture(TapGesture().onEnded { state.isSearchFieldFocused = true })
         .background { GlassCapsule(tint: state.isSearchFieldFocused ? .white.opacity(0.08) : .clear) }
         .overlay(

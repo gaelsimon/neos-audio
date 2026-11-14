@@ -281,11 +281,8 @@ struct TrackListRow: View {
             if isResolvingArtist {
                 Spinner(size: 12, lineWidth: 1.5)
                     .frame(height: 16)
-            } else if let onArtistTap {
-                ArtistLinkText(artist: artist ?? "", onTap: onArtistTap)
             } else {
-                Text(artist ?? "")
-                    .typography(.secondary)
+                CrossLink(artist ?? "", action: onArtistTap)
                     .lineLimit(1)
             }
         }
@@ -296,17 +293,10 @@ struct TrackListRow: View {
     // MARK: - Album Column
 
     private var albumColumn: some View {
-        Group {
-            if let onAlbumTap {
-                AlbumLinkText(album: album ?? "", onTap: onAlbumTap)
-            } else {
-                Text(album ?? "")
-                    .typography(.secondary)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .layoutPriority(2)
+        CrossLink(album ?? "", action: onAlbumTap)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(2)
     }
 
     // MARK: - Row Background
@@ -322,41 +312,5 @@ struct TrackListRow: View {
             return DS.Colors.surfaceElevated.opacity(0.5)
         }
         return .clear
-    }
-}
-
-// MARK: - Cross-Link Text
-
-private struct AlbumLinkText: View {
-    let album: String
-    let onTap: () -> Void
-
-    var body: some View {
-        CrossLinkText(text: album, onTap: onTap)
-    }
-}
-
-private struct ArtistLinkText: View {
-    let artist: String
-    let onTap: () -> Void
-
-    var body: some View {
-        CrossLinkText(text: artist, onTap: onTap)
-    }
-}
-
-private struct CrossLinkText: View {
-    let text: String
-    let onTap: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Text(text)
-            .typography(.secondary)
-            .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
-            .lineLimit(1)
-            .pointingHandCursor(isHovered: $isHovered)
-            .onTapGesture(perform: onTap)
-            .accessibilityAddTraits(.isLink)
     }
 }
