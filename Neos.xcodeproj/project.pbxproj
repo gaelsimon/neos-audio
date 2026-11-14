@@ -88,6 +88,7 @@
 		2DFDFBC0E262409E00C519EB /* PatchworkArtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E4E3873C3C7BD09696E546E /* PatchworkArtView.swift */; };
 		2E8CED6BBD3F370AFBC529D7 /* VolumeControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95B43ED1157134A8CB6BE14 /* VolumeControlView.swift */; };
 		2EBD591F3BA981DD115A1DF5 /* NoRingTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ED1AD2C80B453D4CE0782D /* NoRingTextField.swift */; };
+		2EC96FEEA83787CAFD814201 /* NeosMobileSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6086E6D74C8E1DF3BD2D4F17 /* NeosMobileSmokeTests.swift */; };
 		2ED052FC8E8886AA781365C5 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B376D1C6DA996A651A57B2B4 /* LibraryView.swift */; };
 		2FF278990CF3EC20F34C0B7A /* QueuePanelScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71C9A6966B4571B2F1EE14E /* QueuePanelScreen.swift */; };
 		2FF9B38AB5CCF15D38853B13 /* BrowseItem+CustomImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2941985010E0A7B75D1671 /* BrowseItem+CustomImage.swift */; };
@@ -322,6 +323,7 @@
 		AF882DC2681A3E8F0D7FB6C1 /* NowPlayingCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE35A5932FBCCBACAD4B31E /* NowPlayingCanvasView.swift */; };
 		AFA5EDF7EBDDF973865BE6BD /* BrowseViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E4CEA82E95F31E92A18CD7E /* BrowseViewModel.swift */; };
 		AFC712DB0527D50394C4D735 /* HoverButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBBEED79A11E04C848D6188A /* HoverButton.swift */; };
+		B0DBE2E9E49322713D0BA522 /* AccessibilityID.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE02BCFA68F3A7A667FE7E94 /* AccessibilityID.swift */; };
 		B1FEDF4B51D425F283AC66CD /* TestImages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 351F050D8FEC229EEB174F21 /* TestImages.swift */; };
 		B289B1DD6B379CA6376653B3 /* BrowseContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE8A52B1EDE6EF0AFB8D37B8 /* BrowseContentView.swift */; };
 		B2C778AEF1BF00ADE3FC1051 /* AppState+StreamContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A2CB6FFE45D7C5007EABA0 /* AppState+StreamContext.swift */; };
@@ -461,6 +463,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		5F10A36EA1654D3927F35473 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A3C369A71AAD75F177538696 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BA893BCB03521A6B0368518C;
+			remoteInfo = NeosMobile;
+		};
 		8B06471F8F1E3970E8D37573 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A3C369A71AAD75F177538696 /* Project object */;
@@ -576,6 +585,7 @@
 		5D0ECCEFC2768A38F86B55A3 /* demo-flow.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "demo-flow.jpg"; sourceTree = "<group>"; };
 		5D4C95DF48D2A279C9EA6366 /* QueueScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueScreen.swift; sourceTree = "<group>"; };
 		5E4E3873C3C7BD09696E546E /* PatchworkArtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchworkArtView.swift; sourceTree = "<group>"; };
+		6086E6D74C8E1DF3BD2D4F17 /* NeosMobileSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeosMobileSmokeTests.swift; sourceTree = "<group>"; };
 		617B00F89117FCD0BE81625D /* MobileRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileRootView.swift; sourceTree = "<group>"; };
 		625FEDCC1AE4400D9F5AC931 /* AppState+ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+ImageCache.swift"; sourceTree = "<group>"; };
 		63B05E34C2DBCB5332D93F67 /* NavigationHistoryStackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationHistoryStackTests.swift; sourceTree = "<group>"; };
@@ -701,6 +711,7 @@
 		D38FBA017369BC28D216760D /* ConnectionPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionPresentation.swift; sourceTree = "<group>"; };
 		D3972C19E27AFF5EB33BAE16 /* GroupNameStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupNameStoreTests.swift; sourceTree = "<group>"; };
 		D51EB59A19D63CC36157C49D /* ImagePickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePickerButton.swift; sourceTree = "<group>"; };
+		D5804D0BC56E5E433EBF8EE0 /* NeosMobileUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NeosMobileUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D580CB21AF6D4E096E4FACEF /* SearchHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistoryStore.swift; sourceTree = "<group>"; };
 		D5CB3310CEE06BDA3930F625 /* SegmentedTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedTab.swift; sourceTree = "<group>"; };
 		D6DDCE5DDE926EB8A74142DB /* AppState+Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Playback.swift"; sourceTree = "<group>"; };
@@ -1086,6 +1097,7 @@
 			children = (
 				205AC9B4A258EE6F3062EE08 /* Neos */,
 				81DDC12DEB3C0121B3FD12A6 /* NeosMobile */,
+				F2EFFB8121A01A8B9D0F9025 /* NeosMobileUITests */,
 				D6883A4D666C34C1308C3E17 /* NeosTests */,
 				167F00F29DCC8C1BE1ACC0FD /* NeosUITests */,
 				B72231E3F69BDCA5285B8BF1 /* Products */,
@@ -1108,6 +1120,7 @@
 				F6CB740A6A74D4AF9862E883 /* Neos.app */,
 				B3E2FF0C68A503AE057A62CD /* NeosMobile.app */,
 				B4ADA2DB815947449B0D18F5 /* NeosMobileTests.xctest */,
+				D5804D0BC56E5E433EBF8EE0 /* NeosMobileUITests.xctest */,
 				6CD39AFF9EC3D1C4AFD8BB0E /* NeosTests.xctest */,
 				262D75E2DDEA9A43C2FB817F /* NeosUITests.xctest */,
 			);
@@ -1201,6 +1214,14 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		F2EFFB8121A01A8B9D0F9025 /* NeosMobileUITests */ = {
+			isa = PBXGroup;
+			children = (
+				6086E6D74C8E1DF3BD2D4F17 /* NeosMobileSmokeTests.swift */,
+			);
+			path = NeosMobileUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -1258,6 +1279,24 @@
 			productReference = 6CD39AFF9EC3D1C4AFD8BB0E /* NeosTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		B363158556F8E691417BBC58 /* NeosMobileUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9AF20BA53E43EE302EC0913D /* Build configuration list for PBXNativeTarget "NeosMobileUITests" */;
+			buildPhases = (
+				A7FE7545A58F2B28FD2C611E /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				90C1F1AF1D9E260D871FF621 /* PBXTargetDependency */,
+			);
+			name = NeosMobileUITests;
+			packageProductDependencies = (
+			);
+			productName = NeosMobileUITests;
+			productReference = D5804D0BC56E5E433EBF8EE0 /* NeosMobileUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		BA893BCB03521A6B0368518C /* NeosMobile */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A59540113CFF619FE3281B86 /* Build configuration list for PBXNativeTarget "NeosMobile" */;
@@ -1312,6 +1351,9 @@
 					00F452EED3D7F98F3EF7ABA6 = {
 						TestTargetID = E335595380604DF65E408F52;
 					};
+					B363158556F8E691417BBC58 = {
+						TestTargetID = BA893BCB03521A6B0368518C;
+					};
 					BA893BCB03521A6B0368518C = {
 						ProvisioningStyle = Automatic;
 					};
@@ -1340,6 +1382,7 @@
 				E335595380604DF65E408F52 /* Neos */,
 				BA893BCB03521A6B0368518C /* NeosMobile */,
 				19D823CAD59A1715022D8FEA /* NeosMobileTests */,
+				B363158556F8E691417BBC58 /* NeosMobileUITests */,
 				B15FAC519BE3BD9299065A45 /* NeosTests */,
 				00F452EED3D7F98F3EF7ABA6 /* NeosUITests */,
 			);
@@ -1806,6 +1849,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A7FE7545A58F2B28FD2C611E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0DBE2E9E49322713D0BA522 /* AccessibilityID.swift in Sources */,
+				2EC96FEEA83787CAFD814201 /* NeosMobileSmokeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CE7530E0A663A238ED3E195F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1864,6 +1916,11 @@
 			target = E335595380604DF65E408F52 /* Neos */;
 			targetProxy = 928B8C9EE4CAC79FB2800815 /* PBXContainerItemProxy */;
 		};
+		90C1F1AF1D9E260D871FF621 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BA893BCB03521A6B0368518C /* NeosMobile */;
+			targetProxy = 5F10A36EA1654D3927F35473 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -1906,6 +1963,23 @@
 				TEST_TARGET_NAME = Neos;
 			};
 			name = Release;
+		};
+		22DAE4767616C543D8C65157 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.galela.neos.mobileuitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = NeosMobile;
+			};
+			name = Debug;
 		};
 		30A091911040FA03F1926AE5 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -1962,6 +2036,23 @@
 				TEST_TARGET_NAME = Neos;
 			};
 			name = Debug;
+		};
+		59192BAB96A368E0DEA502FA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.galela.neos.mobileuitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = NeosMobile;
+			};
+			name = Release;
 		};
 		82D33EDDCB11B7EE8CB0EF7C /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -2206,6 +2297,15 @@
 			buildConfigurations = (
 				48499E4115855799E13684EB /* Debug */,
 				05303706F9B957E6886CF909 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9AF20BA53E43EE302EC0913D /* Build configuration list for PBXNativeTarget "NeosMobileUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				22DAE4767616C543D8C65157 /* Debug */,
+				59192BAB96A368E0DEA502FA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

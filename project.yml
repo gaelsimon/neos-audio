@@ -126,6 +126,20 @@ targets:
     dependencies:
       - target: Neos
 
+  NeosMobileUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: NeosMobileUITests
+      - path: Neos/Utilities/AccessibilityID.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.galela.neos.mobileuitests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_TARGET_NAME: NeosMobile
+    dependencies:
+      - target: NeosMobile
+
 schemes:
   Neos:
     build:
@@ -155,3 +169,11 @@ schemes:
     test:
       targets:
         - NeosMobileTests
+  NeosMobileUITests:
+    build:
+      targets:
+        NeosMobile: all
+        NeosMobileUITests: [test]
+    test:
+      targets:
+        - NeosMobileUITests

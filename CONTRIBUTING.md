@@ -37,11 +37,18 @@ xcodebuild -project Neos.xcodeproj -scheme NeosMobile -destination 'generic/plat
 ### Running tests
 
 ```bash
-# App + UI tests
+# Mac unit tests only; the Neos scheme also runs the Mac UI tests, which need an unlocked screen
+# and the automation-mode authorisation
+xcodebuild test -project Neos.xcodeproj -scheme Neos -destination 'platform=macOS' -only-testing:NeosTests
+
+# Mac app + UI tests
 xcodebuild test -project Neos.xcodeproj -scheme Neos -destination 'platform=macOS'
 
 # The shared unit tests on iOS
 xcodebuild test -project Neos.xcodeproj -scheme NeosMobile -destination 'platform=iOS Simulator,name=<an iPhone simulator>'
+
+# The iPhone and iPad UI smoke tests, in demo mode; a simulator needs no authorisation
+xcodebuild test -project Neos.xcodeproj -scheme NeosMobileUITests -destination 'platform=iOS Simulator,name=<an iPhone or iPad simulator>'
 
 # The HEOS protocol layer has its own tests, in its own repository
 git clone https://github.com/gaelsimon/swift-heos && cd swift-heos && swift test
