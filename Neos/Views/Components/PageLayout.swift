@@ -15,6 +15,15 @@ extension EnvironmentValues {
         false
         #endif
     }
+
+    /// Where a service group's content starts: inside its card, or at the page margin once the group is flat.
+    var groupInset: CGFloat { isCompactLayout ? pageMargin : DS.Layout.surfaceInset }
+
+    /// For rows that pad their own content inside a service group.
+    var groupListInset: CGFloat { isCompactLayout ? listMargin : 0 }
+
+    /// A flat group's own header outranks its shelves; in a card, the card does that job.
+    var groupSectionStyle: DS.Font { isCompactLayout ? .bodyEmphasis : .sectionHeader }
 }
 
 extension View {
@@ -26,6 +35,27 @@ extension View {
     /// For a list of rows that pad their own content.
     func listMargins() -> some View {
         modifier(SideMargins(margin: \.listMargin))
+    }
+
+    /// A service's shelves or results: a card on the Mac and iPad. On iPhone the group stays flat, where a card
+    /// would cost two margins of width and push its titles off the page's edge.
+    func serviceGroupSurface() -> some View {
+        modifier(ServiceGroupSurface())
+    }
+}
+
+private struct ServiceGroupSurface: ViewModifier {
+    @Environment(\.isCompactLayout) private var isCompactLayout
+
+    func body(content: Content) -> some View {
+        if isCompactLayout {
+            content
+        } else {
+            content
+                .padding(.vertical, DS.Spacing.xl)
+                .background(RoundedRectangle(cornerRadius: DS.Radius.large).fill(DS.Colors.surfaceContainer))
+                .pageMargins()
+        }
     }
 }
 

@@ -34,8 +34,12 @@ struct MobileNowPlayingView: View {
                         .lineLimit(1)
                     if !state.nowPlaying.artist.isEmpty {
                         Text(state.nowPlaying.artist)
-                            .typography(.secondary)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .typography(.bodyPrimary)
                             .lineLimit(1)
+                    }
+                    if let source = playingFrom {
+                        sourceLine(source)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,6 +77,22 @@ struct MobileNowPlayingView: View {
         .padding(.bottom, DS.Spacing.lg)
         .frame(maxWidth: .infinity)
         .disabled(!state.isConnected)
+    }
+
+    private var playingFrom: MusicSource? {
+        guard let sid = state.nowPlaying.sid else { return nil }
+        return state.musicSources.first { $0.sid == sid }
+    }
+
+    /// Where the track comes from, and at what quality when the speaker says.
+    private func sourceLine(_ source: MusicSource) -> some View {
+        HStack(spacing: DS.Spacing.xs) {
+            ServiceBranding.serviceIcon(for: source, size: 16)
+            Text([source.name, state.trackMetadata?.qualityDescription].compactMap { $0 }.joined(separator: " · "))
+                .lineLimit(1)
+        }
+        .typography(.cardSubtitle)
+        .padding(.top, DS.Spacing.xxs)
     }
 
     /// What the Mac's player bar offers for the track: the service's ratings and favourite, and its links.

@@ -309,9 +309,13 @@ struct TrackListRow: View {
     // MARK: - Row Background
 
     private var rowBackground: Color {
+        // iPhone and iPad mark the playing row by its orange title alone.
+        #if os(macOS)
         if isNowPlaying {
             return DS.Colors.accent.opacity(0.08)
-        } else if isHovered {
+        }
+        #endif
+        if isHovered {
             return DS.Colors.surfaceElevated.opacity(0.5)
         }
         return .clear

@@ -25,6 +25,11 @@ struct HomeCardRow: View {
                 }
             }
         }
+        #if os(iOS)
+        // Edge to edge, so cards slide under the screen's edge; the first one still meets the margin.
+        .contentMargins(.horizontal, inset ?? pageMargin, for: .scrollContent)
+        #else
         .padding(.horizontal, inset ?? pageMargin)
+        #endif
     }
 }

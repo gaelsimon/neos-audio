@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeSection<Content: View>: View {
     let title: String
+    var titleStyle: DS.Font = .sectionHeader
     var isLoading: Bool = false
     var onSeeAll: (() -> Void)?
     var inset: CGFloat?
@@ -12,7 +13,7 @@ struct HomeSection<Content: View>: View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             HStack {
                 Text(title)
-                    .typography(.sectionHeader)
+                    .typography(titleStyle)
 
                 if isLoading {
                     Spinner(size: 12, lineWidth: 1.5)

@@ -218,6 +218,8 @@ enum DS {
         case badge               // 13pt semibold, textTertiary
         case sidebarSection      // 12pt medium, textTertiary
         case footnote            // 11pt regular, textTertiary
+        case cardTitle           // 13pt semibold, textSecondary; under a card's artwork
+        case cardSubtitle        // 13pt regular, textSecondary
     }
 
     // MARK: - Icon Fonts (SF Symbol sizing)
@@ -251,31 +253,50 @@ enum DS {
 
 // MARK: - Typography Modifier
 
+extension DS.Font {
+    /// Fixed sizes on the Mac. On iPhone and iPad, the matching text style, so text follows the reader's size setting.
+    var font: SwiftUI.Font {
+        #if os(macOS)
+        switch self {
+        case .pageTitle: .system(size: 28, weight: .bold)
+        case .sectionHeader: .system(size: 18, weight: .semibold)
+        case .bodyPrimary: .system(size: 14)
+        case .bodyMedium: .system(size: 14, weight: .medium)
+        case .bodyEmphasis: .system(size: 14, weight: .semibold)
+        case .secondary, .cardSubtitle: .system(size: 13)
+        case .secondaryEmphasis, .badge, .cardTitle: .system(size: 13, weight: .semibold)
+        case .sidebarSection: .system(size: 12, weight: .medium)
+        case .footnote: .system(size: 11)
+        }
+        #else
+        switch self {
+        case .pageTitle: .system(.title, weight: .bold)
+        case .sectionHeader: .system(.title2, weight: .bold)
+        case .bodyPrimary: .system(.body)
+        case .bodyMedium: .system(.body, weight: .medium)
+        case .bodyEmphasis: .system(.body, weight: .semibold)
+        case .secondary: .system(.subheadline)
+        case .secondaryEmphasis: .system(.subheadline, weight: .semibold)
+        case .badge, .cardTitle: .system(.footnote, weight: .semibold)
+        case .cardSubtitle: .system(.footnote)
+        case .sidebarSection: .system(.footnote, weight: .medium)
+        case .footnote: .system(.caption2)
+        }
+        #endif
+    }
+}
+
 struct TypographyModifier: ViewModifier {
     let style: DS.Font
 
     func body(content: Content) -> some View {
         switch style {
-        case .pageTitle:
-            content.font(.system(size: 28, weight: .bold)).foregroundStyle(.primary)
-        case .sectionHeader:
-            content.font(.system(size: 18, weight: .semibold)).foregroundStyle(.primary)
-        case .bodyPrimary:
-            content.font(.system(size: 14)).foregroundStyle(.primary)
-        case .bodyMedium:
-            content.font(.system(size: 14, weight: .medium)).foregroundStyle(.primary)
-        case .bodyEmphasis:
-            content.font(.system(size: 14, weight: .semibold)).foregroundStyle(.primary)
-        case .secondary:
-            content.font(.system(size: 13)).foregroundStyle(DS.Colors.textSecondary)
-        case .secondaryEmphasis:
-            content.font(.system(size: 13, weight: .semibold)).foregroundStyle(DS.Colors.textSecondary)
-        case .badge:
-            content.font(.system(size: 13, weight: .semibold)).foregroundStyle(DS.Colors.textTertiary)
-        case .sidebarSection:
-            content.font(.system(size: 12, weight: .medium)).foregroundStyle(DS.Colors.textTertiary)
-        case .footnote:
-            content.font(.system(size: 11)).foregroundStyle(DS.Colors.textTertiary)
+        case .pageTitle, .sectionHeader, .bodyPrimary, .bodyMedium, .bodyEmphasis:
+            content.font(style.font).foregroundStyle(.primary)
+        case .secondary, .secondaryEmphasis, .cardTitle, .cardSubtitle:
+            content.font(style.font).foregroundStyle(DS.Colors.textSecondary)
+        case .badge, .sidebarSection, .footnote:
+            content.font(style.font).foregroundStyle(DS.Colors.textTertiary)
         }
     }
 }

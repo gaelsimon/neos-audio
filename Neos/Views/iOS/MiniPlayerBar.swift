@@ -84,10 +84,11 @@ struct MiniPlayerBar: View {
                     if artist.isEmpty {
                         Text(title)
                     } else {
-                        Text("\(Text(title)) · \(Text(artist).foregroundStyle(DS.Colors.textSecondary))")
+                        Text("\(Text(title)) · \(Text(artist).fontWeight(.regular).foregroundStyle(DS.Colors.textSecondary))")
                     }
                 }
-                .typography(.bodyMedium)
+                .foregroundStyle(.primary)
+                .typography(.secondaryEmphasis)
                 .lineLimit(1)
 
                 HStack(spacing: DS.Spacing.xs) {
@@ -96,12 +97,13 @@ struct MiniPlayerBar: View {
                         .lineLimit(1)
                 }
                 .foregroundStyle(DS.Colors.accent)
-                .typography(.secondaryEmphasis)
+                .typography(.badge)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Playing on \(speakerName)")
             } else {
                 Text(title)
-                    .typography(.bodyMedium)
+                    .foregroundStyle(.primary)
+                    .typography(.secondaryEmphasis)
                     .lineLimit(1)
                 if !artist.isEmpty {
                     Text(artist)

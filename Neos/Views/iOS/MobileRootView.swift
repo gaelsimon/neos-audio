@@ -30,6 +30,8 @@ struct MobileRootView: View {
         // Outermost, so the presented player and sheets inherit them too.
         .environment(\.pageMargin, sizeClass == .regular ? DS.Layout.regularPageMargin : DS.Layout.pageMargin)
         .environment(\.showsPadChrome, isPad && sizeClass == .regular)
+        // Rows and the mini player have fixed heights that the accessibility sizes would overflow.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     /// The player slides up as a sheet on iPhone and takes the whole screen on iPad.

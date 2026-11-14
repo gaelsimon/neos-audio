@@ -132,7 +132,13 @@ struct AmpSettingsView: View {
                 .help(state.isPoweredOn ? "Turn Off" : "Turn On")
             }
         }
+        #if os(iOS)
+        // As tall as the power button's touch target, so rows with and without one line up.
+        .frame(minHeight: DS.HitTarget.button)
+        .padding(.vertical, DS.Spacing.xs)
+        #else
         .padding(.vertical, DS.Spacing.md)
+        #endif
         .accessibilityIdentifier(AccessibilityID.AmpSettings.playerRow(player.pid))
         .accessibilityValue(player.pid == state.selectedPlayerID ? "selected" : "unselected")
     }

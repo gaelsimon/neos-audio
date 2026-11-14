@@ -218,9 +218,16 @@ struct BrowseItemRow: View {
     }
 
     private var rowBackground: Color {
-        if isNowPlaying || isLoading {
+        if isLoading {
             return DS.Colors.accent.opacity(0.08)
-        } else if isHovered {
+        }
+        // iPhone and iPad mark the playing row by its orange title alone.
+        #if os(macOS)
+        if isNowPlaying {
+            return DS.Colors.accent.opacity(0.08)
+        }
+        #endif
+        if isHovered {
             return DS.Colors.surfaceElevated.opacity(0.5)
         }
         return .clear
@@ -234,7 +241,7 @@ struct BrowseItemRow: View {
         case .artist: DS.Icons.person
         case .playlist: DS.Icons.playlists
         case .genre: DS.Icons.genre
-        case .container: DS.Icons.folder
+        case .container: FolderSymbol.name(for: item.name) ?? DS.Icons.folder
         case .dlnaServer, .heosServer: DS.Icons.server
         case .heosService, .musicService: DS.Icons.musicNoteTV
         }

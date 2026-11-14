@@ -6,6 +6,9 @@ struct SearchResultsView: View {
     let searchVM: SearchViewModel
     let browseVM: BrowseViewModel
     let service: any AudioService
+    @Environment(\.groupInset) private var groupInset
+    @Environment(\.groupListInset) private var groupListInset
+    @Environment(\.groupSectionStyle) private var groupSectionStyle
 
     var body: some View {
         ScrollView {
@@ -59,7 +62,7 @@ struct SearchResultsView: View {
                 )
                 ForEach(searchVM.allCriteriaNames, id: \.scid) { criterion in
                     FilterChip(
-                        label: criterion.name,
+                        label: SearchCategoryName.plural(criterion.name),
                         isSelected: searchVM.selectedCategoryFilter == criterion.scid,
                         emphasis: .secondary,
                         action: { searchVM.selectCategoryFilter(criterion.scid) }
@@ -101,12 +104,13 @@ struct SearchResultsView: View {
 
             if results.isEmpty && isLoading {
                 // No old results to template from, so generic placeholders
-                PlaceholderCardRow(cardCount: 3)
+                PlaceholderCardRow(cardCount: 3, inset: groupInset)
                 VStack(spacing: 0) {
                     ForEach(0..<3, id: \.self) { _ in
                         PlaceholderRow()
                     }
                 }
+                .padding(.horizontal, groupListInset)
             } else {
                 ForEach(results, id: \.criteria.scid) { entry in
                     categorySection(
@@ -119,12 +123,7 @@ struct SearchResultsView: View {
                 }
             }
         }
-        .padding(.vertical, DS.Spacing.xl)
-        .background(
-            RoundedRectangle(cornerRadius: DS.Radius.large)
-                .fill(DS.Colors.surfaceContainer)
-        )
-        .pageMargins()
+        .serviceGroupSurface()
     }
 
     // MARK: - Service Header
@@ -142,7 +141,7 @@ struct SearchResultsView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, DS.Layout.surfaceInset)
+        .padding(.horizontal, groupInset)
     }
 
     // MARK: - Category Section
@@ -174,7 +173,7 @@ struct SearchResultsView: View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             HStack {
                 Text(criteriaName)
-                    .typography(.sectionHeader)
+                    .typography(groupSectionStyle)
 
                 Spacer()
 
@@ -184,17 +183,18 @@ struct SearchResultsView: View {
                     }
                 }
             }
-            .padding(.horizontal, DS.Layout.surfaceInset)
+            .padding(.horizontal, groupInset)
 
             if isServiceLoading {
                 if cardLayout {
-                    PlaceholderCardRow(cardCount: min(items.count, searchVM.previewCount))
+                    PlaceholderCardRow(cardCount: min(items.count, searchVM.previewCount), inset: groupInset)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(0..<min(items.count, searchVM.previewCount), id: \.self) { _ in
                             PlaceholderRow()
                         }
                     }
+                    .padding(.horizontal, groupListInset)
                 }
             } else if cardLayout {
                 categoryCardContent(items: items, circular: isArtistCategory(items), sid: sid)
@@ -230,7 +230,7 @@ struct SearchResultsView: View {
                     )
                 }
             }
-            .padding(.horizontal, DS.Layout.surfaceInset)
+            .padding(.horizontal, groupInset)
         }
     }
 
@@ -247,6 +247,7 @@ struct SearchResultsView: View {
                 )
             }
         }
+        .padding(.horizontal, groupListInset)
     }
 
     // MARK: - Actions

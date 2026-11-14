@@ -5,6 +5,8 @@ struct HomeView: View {
     let state: AppState
     let homeVM: HomeViewModel
     let browseVM: BrowseViewModel
+    @Environment(\.groupInset) private var groupInset
+    @Environment(\.groupSectionStyle) private var groupSectionStyle
 
     /// Maximum categories the VM may fetch (must match HomeViewModel).
     private let maxCategoriesPerService = 4
@@ -150,22 +152,17 @@ struct HomeView: View {
 
                     Spacer()
                 }
-                .padding(.horizontal, DS.Layout.surfaceInset)
+                .padding(.horizontal, groupInset)
 
                 if hasContent {
                     ForEach(categoryIndices, id: \.self) { index in
                         serviceCategoryRow(source: source, categoryIndex: index)
                     }
                 } else {
-                    PlaceholderCardRow(inset: DS.Layout.surfaceInset)
+                    PlaceholderCardRow(inset: groupInset)
                 }
             }
-            .padding(.vertical, DS.Spacing.xl)
-            .background(
-                RoundedRectangle(cornerRadius: DS.Radius.large)
-                    .fill(DS.Colors.surfaceContainer)
-            )
-            .pageMargins()
+            .serviceGroupSurface()
         }
     }
 
@@ -193,6 +190,7 @@ struct HomeView: View {
         if let items, !items.isEmpty {
             HomeSection(
                 title: name ?? "",
+                titleStyle: groupSectionStyle,
                 onSeeAll: {
                     if let cid {
                         browseVM.navigateToContainer(source: source, containerName: name ?? "", cid: cid)
@@ -200,9 +198,9 @@ struct HomeView: View {
                         browseVM.selectSource(source)
                     }
                 },
-                inset: DS.Layout.surfaceInset
+                inset: groupInset
             ) {
-                HomeCardRow(items: items, sid: source.sid, state: state, inset: DS.Layout.surfaceInset) { item, sid in
+                HomeCardRow(items: items, sid: source.sid, state: state, inset: groupInset) { item, sid in
                     handleServiceCardTap(item, sid: sid)
                 }
             }

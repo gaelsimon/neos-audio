@@ -38,13 +38,13 @@ struct HomeCard: View {
                 .clipShape(isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: DS.Radius.artwork)))
 
                 Text(title)
-                    .typography(.secondaryEmphasis)
+                    .typography(.cardTitle)
                     .lineLimit(1)
                     .frame(width: DS.ImageSize.homeCard, alignment: textAlignment)
 
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .typography(.secondary)
+                        .typography(.cardSubtitle)
                         .lineLimit(1)
                         .frame(width: DS.ImageSize.homeCard, alignment: textAlignment)
                 }
