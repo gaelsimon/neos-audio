@@ -37,8 +37,13 @@ struct BrowseItemRow: View {
 
             Spacer()
 
-            actionMenu
-                .opacity((isHovered || !DS.revealsControlsOnHover) && hasActions ? 1 : 0)
+            if DS.revealsControlsOnHover {
+                actionMenu
+                    .opacity(isHovered && hasActions ? 1 : 0)
+            } else if hasActions && !opensAPage {
+                // A row that opens a page shows its chevron alone; the long press keeps the menu.
+                actionMenu
+            }
 
             if item.playable {
                 if isAddingToQueue {
@@ -57,7 +62,7 @@ struct BrowseItemRow: View {
             } else if isNowPlaying && !item.browsable {
                 Image(systemName: DS.Icons.speakerActive)
                     .typography(.secondary, color: DS.Colors.accent)
-            } else if item.browsable || item.isSubSource {
+            } else if opensAPage {
                 Image(systemName: DS.Icons.forward)
                     .typography(.secondary, color: DS.Colors.textTertiary)
             }
@@ -78,6 +83,8 @@ struct BrowseItemRow: View {
     }
 
     // MARK: - Action Menu
+
+    private var opensAPage: Bool { item.browsable || item.isSubSource }
 
     private var hasNavigationActions: Bool { onArtistView != nil || onAlbumView != nil }
 

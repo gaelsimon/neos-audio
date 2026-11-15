@@ -482,7 +482,7 @@ final class BrowseViewModel {
         case .home: return "Home"
         case .queue: return "Queue"
         case .settings: return "Settings"
-        case .ampSettings: return "Amp Settings"
+        case .ampSettings: return "Speakers"
         case .browse:
             return browseStack.last?.name ?? "Browse"
         }

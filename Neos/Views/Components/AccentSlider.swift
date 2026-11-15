@@ -5,12 +5,11 @@ extension EnvironmentValues {
     @Entry var sliderFill: Color = DS.Colors.accent
 }
 
-/// The thin accent slider of the player bar and the amp page. VoiceOver sees a standard `Slider`.
+/// The thin slider of the player's volume. VoiceOver sees a standard `Slider`.
 struct AccentSlider: View {
     let value: Double
     var bounds: ClosedRange<Double> = 0...100
     let label: String
-    var showsKnob = true
     var onEditingChanged: (Bool) -> Void = { _ in }
     let onChange: (Double) -> Void
 
@@ -40,7 +39,7 @@ struct AccentSlider: View {
                     .fill(fill)
                     .frame(width: max(0, fraction * width), height: Self.trackHeight)
 
-                if showsKnob && (isHovering || isDragging) {
+                if isHovering || isDragging {
                     Circle()
                         .fill(fill)
                         .frame(width: Self.knobSize, height: Self.knobSize)

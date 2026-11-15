@@ -22,7 +22,9 @@ struct MobileNowPlayingView: View {
                 QueuePanelView(state: state, viewModel: container.queuePanelVM)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+                    .cappedTextSize()
             }
+            .cappedTextSize()
     }
 
     private var controls: some View {

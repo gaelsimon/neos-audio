@@ -12,71 +12,30 @@ struct StationImageEditor: View {
     @State private var previewImage: PlatformImage?
     /// Set once the user picks or fetches an image, and copied to disk only on save.
     @State private var pendingImage: PlatformImage?
-    @State private var showURLField = false
-    @State private var urlText = ""
-    @State private var isDownloading = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-            Text("Custom Artwork")
-                .typography(.sectionHeader)
+        FormSheet(
+            title: "Custom Artwork", confirmTitle: "Save", canConfirm: pendingImage != nil,
+            onCancel: onDismiss, onConfirm: save
+        ) {
+            Section(name) {
+                imagePreview
+                    .frame(width: 120, height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
+                    .frame(maxWidth: .infinity)
 
-            Text(name)
-                .typography(.secondary)
-                .lineLimit(1)
-
-            // Preview
-            imagePreview
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
-                .frame(maxWidth: .infinity)
-
-            ImagePickerButton { image in
-                previewImage = image
-                pendingImage = image
-            }
-            .controlSize(.large)
-
-            // Optional URL input
-            if showURLField {
-                HStack(spacing: DS.Spacing.sm) {
-                    TextField("Image URL", text: $urlText, prompt: Text(verbatim: "https://example.com/image.png"))
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { downloadFromURL() }
-                    if isDownloading {
-                        Spinner(size: 14, lineWidth: 1.5)
-                    } else {
-                        Button("Fetch") { downloadFromURL() }
-                            .disabled(urlText.isEmpty)
-                    }
+                ArtworkChooser { image in
+                    previewImage = image
+                    pendingImage = image
                 }
-            } else {
-                TextActionButton(title: "Or paste a URL…") { showURLField = true }
             }
 
-            // Actions
-            HStack {
-                if state.hasCustomStationImage(forMID: mid) {
-                    Button("Remove") {
-                        removeArtwork()
-                    }
-                    .foregroundStyle(.red)
+            if state.hasCustomStationImage(forMID: mid) {
+                Section {
+                    Button("Remove Artwork", role: .destructive, action: removeArtwork)
                 }
-
-                Spacer()
-
-                Button("Cancel", action: onDismiss)
-                    .keyboardShortcut(.cancelAction)
-
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(DS.Colors.accent)
-                    .disabled(pendingImage == nil)
             }
         }
-        .padding(DS.Spacing.xl)
-        .frame(width: 280)
         .onAppear { loadExisting() }
     }
 
@@ -107,29 +66,6 @@ struct StationImageEditor: View {
               let url = URL(string: existing),
               url.isFileURL else { return }
         previewImage = PlatformImage.load(contentsOf: url)
-    }
-
-    private func downloadFromURL() {
-        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed),
-              let scheme = url.scheme,
-              scheme == "http" || scheme == "https" else { return }
-
-        isDownloading = true
-        Task {
-            do {
-                let (data, _) = try await NeosURLSession.shared.data(from: url)
-                guard let image = PlatformImage(data: data) else {
-                    isDownloading = false
-                    return
-                }
-                previewImage = image
-                pendingImage = image
-            } catch {
-                // Download failed; user can retry
-            }
-            isDownloading = false
-        }
     }
 
     private func save() {

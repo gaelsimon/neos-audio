@@ -13,132 +13,49 @@ struct AddFavoriteForm: View {
 
     // Artwork, held in memory until the station is actually added.
     @State private var previewImage: PlatformImage?
-    @State private var showURLField = false
-    @State private var imageURLText = ""
-    @State private var isDownloadingImage = false
 
     private var isValid: Bool {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedURL = streamURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty, !trimmedURL.isEmpty else { return false }
-        guard let url = URL(string: trimmedURL),
-              let scheme = url.scheme,
-              scheme == "http" || scheme == "https" else { return false }
-        return true
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && URL(webAddress: streamURL) != nil
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-            Text("Add Station")
-                .typography(.sectionHeader)
-
-            // Name field
-            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                Text("Name")
-                    .typography(.secondary)
-                TextField("Station name", text: $name)
-                    .textFieldStyle(.roundedBorder)
-            }
-
-            // Stream URL field
-            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                Text("Stream URL")
-                    .typography(.secondary)
+        FormSheet(
+            title: "Add Station", confirmTitle: "Add", canConfirm: isValid && !isSaving,
+            onCancel: onDismiss, onConfirm: save
+        ) {
+            Section {
+                TextField("Name", text: $name, prompt: Text("Station name"))
                 TextField("Stream URL", text: $streamURL, prompt: Text(verbatim: "https://example.com/stream.mp3"))
-                    .textFieldStyle(.roundedBorder)
+                    .literalTextInput(.url)
+            } footer: {
+                Text("The stream's address starts with http:// or https://.")
             }
 
-            // Artwork section
-            artworkSection
-
-            // Actions
-            HStack {
-                Spacer()
-
-                Button("Cancel", action: onDismiss)
-                    .keyboardShortcut(.cancelAction)
-
-                Button("Add") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(DS.Colors.accent)
-                    .disabled(!isValid || isSaving)
+            Section("Artwork") {
+                if let previewImage {
+                    Image(platformImage: previewImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 80, height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
+                        .frame(maxWidth: .infinity)
+                }
+                ArtworkChooser { previewImage = $0 }
             }
 
             if isSaving {
-                HStack {
-                    Spacer()
-                    Spinner(size: 14, lineWidth: 1.5)
-                    Text("Adding…")
-                        .typography(.secondary)
-                    Spacer()
-                }
-            }
-        }
-        .padding(DS.Spacing.xl)
-        .frame(width: 300)
-    }
-
-    // MARK: - Artwork Section
-
-    @ViewBuilder
-    private var artworkSection: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            Text("Artwork (optional)")
-                .typography(.secondary)
-
-            if let previewImage {
-                Image(platformImage: previewImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
-                    .frame(maxWidth: .infinity)
-            }
-
-            ImagePickerButton { previewImage = $0 }
-
-            if showURLField {
-                HStack(spacing: DS.Spacing.sm) {
-                    TextField("Image URL", text: $imageURLText, prompt: Text(verbatim: "https://example.com/image.png"))
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { downloadImageFromURL() }
-                    if isDownloadingImage {
+                Section {
+                    HStack(spacing: DS.Spacing.sm) {
                         Spinner(size: 14, lineWidth: 1.5)
-                    } else {
-                        Button("Fetch") { downloadImageFromURL() }
-                            .disabled(imageURLText.isEmpty)
+                        Text("Adding…")
+                            .typography(.secondary)
                     }
                 }
-            } else {
-                TextActionButton(title: "Or paste an image URL…") { showURLField = true }
             }
         }
     }
 
     // MARK: - Actions
-
-    private func downloadImageFromURL() {
-        let trimmed = imageURLText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed),
-              let scheme = url.scheme,
-              scheme == "http" || scheme == "https" else { return }
-
-        isDownloadingImage = true
-        Task {
-            do {
-                let (data, _) = try await NeosURLSession.shared.data(from: url)
-                guard let image = PlatformImage(data: data) else {
-                    isDownloadingImage = false
-                    return
-                }
-                previewImage = image
-            } catch {
-                // Download failed; user can retry
-            }
-            isDownloadingImage = false
-        }
-    }
 
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)

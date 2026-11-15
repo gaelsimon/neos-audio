@@ -62,8 +62,27 @@ final class NeosMobileSmokeTests: XCTestCase {
         XCTAssertNotEqual(element(AccessibilityID.TrackList.row(1)).label, removedTitle)
     }
 
+    func testABreadcrumbGoesBackToItsPage() throws {
+        try XCTSkipUnless(isPad, "Only the wide layout shows the path")
+        tab("Library").tap()
+        for label in ["Deezer", "Albums", "Midnight Opera,"] {
+            let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5), "No \(label) to open")
+            row.tap()
+        }
+        let crumb = element(AccessibilityID.Browse.breadcrumbItem(0))
+        XCTAssertTrue(crumb.waitForExistence(timeout: 5))
+
+        crumb.tap()
+
+        // One step back from the source's page is the library; a stacked copy of that page would need more.
+        XCTAssertTrue(app.navigationBars["Deezer"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
+    }
+
     func testTheVolumeLimitSwitchHasAName() {
-        app.buttons["Account"].firstMatch.tap()
+        app.buttons["Settings"].firstMatch.tap()
         let toggle = app.switches[AccessibilityID.Settings.volumeLimitToggle]
 
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))

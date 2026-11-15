@@ -16,11 +16,10 @@ struct SearchResultsView: View {
                 .padding(.top, DS.Spacing.xl)
                 .padding(.bottom, DS.Spacing.xxl)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
+        .stickyHeader {
             filterChipsSection
                 .padding(.top, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.md)
-                .stickyHeaderGlass()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DS.Colors.background)

@@ -411,7 +411,8 @@ struct BrowseContentView: View {
             externalLink: externalLink(for: item),
             state: state,
             imageKey: item.imageKey,
-            onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
+            onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil,
+            numbersRow: TrackListPresentation.numbersRows(target: browseVM.browseStack.last)
         ) {
             browseVM.playItem(item)
         }

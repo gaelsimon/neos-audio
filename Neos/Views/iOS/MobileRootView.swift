@@ -5,12 +5,6 @@ extension EnvironmentValues {
     @Entry var showsPadChrome = false
 }
 
-/// The device, not the window: rotating or resizing must not swap the player's presentation or move the
-/// mini player under the user.
-enum DeviceIdiom {
-    static var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
-}
-
 /// The iPhone and iPad app: discovery until a speaker answers, then the tabs.
 struct MobileRootView: View {
     let state: AppState
@@ -35,8 +29,7 @@ struct MobileRootView: View {
         // Outermost, so the presented player and sheets inherit them too.
         .environment(\.pageMargin, sizeClass == .regular ? DS.Layout.regularPageMargin : DS.Layout.pageMargin)
         .environment(\.showsPadChrome, isPad && sizeClass == .regular)
-        // Rows and the mini player have fixed heights that the accessibility sizes would overflow.
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .cappedTextSize()
     }
 
     /// The player slides up as a sheet on iPhone and takes the whole screen on iPad.

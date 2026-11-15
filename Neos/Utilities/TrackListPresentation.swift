@@ -22,6 +22,14 @@ enum TrackListPresentation {
         return isTrackList(target: target, items: items) && !onlyStations
     }
 
+    /// The order is the album's or the playlist's own. A list of stations or of past plays has none worth a number.
+    static func numbersRows(target: BrowseTarget?) -> Bool {
+        switch target?.mediaType {
+        case .album, .playlist: true
+        default: false
+        }
+    }
+
     static func sharedAlbum(in items: [BrowseItem]) -> String? {
         sharedValue(in: items, of: \.album)
     }

@@ -286,7 +286,8 @@ struct NowPlayingToolbar: View {
             .padding(.horizontal, state.isNowPlayingCanvasOpen ? DS.Spacing.xxl : DS.Spacing.xl)
             .padding(.vertical, state.isNowPlayingCanvasOpen ? DS.Spacing.xl : DS.Spacing.md)
         }
-        .background { toolbarBackground }
+        // Down to the screen's edge on iPad, under the home indicator.
+        .background { toolbarBackground.ignoresSafeArea(edges: .bottom) }
         .padding(.horizontal, state.isNowPlayingCanvasOpen ? DS.Spacing.md : 0)
         .padding(.bottom, state.isNowPlayingCanvasOpen ? DS.Spacing.sm : 0)
         .contentShape(Rectangle())

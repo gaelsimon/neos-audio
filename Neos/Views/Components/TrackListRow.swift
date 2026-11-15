@@ -35,6 +35,8 @@ struct TrackListRow: View {
     var onRemove: (() -> Void)?
     /// Off where the list removes a row by swiping it; the context menu keeps the action either way.
     var showsRemoveButton = true
+    /// An iPhone row drops its number where the order means nothing; the columns of a wider row keep it.
+    var numbersRow = true
     let onTap: () -> Void
 
     @State private var isHovered = false
@@ -57,7 +59,9 @@ struct TrackListRow: View {
 
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
-            numberColumn
+            if numbersRow || !isCompact {
+                numberColumn
+            }
 
             TrackListWeightedColumnsLayout(weights: textColumnWeights, spacing: DS.Spacing.sm) {
                 titleColumn

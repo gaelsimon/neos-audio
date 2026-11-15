@@ -17,6 +17,7 @@ struct DoneSheet<Content: View>: View {
                     }
                 }
         }
+        .cappedTextSize()
     }
 }
 

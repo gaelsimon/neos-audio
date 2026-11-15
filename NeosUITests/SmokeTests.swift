@@ -29,12 +29,7 @@ final class SmokeTests: BaseUITestCase {
         let disconnected = DisconnectedScreen(app: app)
 
         waitForElement(disconnected.title)
-        // The title text on the discovery/disconnected view is "No Players Found"
-        XCTAssertEqual(
-            disconnected.title.value as? String,
-            "No Players Found",
-            "Disconnected title should show 'No Players Found'"
-        )
+        XCTAssertEqual(disconnected.title.value as? String, "No Speakers Found")
     }
 
     func testSidebarElementsExistInDisconnectedMode() {

@@ -3,9 +3,11 @@ import SwiftUI
 /// One place of a tab's navigation, with the model that loads and keeps its content.
 final class BrowsePage: Hashable {
     let model: BrowseViewModel
+    let location: BrowseLocation
 
-    init(model: BrowseViewModel) {
+    init(model: BrowseViewModel, location: BrowseLocation) {
         self.model = model
+        self.location = location
     }
 
     static func == (lhs: BrowsePage, rhs: BrowsePage) -> Bool { lhs === rhs }
@@ -43,8 +45,9 @@ struct PagedStack<Root: View>: View {
                     .navigationBarTitleDisplayMode(page.model.opensOnArtwork ? .inline : .large)
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { playerBar }
+        // Before the player bar, so the toast shows above it.
         .overlay(alignment: .bottom) { ToastOverlay(state: state) }
+        .safeAreaInset(edge: .bottom, spacing: 0) { playerBar }
         .onAppear {
             if rootModel == nil { rootModel = makeModel() }
         }
@@ -71,17 +74,22 @@ struct PagedStack<Root: View>: View {
     }
 
     private func open(_ location: BrowseLocation) {
+        // A breadcrumb leads to a page already on the stack: go back to it instead of stacking it again.
+        if let index = pages.lastIndex(where: { $0.location == location }) {
+            pages.removeSubrange((index + 1)...)
+            return
+        }
         let model = makeModel()
         model.start(at: location)
-        pages.append(BrowsePage(model: model))
+        pages.append(BrowsePage(model: model, location: location))
     }
 }
 
-/// The speaker and account buttons of each tab's first page, opening as sheets.
+/// The speaker and settings buttons of each tab's first page, opening as sheets.
 private struct AccountToolbar: ViewModifier {
     enum Sheet: String, Identifiable {
         case speakers
-        case account
+        case settings
 
         var id: String { rawValue }
     }
@@ -97,8 +105,8 @@ private struct AccountToolbar: ViewModifier {
                     Button { sheet = .speakers } label: {
                         Label("Speakers", systemImage: DS.Icons.speaker)
                     }
-                    Button { sheet = .account } label: {
-                        Label("Account", systemImage: DS.Icons.personCircle)
+                    Button { sheet = .settings } label: {
+                        Label("Settings", systemImage: DS.Icons.personCircle)
                     }
                 }
             }
@@ -106,7 +114,7 @@ private struct AccountToolbar: ViewModifier {
                 switch sheet {
                 case .speakers:
                     SpeakersSheet(state: state, container: container)
-                case .account:
+                case .settings:
                     DoneSheet(title: "Settings") {
                         AccountSettingsView(
                             state: state, accountVM: container.accountVM, settingsVM: container.settingsVM,

@@ -9,7 +9,6 @@ struct AccountSettingsView: View {
     let localServersVM: LocalServersViewModel
 
     @State private var showSignOutConfirmation = false
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         Form {
@@ -29,13 +28,14 @@ struct AccountSettingsView: View {
 
     // MARK: - Account Section
 
+    @ViewBuilder
     private var accountSection: some View {
-        Section("Account") {
-            if let user = state.signedInUser {
+        if let user = state.signedInUser {
+            Section("Account") {
                 signedInView(user: user)
-            } else {
-                signInForm
             }
+        } else {
+            signInSection
         }
     }
 
@@ -72,37 +72,26 @@ struct AccountSettingsView: View {
         }
     }
 
-    private var signInForm: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-            Text("Sign in with your HEOS account to access favorites and playlists across devices.")
-                .typography(.secondary)
+    private var signInSection: some View {
+        Section {
+            TextField("Email", text: $accountVM.username)
+                .textContentType(.username)
+                .literalTextInput(.email)
+                .accessibilityIdentifier(AccessibilityID.Settings.emailField)
 
-            VStack(spacing: DS.Spacing.md) {
-                TextField("Email", text: $accountVM.username)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.emailAddress)
-                    .accessibilityIdentifier(AccessibilityID.Settings.emailField)
-
-                SecureField("Password", text: $accountVM.password)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier(AccessibilityID.Settings.passwordField)
-            }
-            .frame(maxWidth: 360)
+            SecureField("Password", text: $accountVM.password)
+                .textContentType(.password)
+                .accessibilityIdentifier(AccessibilityID.Settings.passwordField)
 
             Toggle("Remember me", isOn: $accountVM.rememberMe)
                 .toggleStyle(.switch)
                 .tint(DS.Colors.accent)
                 .accessibilityIdentifier(AccessibilityID.Settings.rememberMeToggle)
-                .frame(maxWidth: 360)
 
             if let error = accountVM.signInError {
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: error.icon)
-                        .foregroundStyle(errorColor(for: error))
-                    Text(error.message)
-                        .typography(.secondary, color: errorColor(for: error))
-                }
-                .accessibilityIdentifier(AccessibilityID.Settings.signInError)
+                Label(error.message, systemImage: error.icon)
+                    .typography(.secondary, color: errorColor(for: error))
+                    .accessibilityIdentifier(AccessibilityID.Settings.signInError)
             }
 
             Button(action: { accountVM.signIn() }) {
@@ -113,9 +102,12 @@ struct AccountSettingsView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
             .disabled(accountVM.username.isEmpty || accountVM.password.isEmpty || accountVM.isSigningIn)
             .accessibilityIdentifier(AccessibilityID.Settings.signInButton)
+        } header: {
+            Text("Account")
+        } footer: {
+            Text("Sign in with your HEOS account to access favorites and playlists across devices.")
         }
     }
 
@@ -169,12 +161,8 @@ struct AccountSettingsView: View {
                 get: { settingsVM.volumeLimitEnabled },
                 set: { settingsVM.volumeLimitEnabled = $0 }
             )) {
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text("Volume Limit")
-                        .typography(.bodyMedium)
-                    Text("Set a maximum volume to prevent accidentally playing too loud.")
-                        .typography(.secondary)
-                }
+                Text("Volume Limit")
+                Text("Set a maximum volume to prevent accidentally playing too loud.")
             }
             .toggleStyle(.switch)
             .tint(DS.Colors.accent)
@@ -206,33 +194,24 @@ struct AccountSettingsView: View {
 
     private var cacheSection: some View {
         Section("Cache") {
-            HStack {
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text("Cached Data")
-                        .typography(.bodyMedium)
-                    Text(settingsVM.estimatedCacheSize)
-                        .typography(.secondary)
-                        .accessibilityIdentifier(AccessibilityID.Settings.cacheSizeLabel)
-                }
+            LabeledContent("Cached Data") {
+                Text(settingsVM.estimatedCacheSize)
+                    .accessibilityIdentifier(AccessibilityID.Settings.cacheSizeLabel)
+            }
 
-                Spacer()
-
-                Button("Clear Cache") {
-                    settingsVM.showClearCacheConfirmation = true
+            Button("Clear Cache") {
+                settingsVM.showClearCacheConfirmation = true
+            }
+            .accessibilityIdentifier(AccessibilityID.Settings.clearCacheButton)
+            .confirmationDialog("Clear Cache", isPresented: Binding(
+                get: { settingsVM.showClearCacheConfirmation },
+                set: { settingsVM.showClearCacheConfirmation = $0 }
+            )) {
+                Button("Clear Cache", role: .destructive) {
+                    settingsVM.clearCache()
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .accessibilityIdentifier(AccessibilityID.Settings.clearCacheButton)
-                .confirmationDialog("Clear Cache", isPresented: Binding(
-                    get: { settingsVM.showClearCacheConfirmation },
-                    set: { settingsVM.showClearCacheConfirmation = $0 }
-                )) {
-                    Button("Clear Cache", role: .destructive) {
-                        settingsVM.clearCache()
-                    }
-                } message: {
-                    Text("This will clear all cached metadata and diagnostics. This cannot be undone.")
-                }
+            } message: {
+                Text("This will clear all cached metadata and diagnostics. This cannot be undone.")
             }
         }
     }
@@ -240,84 +219,62 @@ struct AccountSettingsView: View {
     // MARK: - About Section
 
     private var aboutSection: some View {
-        Section("About") {
-            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                Image("NeosLogo")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 24)
+        Section {
+            Image("NeosLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 24)
+                .accessibilityLabel("Neos")
 
-                VStack(spacing: DS.Spacing.md) {
-                    aboutRow(label: "Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
-                        .accessibilityIdentifier(AccessibilityID.Settings.aboutVersion)
+            LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+                .accessibilityIdentifier(AccessibilityID.Settings.aboutVersion)
 
-                    Divider().opacity(0.3)
+            LabeledContent("Build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
+                .accessibilityIdentifier(AccessibilityID.Settings.aboutBuild)
 
-                    aboutRow(label: "Build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
-                        .accessibilityIdentifier(AccessibilityID.Settings.aboutBuild)
-
-                    if let update = state.availableUpdate {
-                        Divider().opacity(0.3)
-
-                        aboutLink(
-                            "Neos \(update.version) is available", icon: Image(systemName: DS.Icons.update), tint: DS.Colors.accent,
-                            url: update.url.absoluteString, accessibilityID: AccessibilityID.Settings.updateLink
-                        )
-                    }
-                }
-
-                if let copyright = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String, !copyright.isEmpty {
-                    Text(copyright)
-                        .typography(.footnote)
-                        .accessibilityIdentifier(AccessibilityID.Settings.aboutCopyright)
-                }
-
-                Divider().opacity(0.3)
-
-                // App Review rejects links to outside payment, tips included, and a repo page with a Sponsor button counts.
-                #if APP_STORE
+            if let update = state.availableUpdate {
                 aboutLink(
-                    "Neos Support", icon: Image(systemName: "questionmark.circle"), tint: DS.Colors.textSecondary,
-                    url: "https://gaelsimon.github.io/neos-audio/support.html", accessibilityID: AccessibilityID.Settings.helpButton
+                    "Neos \(update.version) is available", systemImage: DS.Icons.update, tint: DS.Colors.accent,
+                    url: update.url.absoluteString, accessibilityID: AccessibilityID.Settings.updateLink
                 )
-                #else
-                aboutLink(
-                    "Support Neos on Ko-fi", icon: Image(systemName: DS.Icons.heartFill), tint: .pink,
-                    url: "https://ko-fi.com/galela", accessibilityID: AccessibilityID.Settings.supportButton
-                )
-                #endif
+            }
+
+            // App Review rejects links to outside payment, tips included, and a repo page with a Sponsor button counts.
+            #if APP_STORE
+            aboutLink(
+                "Neos Support", systemImage: "questionmark.circle", tint: DS.Colors.textSecondary,
+                url: "https://gaelsimon.github.io/neos-audio/support.html", accessibilityID: AccessibilityID.Settings.helpButton
+            )
+            #else
+            aboutLink(
+                "Support Neos on Ko-fi", systemImage: DS.Icons.heartFill, tint: .pink,
+                url: "https://ko-fi.com/galela", accessibilityID: AccessibilityID.Settings.supportButton
+            )
+            #endif
+        } header: {
+            Text("About")
+        } footer: {
+            if let copyright = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String, !copyright.isEmpty {
+                Text(copyright)
+                    .accessibilityIdentifier(AccessibilityID.Settings.aboutCopyright)
             }
         }
     }
 
-    private func aboutRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .typography(.secondary)
-            Spacer()
-            Text(value)
-                .typography(.bodyPrimary)
-        }
-    }
-
-    private func aboutLink(_ title: String, icon: Image, tint: Color, url: String, accessibilityID: String) -> some View {
-        Button(action: {
-            if let url = URL(string: url) {
-                openURL(url)
+    @ViewBuilder
+    private func aboutLink(_ title: String, systemImage: String, tint: Color, url: String, accessibilityID: String) -> some View {
+        if let url = URL(string: url) {
+            Link(destination: url) {
+                Label {
+                    Text(title)
+                        .foregroundStyle(.primary)
+                } icon: {
+                    Image(systemName: systemImage)
+                        .foregroundStyle(tint)
+                }
             }
-        }) {
-            HStack(spacing: DS.Spacing.sm) {
-                icon
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(tint)
-                Text(title)
-                    .typography(.bodyMedium)
-            }
+            .accessibilityIdentifier(accessibilityID)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(accessibilityID)
     }
 
     // MARK: - Diagnostics Section

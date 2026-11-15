@@ -47,13 +47,18 @@ extension View {
     func settingsForm() -> some View {
         formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            .frame(maxWidth: 640)
+            .frame(maxWidth: DS.Layout.formWidth)
             .frame(maxWidth: .infinity)
     }
 
     /// The Mac titles a page above its content; iPhone and iPad title it in the navigation bar.
     func pageHeading(_ title: String) -> some View {
         modifier(PageHeading(title: title))
+    }
+
+    /// Rows and the mini player have fixed heights. A sheet reads the system's text size again, so each one applies this too.
+    func cappedTextSize() -> some View {
+        dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     /// A row that draws its own padding and background, inside a `List` kept for its swipe actions.
@@ -97,9 +102,12 @@ private struct PageHeading: ViewModifier {
     func body(content: Content) -> some View {
         #if os(macOS)
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            // Over the form's own column, at the edge of its sections.
             Text(title)
                 .typography(.pageTitle)
-                .pageMargins()
+                .padding(.horizontal, DS.Layout.formInset)
+                .frame(maxWidth: DS.Layout.formWidth, alignment: .leading)
+                .frame(maxWidth: .infinity)
                 .padding(.top, DS.Layout.pageTop)
             content
         }

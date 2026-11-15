@@ -58,6 +58,10 @@ enum DS {
         static let topOverlay: CGFloat = 0
         #endif
         static let surfaceInset: CGFloat = Spacing.lg
+        /// A settings form reads best no wider than this.
+        static let formWidth: CGFloat = 640
+        /// How far the Mac's grouped form insets its sections.
+        static let formInset: CGFloat = 20
     }
 
     // MARK: - Top Bar

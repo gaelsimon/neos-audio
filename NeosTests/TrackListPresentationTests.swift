@@ -8,6 +8,19 @@ final class TrackListPresentationTests: XCTestCase {
         BrowseItem(name: name, type: .song, mid: name, playable: true, album: album)
     }
 
+    func testAnAlbumAndAPlaylistNumberTheirRows() {
+        for type in [MediaType.album, .playlist] {
+            let target = BrowseTarget(sid: 5, cid: "c", name: "n", mediaType: type)
+            XCTAssertTrue(TrackListPresentation.numbersRows(target: target), "\(type)")
+        }
+    }
+
+    func testStationsAndFoldersHaveNoRowNumbers() {
+        XCTAssertFalse(TrackListPresentation.numbersRows(target: BrowseTarget(sid: 1028, name: "Favorites")))
+        XCTAssertFalse(TrackListPresentation.numbersRows(target: BrowseTarget(sid: 5, cid: "c", name: "Folder", mediaType: .container)))
+        XCTAssertFalse(TrackListPresentation.numbersRows(target: nil))
+    }
+
     func testEveryRowOnTheSameAlbumNamesIt() {
         let items = [track("a", album: "Escape the Flames"), track("b", album: "Escape the Flames")]
         XCTAssertEqual(TrackListPresentation.sharedAlbum(in: items), "Escape the Flames")

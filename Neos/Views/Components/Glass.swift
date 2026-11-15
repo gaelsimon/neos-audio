@@ -62,6 +62,20 @@ struct GlassCapsule: View {
 }
 
 extension View {
+    /// Pins a sub-header over a scrolling page. From iOS 26 the system blurs the page under it, as under its own bars.
+    @ViewBuilder
+    func stickyHeader(@ViewBuilder _ header: () -> some View) -> some View {
+        #if os(iOS)
+        if #available(iOS 26, *) {
+            safeAreaBar(edge: .top, spacing: 0, content: header)
+        } else {
+            safeAreaInset(edge: .top, spacing: 0) { header().stickyHeaderGlass() }
+        }
+        #else
+        safeAreaInset(edge: .top, spacing: 0) { header().stickyHeaderGlass() }
+        #endif
+    }
+
     /// A sub-header pinned under the top bar: one glass reaches up behind the bar, so the two never show a seam.
     func stickyHeaderGlass() -> some View {
         padding(.top, DS.Layout.topOverlay)
