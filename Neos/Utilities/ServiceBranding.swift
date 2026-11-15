@@ -131,6 +131,11 @@ enum ServiceBranding {
         }
     }
 
+    /// The symbol that stands for a source with no logo of its own.
+    static func symbolName(for sourceName: String) -> String {
+        sfSymbolIcon(for: sourceName) ?? DS.Icons.playlists
+    }
+
     /// A symbol on the same black tile as the service logos.
     static func symbolTile(_ systemName: String, size: CGFloat) -> some View {
         Image(systemName: systemName)

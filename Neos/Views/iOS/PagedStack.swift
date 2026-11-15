@@ -21,6 +21,8 @@ final class BrowsePage: Hashable {
 struct PagedStack<Root: View>: View {
     let state: AppState
     let container: ViewModelContainer
+    /// Where the first page opens, for a tab that is one source; nil for a page that needs no place.
+    var start: BrowseLocation?
     @ViewBuilder let root: (BrowseViewModel) -> Root
 
     @Environment(\.showsPadChrome) private var showsPadChrome
@@ -49,7 +51,10 @@ struct PagedStack<Root: View>: View {
         .overlay(alignment: .bottom) { ToastOverlay(state: state) }
         .safeAreaInset(edge: .bottom, spacing: 0) { playerBar }
         .onAppear {
-            if rootModel == nil { rootModel = makeModel() }
+            guard rootModel == nil else { return }
+            let model = makeModel()
+            if let start { model.start(at: start) }
+            rootModel = model
         }
     }
 
@@ -75,6 +80,10 @@ struct PagedStack<Root: View>: View {
 
     private func open(_ location: BrowseLocation) {
         // A breadcrumb leads to a page already on the stack: go back to it instead of stacking it again.
+        if location == start {
+            pages.removeAll()
+            return
+        }
         if let index = pages.lastIndex(where: { $0.location == location }) {
             pages.removeSubrange((index + 1)...)
             return

@@ -372,10 +372,8 @@ final class BrowseViewModel {
     }
 
     func selectSource(_ source: MusicSource) {
-        let rootTarget = BrowseTarget(sid: source.sid, name: source.name, imageURL: source.imageURL, serviceName: source.name)
-        let newDest = NavigationDestination.browse(rootTarget)
-        let newStack = [rootTarget]
-        guard pushEntry(destination: newDest, browseStack: newStack) else { return }
+        let root = BrowseLocation.root(of: source)
+        guard pushEntry(destination: root.destination, browseStack: root.browseStack) else { return }
         navigationTapCount += 1
         fetchBrowseRoot(source)
     }

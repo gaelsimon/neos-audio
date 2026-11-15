@@ -15,6 +15,16 @@ struct LibraryView: View {
         )
 
         List {
+            Section {
+                ForEach(sections.library) { entry in
+                    row { model.selectSource(entry.source) } label: {
+                        Label(entry.title, systemImage: entry.symbol)
+                    }
+                }
+                row { model.selectQueue() } label: {
+                    Label("Queue", systemImage: DS.Icons.queue)
+                }
+            }
             if !sections.services.isEmpty {
                 Section("Services") {
                     ForEach(sections.services) { sourceRow($0) }
@@ -23,16 +33,6 @@ struct LibraryView: View {
             if !sections.local.isEmpty {
                 Section("Local") {
                     ForEach(sections.local) { sourceRow($0) }
-                }
-            }
-            Section("Library") {
-                ForEach(sections.library) { entry in
-                    row { model.selectSource(entry.source) } label: {
-                        Label(entry.title, systemImage: entry.symbol)
-                    }
-                }
-                row { model.selectQueue() } label: {
-                    Label("Queue", systemImage: DS.Icons.queue)
                 }
             }
         }

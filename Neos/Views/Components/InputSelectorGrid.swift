@@ -100,9 +100,8 @@ private struct InputCardButton: View {
 
                 Text(name)
                     .typography(.secondary, color: isActive ? .primary : nil)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.center)
-                    .frame(height: 32, alignment: .top)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, DS.Spacing.lg)

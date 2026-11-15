@@ -153,6 +153,47 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testAPageStartedOnASourceLoadsItsFirstPage() async {
+        let state = AppState()
+        var askedFor: [Int] = []
+        let viewModel = BrowseViewModel(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            browseSource: { sid in
+                askedFor.append(sid)
+                return BrowseResult(items: [BrowseItem(name: "Albums", cid: "albums", browsable: true)])
+            }
+        )
+        let source = MusicSource(sid: 5, name: "Deezer")
+
+        viewModel.start(at: .root(of: source))
+        await waitUntil { viewModel.items.map(\.name) == ["Albums"] }
+
+        XCTAssertEqual(askedFor, [5])
+        XCTAssertEqual(viewModel.currentLocationName, "Deezer")
+        XCTAssertFalse(viewModel.canGoBack)
+    }
+
+    @MainActor
+    func testSelectingASourceOpensTheSamePlaceATabStartsOn() {
+        let state = AppState()
+        let viewModel = BrowseViewModel(service: HEOSService(stateUpdater: state), state: state)
+        var opened: [BrowseLocation] = []
+        viewModel.openPage = { opened.append($0) }
+        let source = MusicSource(sid: 5, name: "Deezer")
+
+        viewModel.selectSource(source)
+
+        XCTAssertEqual(opened, [.root(of: source)])
+    }
+
+    @MainActor
+    func testTheQueueIsAPlaceWithoutAPath() {
+        XCTAssertEqual(BrowseLocation.queue.destination, .queue)
+        XCTAssertTrue(BrowseLocation.queue.browseStack.isEmpty)
+    }
+
+    @MainActor
     func testAnAlbumPageOpensOnItsArtwork() async {
         let state = AppState()
         let viewModel = BrowseViewModel(

@@ -158,6 +158,8 @@ Sample HEOS CLI responses live in `docs/samples/` and are useful test fixtures.
 - On iPhone and iPad the app's tint is white, so bars, buttons and links stay neutral. Anything that marks a state, such as the playing track, a selection or a switch, sets `DS.Colors.accent` itself.
 - Where the platforms differ, decide in one place. A capability of the platform, such as hover or swipe to remove, is a `DS` constant (`DS.revealsControlsOnHover`, `DS.removesRowsBySwiping`). A layout decision follows the size class through an environment value in `PageLayout.swift`. The device itself comes from `DeviceIdiom`. A rule about the app's state, such as when to name the speaker, belongs on `AppState` with a test, not in a view.
 - Prefer the platform's own controls: `Form` for settings, labelled `Toggle`, `Picker` and `TextField`, `.keyboardShortcut` for Return and Escape in sheets. A custom control needs a reason the native one cannot meet, written next to it.
+- Text takes its font and colour from `typography()`. A colour other than the role's goes through `typography(_:color:)`: a `foregroundStyle` chained after it never shows for most roles, and SwiftLint rejects it.
+- A form shown as a sheet goes through `FormSheet`, and a page shown as a sheet through `DoneSheet`. Both cap the text size, which a sheet on iPhone and iPad does not inherit from the page behind it; a sheet built another way calls `cappedTextSize()` itself. A field for an address, an e-mail or a URL takes `literalTextInput`.
 - Tests for new behaviour. The app has over 400 unit tests and the protocol package has its own, keep that bar.
 
 ## Pull request process

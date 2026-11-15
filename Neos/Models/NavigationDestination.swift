@@ -72,4 +72,12 @@ struct BrowseLocation: Equatable {
     let destination: NavigationDestination
     let browseStack: [BrowseTarget]
     let searchContext: SearchResultsContext?
+
+    static let queue = Self(destination: .queue, browseStack: [], searchContext: nil)
+
+    /// A source's first page.
+    static func root(of source: MusicSource) -> Self {
+        let target = BrowseTarget(sid: source.sid, name: source.name, imageURL: source.imageURL, serviceName: source.name)
+        return Self(destination: .browse(target), browseStack: [target], searchContext: nil)
+    }
 }
