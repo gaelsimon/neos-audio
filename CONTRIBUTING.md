@@ -14,7 +14,7 @@ Thanks for your interest in contributing. Neos is a small, focused project and c
 ### Requirements
 
 - macOS 14.0 (Sonoma) or later
-- Xcode 16.0 or later
+- Xcode 16.0 or later for the Mac app, Xcode 26 or later for the iPhone and iPad app
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 - [SwiftLint](https://github.com/realm/SwiftLint) (`brew install swiftlint`)
 
