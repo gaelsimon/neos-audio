@@ -1,52 +1,7 @@
 import XCTest
 
 /// The iPhone and iPad app in demo mode, along the paths a user takes first.
-final class NeosMobileSmokeTests: XCTestCase {
-    private var app: XCUIApplication!
-
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments = ["--demo-mode"]
-        app.launch()
-        XCTAssertTrue(tab("Home").waitForExistence(timeout: 30), "The tabs never appeared")
-    }
-
-    // MARK: - Helpers
-
-    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
-
-    /// The tab bar on iPhone; the iPad's floating tab bar exposes its tabs as plain buttons.
-    private func tab(_ label: String) -> XCUIElement {
-        let inBar = app.tabBars.buttons[label]
-        return inBar.exists ? inBar : app.buttons[label].firstMatch
-    }
-
-    private func element(_ identifier: String) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
-    }
-
-    /// The queue's page: a row of the Library tab on iPhone, an entry of the sidebar on iPad.
-    private func openQueue() {
-        if isPad {
-            app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).firstMatch.tap()
-            let entry = app.staticTexts["Queue"].firstMatch
-            XCTAssertTrue(entry.waitForExistence(timeout: 5), "The sidebar should list the queue")
-            entry.tap()
-        } else {
-            tab("Library").tap()
-            app.buttons["Queue"].firstMatch.tap()
-        }
-    }
-
-    private func openPlayer() {
-        if isPad {
-            app.buttons["Full Screen Player"].firstMatch.tap()
-        } else {
-            app.buttons.matching(NSPredicate(format: "label CONTAINS 'Playing on'")).firstMatch.tap()
-        }
-        XCTAssertTrue(app.buttons["Close Player"].waitForExistence(timeout: 5), "The player did not open")
-    }
+final class NeosMobileSmokeTests: MobileDemoTestCase {
 
     // MARK: - Tests
 
@@ -63,7 +18,7 @@ final class NeosMobileSmokeTests: XCTestCase {
     }
 
     func testSwipingAQueueRowRemovesIt() {
-        openQueue()
+        openLibraryPage("Queue")
         let firstRow = element(AccessibilityID.TrackList.row(1))
         XCTAssertTrue(firstRow.waitForExistence(timeout: 5))
         let removedTitle = firstRow.label
