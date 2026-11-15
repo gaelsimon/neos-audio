@@ -76,6 +76,11 @@ final class FocusTrackingSearchField: NSSearchField {
     var onFocusChange: ((Bool) -> Void)?
     private var outsideClickMonitor: Any?
 
+    override static var cellClass: AnyClass? {
+        get { SearchFieldCell.self }
+        set {}
+    }
+
     override func becomeFirstResponder() -> Bool {
         let result = super.becomeFirstResponder()
         if result {
@@ -125,5 +130,37 @@ final class FocusTrackingSearchField: NSSearchField {
     override func resetCursorRects() {
         guard let cell = cell as? NSSearchFieldCell else { return super.resetCursorRects() }
         addCursorRect(cell.searchTextRect(forBounds: bounds), cursor: .iBeam)
+    }
+}
+
+// Without a bezel, macOS 26 lays the editor over the whole field: the text covers the magnifier and the clear button gets no click.
+final class SearchFieldCell: NSSearchFieldCell {
+    private var editorFrame: NSRect?
+
+    override func select(
+        withFrame rect: NSRect, in controlView: NSView, editor: NSText, delegate: Any?, start: Int, length: Int
+    ) {
+        let frame = textFrame(in: rect)
+        defer { editorFrame = nil }
+        super.select(withFrame: frame, in: controlView, editor: editor, delegate: delegate, start: start, length: length)
+    }
+
+    override func edit(
+        withFrame rect: NSRect, in controlView: NSView, editor: NSText, delegate: Any?, event: NSEvent?
+    ) {
+        let frame = textFrame(in: rect)
+        defer { editorFrame = nil }
+        super.edit(withFrame: frame, in: controlView, editor: editor, delegate: delegate, event: event)
+    }
+
+    // Where AppKit does inset the editor itself, it asks again with the frame already inset.
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        rect == editorFrame ? rect : super.drawingRect(forBounds: rect)
+    }
+
+    private func textFrame(in rect: NSRect) -> NSRect {
+        let frame = drawingRect(forBounds: rect)
+        editorFrame = frame
+        return frame
     }
 }
