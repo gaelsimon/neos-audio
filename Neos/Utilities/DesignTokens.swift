@@ -107,9 +107,12 @@ enum DS {
         #if os(iOS)
         static let button: CGFloat = 44
         static let slider: CGFloat = 44
+        /// Around a bare glyph: a finger needs the square, a pointer makes do with the glyph's own frame.
+        static let glyph: CGFloat = 44
         #else
         static let button: CGFloat = 36
         static let slider: CGFloat = 14
+        static let glyph: CGFloat = 0
         #endif
     }
 

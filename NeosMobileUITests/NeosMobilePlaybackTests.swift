@@ -23,8 +23,9 @@ final class NeosMobilePlaybackTests: MobileDemoTestCase {
 
     func test2AStationPlaysUnderItsName() {
         openLibraryPage("Favorites")
-        // The wide layout numbers its rows, so the name is not where the label starts.
-        let station = app.buttons.matching(NSPredicate(format: "label ENDSWITH 'Eclectic FM'")).firstMatch
+        // The wide layout numbers its rows, and iOS 27 adds the row's menu to its label: the name is in the middle.
+        let station = app.buttons
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'trackList.row' AND label CONTAINS 'Eclectic FM'")).firstMatch
         XCTAssertTrue(station.waitForExistence(timeout: 5))
 
         station.tap()

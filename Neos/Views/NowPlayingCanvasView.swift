@@ -146,6 +146,7 @@ struct NowPlayingCanvasView: View {
             }
         }
         .shadow(color: .black.opacity(0.5), radius: 40, y: 10)
+        .accessibilityLabel("Artwork")
         .accessibilityIdentifier(AccessibilityID.NowPlayingCanvas.artwork)
     }
 }

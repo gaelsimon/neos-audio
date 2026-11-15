@@ -46,6 +46,7 @@ targets:
       - path: Neos
         excludes:
           - Resources/Info.plist
+          - Utilities/iOS
           - Views/iOS
     settings:
       base:
@@ -89,6 +90,8 @@ targets:
     platform: macOS
     sources:
       - path: NeosTests
+        excludes:
+          - iOS
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.galela.neos.tests

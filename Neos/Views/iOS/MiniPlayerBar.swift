@@ -73,7 +73,7 @@ private struct MiniPlayerContent: View {
             Button { playerVM.togglePlayPause() } label: {
                 Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
                     .font(DS.IconFont.xl)
-                    .frame(width: DS.HitTarget.button, height: DS.HitTarget.button)
+                    .hitTarget()
             }
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
 
@@ -81,7 +81,7 @@ private struct MiniPlayerContent: View {
                 Button { playerVM.next() } label: {
                     Image(systemName: "forward.fill")
                         .font(DS.IconFont.lg)
-                        .frame(width: DS.HitTarget.button, height: DS.HitTarget.button)
+                        .hitTarget()
                 }
                 .accessibilityLabel("Next")
             }
@@ -101,6 +101,7 @@ private struct MiniPlayerContent: View {
         }
         .frame(width: artworkSize, height: artworkSize)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
+        .accessibilityHidden(true)
     }
 
     /// Part of the tap that opens the player: a speaker line of its own would sit under the thumb aiming at the title.

@@ -139,6 +139,7 @@ extension BrowseContentView {
     private func containerHeaderArtwork(_ target: BrowseTarget) -> some View {
         containerArtwork(target, size: DS.ImageSize.containerArt, cornerRadius: DS.Radius.artworkLarge)
             .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 10)
+            .accessibilityLabel("Artwork")
             .accessibilityIdentifier(AccessibilityID.Browse.containerArt)
     }
 
@@ -153,6 +154,7 @@ extension BrowseContentView {
                     .opacity(0.5)
             }
             .clipped()
+            .accessibilityHidden(true)
             .overlay {
                 LinearGradient(
                     stops: [

@@ -65,7 +65,7 @@ struct MobileNowPlayingView: View {
                 Button { state.isQueuePanelOpen = true } label: {
                     Image(systemName: DS.Icons.queue)
                         .font(DS.IconFont.lg)
-                        .frame(width: DS.HitTarget.button, height: DS.HitTarget.button)
+                        .hitTarget()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Queue")
@@ -114,7 +114,7 @@ struct MobileNowPlayingView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(DS.IconFont.lg)
-                    .frame(width: DS.HitTarget.button, height: DS.HitTarget.button)
+                    .hitTarget()
             }
             .buttonStyle(.plain)
             .accessibilityLabel("More")

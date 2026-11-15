@@ -11,17 +11,9 @@ extension EnvironmentValues {
 /// Tabs on iPhone and a sidebar on iPad, from one declaration. A wide iPad lists every source in its sidebar; its
 /// tab bar, an iPhone and a narrow iPad window reach them through the Library tab.
 struct MobileTabView: View {
-    enum Section: Hashable {
-        case home
-        case library
-        case search
-        case source(Int)
-        case queue
-    }
-
     let state: AppState
     let container: ViewModelContainer
-    @State private var selection: Section = .home
+    @State private var selection: MobileTab = .home
     @State private var isSidebarShowing = false
     @Environment(\.showsPadChrome) private var showsPadChrome
 
@@ -46,21 +38,22 @@ struct MobileTabView: View {
             signedIn: state.signedInUser != nil,
             hidden: container.homeVM.hiddenSIDs
         )
+        let shown = selection.showing(sourceTabs: showsPadChrome, sources: sources)
         return TabView(selection: $selection) {
-            Tab("Home", systemImage: "house", value: Section.home) {
+            Tab("Home", systemImage: "house", value: MobileTab.home) {
                 PagedStack(state: state, container: container) { model in
                     DestinationView(state: state, container: container, model: model)
                         .navigationTitle("Home")
                 }
             }
-            Tab("Library", systemImage: "square.stack", value: Section.library) {
+            Tab("Library", systemImage: "square.stack", value: MobileTab.library) {
                 PagedStack(state: state, container: container) { model in
                     LibraryView(state: state, container: container, model: model)
                 }
             }
             // The sidebar lists the sources itself. The tab stays while it is the page on screen.
             .hidden(isSidebarShowing && selection != .library)
-            Tab(value: Section.search, role: .search) {
+            Tab(value: MobileTab.search, role: .search) {
                 PagedStack(state: state, container: container) { model in
                     MobileSearchView(state: state, container: container, model: model)
                 }
@@ -70,7 +63,7 @@ struct MobileTabView: View {
                 ForEach(sources.library) { entry in
                     sourceTab(entry.source, title: entry.title, icon: Image(systemName: entry.symbol))
                 }
-                Tab("Queue", systemImage: DS.Icons.queue, value: Section.queue) {
+                Tab("Queue", systemImage: DS.Icons.queue, value: MobileTab.queue) {
                     PagedStack(state: state, container: container, start: .queue) { model in
                         DestinationView(state: state, container: container, model: model)
                             .navigationTitle("Queue")
@@ -96,31 +89,15 @@ struct MobileTabView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .environment(\.isSidebarShowing, $isSidebarShowing)
-        .onChange(of: state.musicSources.map(\.sid)) { _, sids in
-            // A source that went away takes its tab with it.
-            if case .source(let sid) = selection, !sids.contains(sid) {
-                selection = .home
-            }
-        }
-        .onChange(of: showsPadChrome) { _, isWide in
-            // A narrow window has no source tabs; the open one may be the one that goes.
-            switch selection {
-            case .source where !isWide, .queue where !isWide: selection = .library
-            default: break
-            }
-        }
-        // iPad only, and not under the player, which shows the queue itself; an iPhone opens it from the player.
-        .inspector(isPresented: Binding(
-            get: { showsPadChrome && state.isQueuePanelOpen && !state.isNowPlayingCanvasOpen },
-            set: { state.isQueuePanelOpen = $0 }
-        )) {
-            QueuePanelView(state: state, viewModel: container.queuePanelVM)
-        }
+        // A narrower window or a source going away takes the open tab with it. iOS 27 can crash on a selection
+        // whose tab is hidden, and a binding that corrects it on the way in breaks the iPad's search there.
+        .onChange(of: shown) { _, tab in selection = tab }
+        .modifier(QueueInspector(state: state, container: container, isInstalled: !QueueInspector.belongsInsideTabs))
     }
 
     /// A source as a sidebar entry with a stack of its own.
-    private func sourceTab(_ source: MusicSource, title: String, icon: Image) -> some TabContent<Section> {
-        Tab(value: Section.source(source.sid)) {
+    private func sourceTab(_ source: MusicSource, title: String, icon: Image) -> some TabContent<MobileTab> {
+        Tab(value: MobileTab.source(source.sid)) {
             PagedStack(state: state, container: container, start: .root(of: source)) { model in
                 DestinationView(state: state, container: container, model: model)
                     .navigationTitle(title)

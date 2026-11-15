@@ -9,6 +9,14 @@ struct MobileSearchView: View {
 
     private var searchVM: SearchViewModel { container.searchVM }
 
+    /// iPad would otherwise fold the field into a toolbar button, a second tap after the tab. iOS 27 puts the
+    /// iPhone's field in the navigation bar too, where a list of recent searches would hide it until pulled down.
+    private var keepsFieldUnderTitle: Bool {
+        if showsPadChrome { return true }
+        if #available(iOS 27, *) { return true }
+        return false
+    }
+
     var body: some View {
         Group {
             if searchVM.query.isEmpty {
@@ -20,8 +28,7 @@ struct MobileSearchView: View {
         .navigationTitle("Search")
         .searchable(
             text: Binding(get: { searchVM.query }, set: { searchVM.onQueryChanged($0) }),
-            // iPad would otherwise fold the field into a toolbar button: a second tap after the tab.
-            placement: showsPadChrome ? .navigationBarDrawer(displayMode: .always) : .automatic
+            placement: keepsFieldUnderTitle ? .navigationBarDrawer(displayMode: .always) : .automatic
         )
         // iPad draws its tabs in the bar a search would hide, and iPadOS 26 offers no Cancel to bring them back.
         .searchPresentationToolbarBehavior(showsPadChrome ? .avoidHidingContent : .automatic)

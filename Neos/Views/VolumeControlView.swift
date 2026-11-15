@@ -79,6 +79,7 @@ struct VolumeControlView: View {
                 .font(DS.IconFont.xl)
                 .foregroundStyle(state.isMuted ? .red : DS.Colors.textSecondary)
                 .frame(width: 28, height: 28)
+                .hitTarget(DS.HitTarget.glyph)
         }
         .buttonStyle(.plain)
         .help("Volume")
@@ -101,6 +102,7 @@ struct VolumeControlView: View {
                 .font(style == .bottomBar ? DS.IconFont.xl : DS.IconFont.body)
                 .foregroundStyle(state.isMuted ? .red : isMuteHovered ? .primary : DS.Colors.textSecondary)
                 .frame(width: style == .bottomBar ? 28 : 20, height: style == .bottomBar ? 28 : 20)
+                .hitTarget(DS.HitTarget.glyph)
         }
         .buttonStyle(.plain)
         .onHover { hovering in
