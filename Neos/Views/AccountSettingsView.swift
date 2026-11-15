@@ -100,8 +100,7 @@ struct AccountSettingsView: View {
                     Image(systemName: error.icon)
                         .foregroundStyle(errorColor(for: error))
                     Text(error.message)
-                        .typography(.secondary)
-                        .foregroundStyle(errorColor(for: error))
+                        .typography(.secondary, color: errorColor(for: error))
                 }
                 .accessibilityIdentifier(AccessibilityID.Settings.signInError)
             }
@@ -337,8 +336,7 @@ struct AccountSettingsView: View {
                                     Text(event.date, format: .dateTime.hour().minute().second())
                                         .typography(.footnote)
                                     Text(event.source)
-                                        .typography(.secondaryEmphasis)
-                                        .foregroundStyle(DS.Colors.accent)
+                                        .typography(.secondaryEmphasis, color: DS.Colors.accent)
                                 }
                                 Text(event.message)
                                     .typography(.secondary)

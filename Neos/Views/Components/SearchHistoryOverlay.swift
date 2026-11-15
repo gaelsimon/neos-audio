@@ -26,12 +26,10 @@ struct SearchHistoryOverlay: View {
         HStack {
             Text("Recent Searches")
                 .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
             Spacer()
             HoverButton(action: onClear) { hovered in
                 Text("Clear")
-                    .typography(.badge)
-                    .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                    .typography(.badge, color: hovered ? .white : nil)
             }
             .accessibilityIdentifier(AccessibilityID.Search.clearHistoryButton)
             .accessibilityLabel("Clear search history")

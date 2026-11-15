@@ -99,8 +99,7 @@ private struct InputCardButton: View {
                 }
 
                 Text(name)
-                    .typography(.secondary)
-                    .foregroundStyle(isActive ? .primary : DS.Colors.textSecondary)
+                    .typography(.secondary, color: isActive ? .primary : nil)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .frame(height: 32, alignment: .top)

@@ -19,18 +19,18 @@ struct TextActionButton: View {
                 Spinner(size: 16, lineWidth: 2)
             } else {
                 Text(title)
-                    .typography(.secondary)
-                    .foregroundStyle(color(hovered: hovered))
+                    .typography(.secondary, color: color(hovered: hovered))
             }
         }
     }
 
     private func color(hovered: Bool) -> Color {
+        let isLit = hovered || !DS.revealsControlsOnHover
         switch role {
         case .normal:
-            return hovered ? .white : DS.Colors.textSecondary
+            return isLit ? .white : DS.Colors.textSecondary
         case .destructive:
-            return hovered ? DS.Colors.destructive : DS.Colors.destructive.opacity(0.75)
+            return isLit ? DS.Colors.destructive : DS.Colors.destructive.opacity(0.75)
         }
     }
 }

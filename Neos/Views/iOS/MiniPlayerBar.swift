@@ -108,8 +108,7 @@ private struct MiniPlayerContent: View {
         return VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
             if isInline {
                 Text(title)
-                    .foregroundStyle(.primary)
-                    .typography(.secondaryEmphasis)
+                    .typography(.secondaryEmphasis, color: .primary)
                     .lineLimit(1)
             } else if let speakerName {
                 // The speaker takes the second line, so the artist joins the title's.
@@ -120,8 +119,7 @@ private struct MiniPlayerContent: View {
                         Text("\(Text(title)) · \(Text(artist).fontWeight(.regular).foregroundStyle(DS.Colors.textSecondary))")
                     }
                 }
-                .foregroundStyle(.primary)
-                .typography(.secondaryEmphasis)
+                .typography(.secondaryEmphasis, color: .primary)
                 .lineLimit(1)
 
                 HStack(spacing: DS.Spacing.xs) {
@@ -129,14 +127,12 @@ private struct MiniPlayerContent: View {
                     Text(speakerName)
                         .lineLimit(1)
                 }
-                .foregroundStyle(DS.Colors.accent)
-                .typography(.badge)
+                .typography(.badge, color: DS.Colors.accent)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Playing on \(speakerName)")
             } else {
                 Text(title)
-                    .foregroundStyle(.primary)
-                    .typography(.secondaryEmphasis)
+                    .typography(.secondaryEmphasis, color: .primary)
                     .lineLimit(1)
                 if !artist.isEmpty {
                     Text(artist)

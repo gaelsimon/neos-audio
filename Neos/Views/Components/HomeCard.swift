@@ -30,8 +30,7 @@ struct HomeCard: View {
                     }
                     .overlay {
                         Image(systemName: DS.Icons.musicNote)
-                            .typography(.pageTitle)
-                            .foregroundStyle(DS.Colors.textTertiary)
+                            .typography(.pageTitle, color: DS.Colors.textTertiary)
                     }
                 }
                 .frame(width: DS.ImageSize.homeCard, height: DS.ImageSize.homeCard)

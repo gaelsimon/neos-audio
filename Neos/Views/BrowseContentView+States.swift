@@ -11,7 +11,7 @@ extension BrowseContentView {
             Text(source.name)
                 .typography(.pageTitle)
             Text("This service requires a HEOS account.")
-                .typography(.bodyPrimary).foregroundStyle(DS.Colors.textSecondary)
+                .typography(.bodyPrimary, color: DS.Colors.textSecondary)
 
             Button(action: { browseVM.navigateToSettings() }) {
                 Text("Sign In")

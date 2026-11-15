@@ -44,11 +44,8 @@ struct DiscoveryView: View {
 
             Text("Looking for players on your network...")
                 .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
 
-            // Secondary while the search runs: the scan is already happening.
             scanButton
-                .foregroundStyle(DS.Colors.textTertiary)
 
             manualConnectToggle
         }
@@ -61,8 +58,7 @@ struct DiscoveryView: View {
             brandingHeader
 
             Text("Select a player")
-                .typography(.bodyPrimary)
-                .foregroundStyle(DS.Colors.textSecondary)
+                .typography(.bodyPrimary, color: DS.Colors.textSecondary)
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: DS.Spacing.md) {
                 ForEach(state.visibleDiscoveredDevices) { device in
@@ -85,19 +81,16 @@ struct DiscoveryView: View {
             brandingHeader
 
             Text("No Players Found")
-                .typography(.bodyPrimary)
-                .foregroundStyle(DS.Colors.textSecondary)
+                .typography(.bodyPrimary, color: DS.Colors.textSecondary)
                 .accessibilityIdentifier(AccessibilityID.Disconnected.title)
 
             VStack(spacing: DS.Spacing.sm) {
                 Text("Make sure your HEOS device is powered on\nand connected to the same network as your Mac.")
                     .typography(.secondary)
-                    .foregroundStyle(DS.Colors.textTertiary)
                     .multilineTextAlignment(.center)
 
                 Text("You can also try connecting directly using its IP address.")
                     .typography(.secondary)
-                    .foregroundStyle(DS.Colors.textTertiary)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: 380)
@@ -115,7 +108,6 @@ struct DiscoveryView: View {
             }
 
             scanButton
-                .foregroundStyle(DS.Colors.textSecondary)
 
             manualConnectToggle
         }

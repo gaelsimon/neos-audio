@@ -232,8 +232,7 @@ extension BrowseContentView {
 
             if !browseVM.items.isEmpty {
                 Text("\(browseVM.items.count)\(browseVM.hasMore ? "+" : "") \(itemNoun)")
-                    .typography(.bodyMedium)
-                    .foregroundStyle(DS.Colors.textTertiary)
+                    .typography(.bodyMedium, color: DS.Colors.textTertiary)
             }
         }
         .padding(.top, DS.Spacing.xs)

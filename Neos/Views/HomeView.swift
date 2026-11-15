@@ -47,16 +47,14 @@ struct HomeView: View {
 
             HoverButton(action: { browseVM.navigateToSettings() }) { hovered in
                 Image(systemName: DS.Icons.settings)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                    .typography(.bodyPrimary, color: hovered ? .white : DS.Colors.textSecondary)
             }
             .help("Configure Services")
             .accessibilityIdentifier(AccessibilityID.Home.configButton)
 
             HoverButton(action: { homeVM.refresh() }) { hovered in
                 Image(systemName: DS.Icons.refresh)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                    .typography(.bodyPrimary, color: hovered ? .white : DS.Colors.textSecondary)
             }
             .help("Refresh")
             .accessibilityIdentifier(AccessibilityID.Home.refreshButton)

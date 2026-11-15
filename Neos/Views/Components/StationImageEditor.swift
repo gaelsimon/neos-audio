@@ -51,10 +51,7 @@ struct StationImageEditor: View {
                     }
                 }
             } else {
-                Button("Or paste a URL…") { showURLField = true }
-                    .buttonStyle(.plain)
-                    .typography(.secondary)
-                    .foregroundStyle(DS.Colors.accent)
+                TextActionButton(title: "Or paste a URL…") { showURLField = true }
             }
 
             // Actions

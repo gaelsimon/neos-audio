@@ -291,23 +291,33 @@ extension DS.Font {
     }
 }
 
-struct TypographyModifier: ViewModifier {
-    let style: DS.Font
-
-    func body(content: Content) -> some View {
-        switch style {
+extension DS.Font {
+    var color: AnyShapeStyle {
+        switch self {
         case .pageTitle, .sectionHeader, .bodyPrimary, .bodyMedium, .bodyEmphasis:
-            content.font(style.font).foregroundStyle(.primary)
+            AnyShapeStyle(HierarchicalShapeStyle.primary)
         case .secondary, .secondaryEmphasis, .cardTitle, .cardSubtitle:
-            content.font(style.font).foregroundStyle(DS.Colors.textSecondary)
+            AnyShapeStyle(DS.Colors.textSecondary)
         case .badge, .sidebarSection, .footnote:
-            content.font(style.font).foregroundStyle(DS.Colors.textTertiary)
+            AnyShapeStyle(DS.Colors.textTertiary)
         }
     }
 }
 
+struct TypographyModifier: ViewModifier {
+    let style: DS.Font
+    var color: Color?
+
+    func body(content: Content) -> some View {
+        content
+            .font(style.font)
+            .foregroundStyle(color.map { AnyShapeStyle($0) } ?? style.color)
+    }
+}
+
 extension View {
-    func typography(_ style: DS.Font) -> some View {
-        modifier(TypographyModifier(style: style))
+    /// A `foregroundStyle` added after this loses to the role's colour: pass `color` instead.
+    func typography(_ style: DS.Font, color: Color? = nil) -> some View {
+        modifier(TypographyModifier(style: style, color: color))
     }
 }

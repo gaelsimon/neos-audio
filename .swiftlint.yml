@@ -114,3 +114,11 @@ trailing_whitespace:
 
 vertical_whitespace:
   max_empty_lines: 2
+
+custom_rules:
+  # typography() sets the role's colour innermost, so a foregroundStyle chained after it never shows.
+  typography_color_override:
+    name: "Colour after typography"
+    regex: '\.typography\([^)]*\)\s*\.foreground(Style|Color)\('
+    message: "Ignored for the roles that have their own colour. Pass typography(_:color:) instead."
+    severity: error

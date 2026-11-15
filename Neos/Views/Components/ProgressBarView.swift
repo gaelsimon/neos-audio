@@ -152,7 +152,6 @@ private struct SeekerPerformanceIsland: View {
                         remainingLabel(currentMillis)
                     }
                     .typography(.badge)
-                    .foregroundStyle(DS.Colors.textSecondary)
                 }
             }
         }
@@ -213,7 +212,6 @@ private struct SeekerPerformanceIsland: View {
     private func elapsedLabel(_ millis: Int) -> some View {
         Text(formatTime(millis))
             .typography(.badge)
-            .foregroundStyle(DS.Colors.textSecondary)
             .monospacedDigit()
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
@@ -223,7 +221,6 @@ private struct SeekerPerformanceIsland: View {
     private func remainingLabel(_ millis: Int) -> some View {
         Text("-\(formatTime(max(0, playbackDuration - millis)))")
             .typography(.badge)
-            .foregroundStyle(DS.Colors.textSecondary)
             .monospacedDigit()
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)

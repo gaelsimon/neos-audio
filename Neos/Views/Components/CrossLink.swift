@@ -37,7 +37,6 @@ struct CrossLink: View {
 
     private var label: some View {
         Text(title)
-            .typography(typography)
-            .foregroundStyle(hover == .accent && isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
+            .typography(typography, color: hover == .accent && isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
     }
 }

@@ -38,7 +38,6 @@ struct BreadcrumbBar: View {
                         case .gap:
                             Text("…")
                                 .typography(.secondary)
-                                .foregroundStyle(DS.Colors.textTertiary)
                         case .level(let index):
                             crumb(stack[index], at: index)
                         }

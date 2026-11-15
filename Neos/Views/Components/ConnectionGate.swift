@@ -91,15 +91,10 @@ struct ConnectionGate<Content: View>: View {
 
                 Text("Connecting to \(deviceName)...")
                     .typography(.secondary)
-                    .foregroundStyle(DS.Colors.textSecondary)
 
-                Button("Scan for other devices") {
+                TextActionButton(title: "Scan for other devices") {
                     speakerVM.disconnect()
                 }
-                .buttonStyle(.plain)
-                .typography(.secondary)
-                .foregroundStyle(DS.Colors.accent)
-                .padding(.top, DS.Spacing.sm)
             }
         }
     }

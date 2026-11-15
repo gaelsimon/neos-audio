@@ -78,8 +78,7 @@ struct TrackListRow: View {
             if let onRemove, showsRemoveButton {
                 HoverButton(action: onRemove) { hovered in
                     Image(systemName: DS.Icons.dismiss)
-                        .typography(.secondary)
-                        .foregroundStyle(hovered ? DS.Colors.textSecondary : DS.Colors.textTertiary)
+                        .typography(.secondary, color: hovered ? .white : nil)
                         .frame(width: DS.TrackList.actionWidth, height: DS.TrackList.actionWidth)
                 }
                 .opacity(isHovered || !DS.revealsControlsOnHover ? 1 : 0)
@@ -121,7 +120,6 @@ struct TrackListRow: View {
         } label: {
             Image(systemName: "ellipsis")
                 .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
                 .frame(minWidth: DS.TrackList.actionWidth, minHeight: DS.TrackList.actionWidth)
                 .contentShape(Rectangle())
         }
@@ -258,8 +256,7 @@ struct TrackListRow: View {
 
             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(name.displayTitle)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
+                    .typography(.bodyPrimary, color: isNowPlaying ? DS.Colors.accent : nil)
                     .lineLimit(1)
                     .accessibilityIdentifier(AccessibilityID.TrackList.title(index))
 

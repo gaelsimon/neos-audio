@@ -134,8 +134,7 @@ struct AmpSettingsView: View {
     private var refreshButton: some View {
         HoverButton(action: { groupVM.refresh() }) { hovered in
             Image(systemName: DS.Icons.refresh)
-                .typography(.bodyPrimary)
-                .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                .typography(.bodyPrimary, color: hovered ? .white : DS.Colors.textSecondary)
         }
         .disabled(groupVM.isLoadingGroups)
         .help("Re-read players and groups from the device")
@@ -297,7 +296,6 @@ struct AmpSettingsView: View {
         } else {
             Text("Need 2+ speakers to create groups.")
                 .typography(.secondary)
-                .foregroundStyle(DS.Colors.textTertiary)
                 .accessibilityIdentifier(AccessibilityID.Group.emptyState)
         }
     }
@@ -317,7 +315,6 @@ struct AmpSettingsView: View {
                             .typography(.bodyMedium)
                         Text(device.host)
                             .typography(.secondary)
-                            .foregroundStyle(DS.Colors.textTertiary)
                     }
 
                     Spacer()

@@ -131,7 +131,6 @@ struct SidebarView: View {
         if !state.queue.isEmpty {
             Text("\(state.queue.count)")
                 .typography(.badge)
-                .foregroundStyle(DS.Colors.textSecondary)
                 .padding(.horizontal, DS.Spacing.sm)
                 .padding(.vertical, DS.Spacing.xs)
                 .background(.quaternary, in: Capsule())

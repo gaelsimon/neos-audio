@@ -72,8 +72,7 @@ struct NowPlayingCanvasView: View {
                     .clipShape(Circle())
 
                     Text(state.nowPlaying.artist)
-                        .typography(.sectionHeader)
-                        .foregroundStyle(.white)
+                        .typography(.sectionHeader, color: .white)
                         .accessibilityIdentifier(AccessibilityID.NowPlayingCanvas.artistName)
                 }
                 .padding(.trailing, DS.Spacing.lg)

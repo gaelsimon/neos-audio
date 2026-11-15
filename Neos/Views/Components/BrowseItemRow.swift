@@ -25,8 +25,7 @@ struct BrowseItemRow: View {
 
             VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 Text(item.displayTitle)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
+                    .typography(.bodyPrimary, color: isNowPlaying ? DS.Colors.accent : nil)
                     .lineLimit(1)
 
                 if let artist = item.artist, !artist.isEmpty {
@@ -47,8 +46,7 @@ struct BrowseItemRow: View {
                 } else {
                     HoverButton(action: onAddToQueue) { hovered in
                         Image(systemName: DS.Icons.add)
-                            .typography(.secondary)
-                            .foregroundStyle(DS.Colors.accent.opacity(hovered ? 1.0 : 0.7))
+                            .typography(.secondary, color: hovered ? .white : nil)
                     }
                     .help("Add to queue")
                 }
@@ -58,12 +56,10 @@ struct BrowseItemRow: View {
                 Spinner(size: 16, lineWidth: 2)
             } else if isNowPlaying && !item.browsable {
                 Image(systemName: DS.Icons.speakerActive)
-                    .typography(.secondary)
-                    .foregroundStyle(DS.Colors.accent)
+                    .typography(.secondary, color: DS.Colors.accent)
             } else if item.browsable || item.isSubSource {
                 Image(systemName: DS.Icons.forward)
-                    .typography(.secondary)
-                    .foregroundStyle(DS.Colors.textTertiary)
+                    .typography(.secondary, color: DS.Colors.textTertiary)
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
@@ -101,7 +97,6 @@ struct BrowseItemRow: View {
         } label: {
             Image(systemName: "ellipsis")
                 .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
                 .frame(minWidth: 36, minHeight: 36)
                 .contentShape(Rectangle())
         }

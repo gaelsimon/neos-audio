@@ -115,8 +115,7 @@ struct TopBarView: View {
                 HStack(spacing: DS.Spacing.sm) {
                     statusDot
                     Text(playerName)
-                        .typography(.secondary)
-                        .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : DS.Colors.textSecondary)
+                        .typography(.secondary, color: isActive ? DS.Colors.accent : hovered ? .white : nil)
                         .lineLimit(1)
                         .frame(maxWidth: 160)
                         .fixedSize(horizontal: true, vertical: false)

@@ -87,8 +87,7 @@ struct NowPlayingToolbar: View {
             highResURL: state.artwork(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL).highRes
         ) {
             Image(systemName: DS.Icons.musicNote)
-                .typography(.bodyPrimary)
-                .foregroundStyle(DS.Colors.textTertiary)
+                .typography(.bodyPrimary, color: DS.Colors.textTertiary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(DS.Colors.surfaceElevated)
         }
@@ -205,7 +204,6 @@ struct NowPlayingToolbar: View {
     private func qualityBadge(_ quality: String) -> some View {
         Text(quality)
             .typography(.badge)
-            .foregroundStyle(DS.Colors.textSecondary)
             .fixedSize()
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)

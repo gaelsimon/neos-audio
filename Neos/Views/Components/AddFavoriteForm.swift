@@ -111,10 +111,7 @@ struct AddFavoriteForm: View {
                     }
                 }
             } else {
-                Button("Or paste an image URL…") { showURLField = true }
-                    .buttonStyle(.plain)
-                    .typography(.secondary)
-                    .foregroundStyle(DS.Colors.accent)
+                TextActionButton(title: "Or paste an image URL…") { showURLField = true }
             }
         }
     }

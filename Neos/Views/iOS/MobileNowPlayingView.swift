@@ -34,8 +34,7 @@ struct MobileNowPlayingView: View {
                         .lineLimit(1)
                     if !state.nowPlaying.artist.isEmpty {
                         Text(state.nowPlaying.artist)
-                            .foregroundStyle(DS.Colors.textSecondary)
-                            .typography(.bodyPrimary)
+                            .typography(.bodyPrimary, color: DS.Colors.textSecondary)
                             .lineLimit(1)
                     }
                     if let source = playingFrom {

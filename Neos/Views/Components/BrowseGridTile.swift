@@ -52,7 +52,6 @@ struct BrowseGridTile: View {
                     if let artist = item.artist, !artist.isEmpty {
                         Text(artist)
                             .typography(.cardSubtitle)
-                            .foregroundStyle(DS.Colors.textSecondary)
                             .lineLimit(1)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
