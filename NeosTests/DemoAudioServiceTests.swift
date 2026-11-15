@@ -7,7 +7,12 @@ import NeosDomain
 /// The demo's speaker against the real app state, which is how the app hears of what it does.
 @MainActor
 struct DemoAudioServiceTests {
+    private final class Clock {
+        var now = Date(timeIntervalSince1970: 0)
+    }
+
     private let state = AppState()
+    private let clock = Clock()
     private let service: DemoAudioService
     private let pid = DemoDataProvider.playerID
     private let den = DemoDataProvider.denPID
@@ -17,7 +22,11 @@ struct DemoAudioServiceTests {
 
     init() {
         DemoDataProvider.populate(state)
-        service = DemoAudioService(state: state)
+        service = DemoAudioService(state: state) { [clock] in clock.now }
+    }
+
+    private func wait(_ seconds: TimeInterval) {
+        clock.now += seconds
     }
 
     private func favorites() async throws -> BrowseResult {
@@ -63,29 +72,29 @@ struct DemoAudioServiceTests {
 
     @Test func nextOnTheLastTrackLeavesTheTimelineAlone() async throws {
         try await service.next(pid: pid)
-        state.setProgress(position: 60_000, duration: state.playbackDuration)
+        wait(60)
         try await service.next(pid: pid)
+        #expect(state.nowPlaying.song == "Glass Weather")
         #expect(state.playbackPosition == 60_000)
     }
 
-    @Test func previousShowsTheEarlierTrack() async throws {
+    @Test func previousStartsATrackUnderWayAgain() async throws {
+        try await service.previous(pid: pid)
+        #expect(state.nowPlaying.song == "Paper Lanterns")
+        #expect(state.playbackPosition < 1_000)
+    }
+
+    @Test func previousOnATrackJustStartedShowsTheEarlierOne() async throws {
+        try await service.previous(pid: pid)
         try await service.previous(pid: pid)
         #expect(state.nowPlaying.song == "Keep the Lights On")
     }
 
-    @Test func previousOnTheFirstTrackRewindsIt() async throws {
-        try await service.playQueueItem(pid: pid, qid: 1)
-        state.setProgress(position: 60_000, duration: state.playbackDuration)
-        try await service.previous(pid: pid)
-        #expect(state.playbackPosition < 1_000)
-    }
-
     @Test func aTrackRestartedFromPauseRewindsToo() async throws {
-        try await service.playQueueItem(pid: pid, qid: 1)
         try await service.pause(pid: pid)
-        state.setProgress(position: 60_000, duration: state.playbackDuration)
         try await service.previous(pid: pid)
         #expect(state.playbackPosition < 1_000)
+        #expect(state.playState == .play)
     }
 
     @Test func pauseIsConfirmed() async throws {
@@ -93,9 +102,50 @@ struct DemoAudioServiceTests {
         #expect(state.playState == .pause)
     }
 
+    @Test func aPausedTrackKeepsItsPlace() async throws {
+        try await service.pause(pid: pid)
+        wait(60)
+        try await service.play(pid: pid)
+        #expect(state.playbackPosition == DemoDataProvider.opening.position)
+    }
+
     @Test func stopIsConfirmed() async throws {
         try await service.stop(pid: pid)
         #expect(state.playState == .stop)
+    }
+
+    @Test func stoppingShowsTheFirstTrackOfTheQueue() async throws {
+        try await service.stop(pid: pid)
+        #expect(state.nowPlaying.song == "Someone Like Summer")
+        #expect(state.playbackPosition < 1_000)
+    }
+
+    @Test func seekingMovesTheTimeline() async throws {
+        try await service.seek(target: 120)
+        #expect(state.playbackPosition == 120_000)
+    }
+
+    // MARK: - Time
+
+    @Test func theTimelineFollowsTheTimeThatPassed() async {
+        wait(10)
+        await service.resyncPlaybackState(pid: pid)
+        #expect(state.playbackPosition == DemoDataProvider.opening.position + 10_000)
+    }
+
+    @Test func theQueueMovesOnWhenATrackEnds() async {
+        wait(Double(DemoDataProvider.opening.duration - DemoDataProvider.opening.position) / 1000)
+        await service.resyncPlaybackState(pid: pid)
+        #expect(state.nowPlaying.song == "Glass Weather")
+        #expect(state.playState == .play)
+    }
+
+    @Test func theQueueStopsOnItsFirstTrackAfterTheLast() async throws {
+        try await service.next(pid: pid)
+        wait(Double(service.playback.duration) / 1000)
+        await service.resyncPlaybackState(pid: pid)
+        #expect(state.playState == .stop)
+        #expect(state.nowPlaying.song == "Someone Like Summer")
     }
 
     @Test func playingAgainFromThePlayerLetsTheTimelineRun() async {
@@ -177,7 +227,7 @@ struct DemoAudioServiceTests {
 
     @Test func removingAnEarlierTrackLeavesTheTimelineAlone() async throws {
         try await service.removeFromQueue(pid: pid, qids: [1])
-        #expect(state.playbackPosition == DemoDataProvider.openingPosition)
+        #expect(state.playbackPosition == DemoDataProvider.opening.position)
     }
 
     @Test func clearingTheQueueLeavesNothingPlaying() async throws {
@@ -281,6 +331,25 @@ struct DemoAudioServiceTests {
         #expect(state.queue == DemoDataProvider.opening.queue)
     }
 
+    @Test func aStationRefusesNext() async throws {
+        try await playPulseFM()
+        await #expect(throws: DemoPlayback.SkipLimit.self) { try await service.next(pid: pid) }
+    }
+
+    @Test func theRefusalReachesTheUser() async throws {
+        try await playPulseFM()
+        PlayerViewModel(service: service, state: state).next()
+        await waitUntil { state.error != nil }
+        #expect(state.error == .playbackFailed("Reached skip limit"))
+    }
+
+    @Test func pausingAStationStopsIt() async throws {
+        try await playPulseFM()
+        try await service.pause(pid: pid)
+        #expect(state.playState == .stop)
+        #expect(state.nowPlaying.displayedTitle == "Pulse FM")
+    }
+
     @Test func aStationReportsTheQualityOfAStream() async throws {
         try await playPulseFM()
         let quality = try await service.fetchTrackMetadata()?.qualityDescription
@@ -303,10 +372,29 @@ struct DemoAudioServiceTests {
         #expect(metadata == nil)
     }
 
+    @Test func anInputOffersNothing() async throws {
+        try await service.playInput(pid: pid, input: "inputs/aux_in")
+        #expect(state.nowPlayingOptions.isEmpty)
+    }
+
     @Test func aURLStreamTakesTheNameItWasPickedUnder() async throws {
         let station = BrowseItem(name: "My Radio", type: .station, mid: "http://example.com/live", playable: true)
         try await PlaybackRouter.play(station, sid: HEOSConstants.favoritesSID, cid: "", service: service, state: state)
         #expect(state.nowPlaying.station == "My Radio")
+    }
+
+    @Test func aURLStreamJoinsTheQueueAfterTheCurrentTrack() async throws {
+        try await service.playURL(pid: pid, url: "http://example.com/live")
+        #expect(state.queue.map(\.song) == [
+            "Someone Like Summer", "Keep the Lights On", "Paper Lanterns", "Url Stream", "Glass Weather",
+        ])
+        #expect(state.nowPlaying.qid == 4)
+    }
+
+    @Test func aURLStreamReportsNoQuality() async throws {
+        try await service.playURL(pid: pid, url: "http://example.com/live")
+        let metadata = try await service.fetchTrackMetadata()
+        #expect(metadata == nil)
     }
 
     // MARK: - Groups

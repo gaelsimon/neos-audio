@@ -76,27 +76,24 @@ final class QueuePanelViewModel {
     /// Recompute cached display data. Call when queue, nowPlaying, or history changes.
     func refreshDisplayData() {
         let nowMid = state.nowPlaying.mid
-        let nowQid = state.nowPlaying.qid
-        let isStation = state.nowPlaying.station != nil
-
-        if !isStation, let qid = nowQid {
-            nowPlayingQueueItem = state.queue.first { $0.qid == qid }
-        } else {
-            nowPlayingQueueItem = nil
+        let isStation = state.nowPlaying.type == .station
+        // A speaker gives a station the queue id 1, which is no place in the queue.
+        let nowIndex = isStation ? nil : state.nowPlaying.qid.flatMap { qid in
+            state.queue.firstIndex { $0.qid == qid }
         }
 
-        if let qid = nowQid,
-           let idx = state.queue.firstIndex(where: { $0.qid == qid }) {
-            upNextItems = Array(state.queue.suffix(from: idx + 1))
+        nowPlayingQueueItem = state.nowPlaying.station == nil ? nowIndex.map { state.queue[$0] } : nil
+
+        if let nowIndex {
+            upNextItems = Array(state.queue.suffix(from: nowIndex + 1))
         } else {
-            upNextItems = []
+            upNextItems = isStation ? state.queue : []
         }
 
         let maxRecent = 10
         var played: [RecentItem] = []
-        if let qid = nowQid,
-           let idx = state.queue.firstIndex(where: { $0.qid == qid }) {
-            played = state.queue.prefix(upTo: idx).suffix(maxRecent).map { .queue($0) }
+        if let nowIndex {
+            played = state.queue.prefix(upTo: nowIndex).suffix(maxRecent).map { .queue($0) }
         }
         let remaining = maxRecent - played.count
         if remaining > 0 {

@@ -150,7 +150,7 @@ enum DemoDataProvider {
         state.setMuted(false)
         state.setRepeatMode(opening.repeatMode)
         state.setShuffleMode(opening.shuffleMode)
-        state.setProgress(position: openingPosition, duration: opening.duration)
+        state.setProgress(position: opening.position, duration: opening.duration)
         state.setQueue(opening.queue)
     }
 
@@ -190,8 +190,7 @@ enum DemoDataProvider {
     ]
 
     /// The demo opens on the third track of its queue, a minute and a half in.
-    static let opening = DemoPlayback(tracks: openingTracks, current: 2, playState: .play)
-    static let openingPosition = 92_000
+    static let opening = DemoPlayback(tracks: openingTracks, current: 2, playState: .play, position: 92_000)
 
     static let trackQuality = TrackMetadata(
         sampleRate: 96_000, bitDepth: 24, channels: 2, codec: "FLAC", genre: "Rock", trackNumber: 11

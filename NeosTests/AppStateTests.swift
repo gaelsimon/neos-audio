@@ -857,6 +857,14 @@ final class AppStateTests: XCTestCase {
     }
 
     @MainActor
+    func testAnInputNamedAsBothSongAndStationShowsOneLine() {
+        let media = NowPlayingMedia(type: .station, song: "Line In", mid: "inputs/line_in_1", station: "Line In")
+
+        XCTAssertEqual(media.displayedTitle, "Line In")
+        XCTAssertNil(media.displayedStation)
+    }
+
+    @MainActor
     func testNothingPlayingStillSaysNotPlaying() {
         XCTAssertEqual(NowPlayingMedia().displayedTitle, "Not Playing")
     }

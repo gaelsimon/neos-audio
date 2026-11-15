@@ -12,7 +12,7 @@ extension NowPlayingMedia {
 
     /// The station name, unless it is already the title.
     var displayedStation: String? {
-        guard let station, !station.isEmpty, !song.isEmpty else { return nil }
+        guard let station, !station.isEmpty, !song.isEmpty, station != song else { return nil }
         return station.displayTitle
     }
 }

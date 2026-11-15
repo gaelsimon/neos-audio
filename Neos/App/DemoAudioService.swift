@@ -7,7 +7,11 @@ import NeosDomain
 final class DemoAudioService: AudioService, @unchecked Sendable {
     /// Hears of every change, the way a speaker's events reach the app.
     private let state: (any StateUpdater)?
+    private let now: () -> Date
     private(set) var playback = DemoDataProvider.opening
+    /// When `playback` was last brought up to the present.
+    private var clockedAt: Date
+    private let trackEnd = CancellableTaskHandle()
     private var volumes: [Int: Int] = [:]
     private var mutedPlayers: Set<Int> = []
     private var mutedGroups: Set<Int> = []
@@ -15,8 +19,11 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     private var favorites = DemoDataProvider.favorites
     private var signedInUser: String? = DemoDataProvider.account
 
-    init(state: (any StateUpdater)? = nil) {
+    init(state: (any StateUpdater)? = nil, now: @escaping () -> Date = Date.init) {
         self.state = state
+        self.now = now
+        clockedAt = now()
+        awaitTrackEnd()
     }
 
     // MARK: - Connection
@@ -33,23 +40,23 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     // MARK: - Player Actions
 
     func play(pid: Int) async throws {
-        publishPlayback(trackStarts: playback.set(.play))
+        change { $0.set(.play) }
     }
 
     func pause(pid: Int) async throws {
-        publishPlayback(trackStarts: playback.set(.pause))
+        change { $0.set(.pause) }
     }
 
     func stop(pid: Int) async throws {
-        publishPlayback(trackStarts: playback.set(.stop))
+        change { $0.set(.stop) }
     }
 
     func next(pid: Int) async throws {
-        publishPlayback(trackStarts: playback.skip(by: 1))
+        try change { try $0.skip(by: 1) }
     }
 
     func previous(pid: Int) async throws {
-        publishPlayback(trackStarts: playback.skip(by: -1))
+        try change { try $0.skip(by: -1) }
     }
 
     func getVolume(pid: Int) async throws -> Int {
@@ -86,21 +93,19 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     }
 
     func playQueueItem(pid: Int, qid: Int) async throws {
-        publishPlayback(trackStarts: playback.play(qid: qid))
+        change { $0.play(qid: qid) }
     }
 
     func removeFromQueue(pid: Int, qids: [Int]) async throws {
-        publishPlayback(trackStarts: playback.remove(qids: qids))
+        change { $0.remove(qids: qids) }
     }
 
     func clearQueue(pid: Int) async throws {
-        playback.clear()
-        publishPlayback()
+        change { $0.clear() }
     }
 
     func moveQueueItem(pid: Int, from sourceQIDs: [Int], to destQID: Int) async throws {
-        playback.move(qids: sourceQIDs, to: destQID)
-        publishPlayback()
+        change { $0.move(qids: sourceQIDs, to: destQID) }
     }
 
     // MARK: - Group Actions
@@ -180,24 +185,21 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     }
 
     func playStation(pid: Int, sid: Int, cid: String, mid: String, name: String) async throws {
-        playback.play(stream: DemoCatalog.station(sid: sid, mid: mid, name: name))
-        publishPlayback(trackStarts: true)
+        change { $0.play(stream: DemoCatalog.station(sid: sid, mid: mid, name: name)) }
     }
 
-    /// A speaker knows nothing of a bare URL but that it is one; the app names it from what the user picked.
+    /// The app names the stream from what the user picked: the speaker only knows it is a URL.
     func playURL(pid: Int, url: String) async throws {
-        playback.play(stream: NowPlayingMedia(type: .station, song: "Url Stream", mid: url))
-        publishPlayback(trackStarts: true)
+        change { $0.playURL() }
     }
 
     func playInput(pid: Int, input: String) async throws {
-        playback.play(stream: DemoCatalog.input(input))
-        publishPlayback(trackStarts: true)
+        change { $0.play(stream: DemoCatalog.input(input)) }
     }
 
     func addToQueue(pid: Int, sid: Int, cid: String, mid: String?, criteria: AddCriteria) async throws {
         let tracks = DemoCatalog.tracks(sid: sid, cid: cid, mid: mid)
-        publishPlayback(trackStarts: playback.add(tracks, criteria))
+        change { $0.add(tracks, criteria) }
     }
 
     func getHistory(range: ClosedRange<Int>?) async throws -> BrowseResult {
@@ -248,13 +250,18 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
 
     // MARK: - UPnP Transport
 
-    func seek(target: TimeInterval) async throws {}
+    func seek(target: TimeInterval) async throws {
+        change { $0.seek(to: Int(target * 1000)) }
+    }
 
     func getPositionInfo() async throws -> PositionInfo? { nil }
 
+    /// An input and a bare URL carry no description of their audio.
     func fetchTrackMetadata() async throws -> TrackMetadata? {
-        guard let stream = playback.stream else { return DemoDataProvider.trackQuality }
-        return stream.station == nil ? nil : DemoDataProvider.stationQuality
+        switch playback.nowPlaying.sid {
+        case DemoCatalog.auxSID, DemoCatalog.localMusicSID: nil
+        default: playback.stream == nil ? DemoDataProvider.trackQuality : DemoDataProvider.stationQuality
+        }
     }
 
     func getTransportActions() async throws -> Set<String> { [] }
@@ -262,26 +269,55 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     // MARK: - Playback Sync
 
     func resyncPlaybackState(pid: Int) async {
-        publishPlayback()
+        change { _ in }
+    }
+
+    // MARK: - Time
+
+    /// Applies a command to the playback as it stands now, then tells the app.
+    private func change(_ command: (inout DemoPlayback) throws -> Void) rethrows {
+        catchUp()
+        defer {
+            publishPlayback()
+            awaitTrackEnd()
+        }
+        try command(&playback)
+    }
+
+    private func catchUp() {
+        let present = now()
+        playback.elapse(Int(present.timeIntervalSince(clockedAt) * 1000))
+        clockedAt = present
+    }
+
+    /// The queue moves on by itself when the playing track ends.
+    private func awaitTrackEnd() {
+        trackEnd.cancel()
+        guard playback.playState == .play, playback.duration > 0 else { return }
+        let remaining = playback.duration - playback.position
+        trackEnd.replace(with: Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(remaining))
+            guard !Task.isCancelled else { return }
+            self?.change { _ in }
+        })
     }
 
     // MARK: - What the app hears
 
-    /// AppState drops a position of exactly zero near a restart, as the stale first report of a real speaker.
-    private static let trackStart = 1
-
-    private func publishPlayback(trackStarts: Bool = false) {
+    private func publishPlayback() {
         guard let state else { return }
         let media = playback.nowPlaying
         state.setNowPlaying(media)
-        state.setNowPlayingOptions(media.station == nil ? [] : [DemoCatalog.addFavorite])
+        let isStation = playback.stream != nil && media.sid != DemoCatalog.auxSID
+        state.setNowPlayingOptions(isStation ? [DemoCatalog.addFavorite] : [])
         state.setPlayState(playback.playState)
         state.setQueue(playback.queue)
-        if trackStarts {
-            state.setProgress(position: Self.trackStart, duration: playback.duration)
-        } else if media.mid.isEmpty {
+        if media.mid.isEmpty {
             // Nothing plays any more: the length of the last track must not stay on the timeline.
             state.setProgress(position: 0, duration: 0)
+        } else {
+            // AppState drops a position of exactly zero near a restart, as the stale first report of a real speaker.
+            state.setProgress(position: max(playback.position, 1), duration: playback.duration)
         }
     }
 

@@ -128,11 +128,12 @@ enum DemoCatalog {
     }
 
     /// A station as a speaker reports it: no track title, the name in `station`.
+    /// A speaker gives a station the queue id 1, which is no place in the queue.
     static func station(sid: Int, mid: String, name: String) -> NowPlayingMedia {
         let known = (stations + DemoDataProvider.favorites + DemoDataProvider.history).first { $0.mid == mid }
         return NowPlayingMedia(
             type: .station, imageURL: known?.imageURL ?? "",
-            albumID: mid.replacingOccurrences(of: "/", with: ""), mid: mid, sid: sid, station: name
+            albumID: mid.replacingOccurrences(of: "/", with: ""), mid: mid, qid: 1, sid: sid, station: name
         )
     }
 
@@ -150,7 +151,7 @@ enum DemoCatalog {
 
     static func input(_ mid: String) -> NowPlayingMedia {
         let name = root(of: ampInputsSID)?.first { $0.mid == mid }?.name ?? mid
-        return NowPlayingMedia(type: .station, song: name, mid: mid, sid: auxSID)
+        return NowPlayingMedia(type: .station, song: name, albumID: "inputs/", mid: mid, qid: 1, sid: auxSID, station: name)
     }
 
     private static var albums: [BrowseItem] {
