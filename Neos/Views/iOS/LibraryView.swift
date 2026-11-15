@@ -8,26 +8,29 @@ struct LibraryView: View {
     let model: BrowseViewModel
 
     var body: some View {
-        let others = state.musicSources.filter { !HEOSConstants.librarySIDs.contains($0.sid) }
-        let hidden = container.homeVM.hiddenSIDs
-        let services = MusicSource.listed(others, signedIn: state.signedInUser != nil).filter { !hidden.contains($0.sid) }
-        let local = others.filter { $0.type != "music_service" && !hidden.contains($0.sid) }
+        let sections = SourceSections(
+            sources: state.musicSources,
+            signedIn: state.signedInUser != nil,
+            hidden: container.homeVM.hiddenSIDs
+        )
 
         List {
-            if !services.isEmpty {
+            if !sections.services.isEmpty {
                 Section("Services") {
-                    ForEach(services) { sourceRow($0) }
+                    ForEach(sections.services) { sourceRow($0) }
                 }
             }
-            if !local.isEmpty {
+            if !sections.local.isEmpty {
                 Section("Local") {
-                    ForEach(local) { sourceRow($0) }
+                    ForEach(sections.local) { sourceRow($0) }
                 }
             }
             Section("Library") {
-                libraryRow(sid: HEOSConstants.favoritesSID, name: "Favorites", icon: DS.Icons.radio)
-                libraryRow(sid: 1025, name: "Playlists", icon: DS.Icons.playlists)
-                libraryRow(sid: HEOSConstants.historySID, name: "History", icon: DS.Icons.historyUnfilled)
+                ForEach(sections.library) { entry in
+                    row { model.selectSource(entry.source) } label: {
+                        Label(entry.title, systemImage: entry.symbol)
+                    }
+                }
                 row { model.selectQueue() } label: {
                     Label("Queue", systemImage: DS.Icons.queue)
                 }
@@ -45,13 +48,6 @@ struct LibraryView: View {
             }
         }
         .disabled(!source.available)
-    }
-
-    private func libraryRow(sid: Int, name: String, icon: String) -> some View {
-        let source = state.musicSources.first { $0.sid == sid } ?? MusicSource(sid: sid, name: name)
-        return row { model.selectSource(source) } label: {
-            Label(name, systemImage: icon)
-        }
     }
 
     /// Every row opens a page, so it carries the chevron a `NavigationLink` would draw.

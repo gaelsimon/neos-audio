@@ -10,7 +10,7 @@ enum AccessibilityID {
     enum Sidebar {
         static let home = "sidebar.home"
         static let queue = "sidebar.queue"
-        static let scrollView = "sidebar.scrollView"
+        static let list = "sidebar.list"
         static let ampCard = "sidebar.ampCard"
         static let powerButton = "sidebar.powerButton"
         static let scanButton = "sidebar.scanButton"

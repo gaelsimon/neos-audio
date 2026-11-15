@@ -91,12 +91,8 @@ enum DS {
 
     // MARK: - Sidebar
     enum Sidebar {
-        static let itemPaddingH: CGFloat = 10
-        static let itemPaddingV: CGFloat = 8
-        static let sectionPadding: CGFloat = 16
-        static let cornerRadius: CGFloat = Radius.medium
-        static let selectedBackground = Color(white: 0.165)
-        static let defaultBackground = Color.clear
+        /// The sidebar list's own row inset, so the logo lines up with the row icons.
+        static let logoInset: CGFloat = 16
         static let expandedWidth: CGFloat = 200
     }
 

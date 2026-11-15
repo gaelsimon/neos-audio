@@ -3,13 +3,9 @@ import XCTest
 struct SidebarScreen: Screen {
     let app: XCUIApplication
 
-    // Use descendants(matching: .any) for all elements; SwiftUI's .buttonStyle(.plain)
-    // and container views can render as unexpected types in the accessibility tree.
+    // Rows are list cells, not buttons, so every query matches any element type.
 
-    // Connected + Disconnected
-    var scrollView: XCUIElement { app.scrollViews[AccessibilityID.Sidebar.scrollView] }
-
-    // Connected only
+    var list: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Sidebar.list] }
     var homeButton: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Sidebar.home] }
     var queueButton: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Sidebar.queue] }
     var ampCard: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Sidebar.ampCard] }
@@ -20,11 +16,17 @@ struct SidebarScreen: Screen {
     var manualIPField: XCUIElement { app.textFields[AccessibilityID.Sidebar.manualIPField] }
     var manualConnectButton: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Sidebar.manualConnectButton] }
 
-    // Sections (connected only)
+    // Section headers
     var servicesSection: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Sidebar.servicesSection] }
     var librarySection: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Sidebar.librarySection] }
 
     func sourceButton(sid: Int) -> XCUIElement {
         app.descendants(matching: .any)[AccessibilityID.Sidebar.source(sid)]
+    }
+
+    /// The first source row: a service when the speaker has one, else a local or library source.
+    var firstSourceRow: XCUIElement {
+        let sourceRows = NSPredicate(format: "identifier BEGINSWITH 'sidebar.source.'")
+        return app.descendants(matching: .any).matching(sourceRows).firstMatch
     }
 }

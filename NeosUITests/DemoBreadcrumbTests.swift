@@ -52,6 +52,15 @@ final class DemoBreadcrumbTests: DemoTestCase {
         XCTAssertTrue(browse.view.exists, "Source root listing should be back")
     }
 
+    func testClickingTheSelectedSourceReturnsToItsRoot() {
+        openFirstCategory()
+
+        sidebar.sourceButton(sid: 2).click()
+
+        waitForElementToDisappear(browse.breadcrumb)
+        XCTAssertTrue(browse.view.exists, "Source root listing should be back")
+    }
+
     func testBreadcrumbGrowsWithDepth() {
         openFirstCategory()
 

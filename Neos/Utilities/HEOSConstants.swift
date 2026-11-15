@@ -3,7 +3,9 @@ import Foundation
 /// Well-known HEOS music source IDs used as library sections.
 enum HEOSConstants {
     /// SIDs for built-in library sources (Playlists, History, Favorites).
-    static let librarySIDs: Set<Int> = [1025, 1026, 1028]
+    static let librarySIDs: Set<Int> = [playlistsSID, historySID, favoritesSID]
+
+    static let playlistsSID = 1025
 
     /// HEOS History source ID.
     static let historySID = 1026

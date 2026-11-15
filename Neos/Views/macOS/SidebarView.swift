@@ -1,62 +1,77 @@
 import SwiftUI
 import NeosDomain
 
-// MARK: - Sidebar View
-
 struct SidebarView: View {
     let state: AppState
     let browseVM: BrowseViewModel
     let hiddenSIDs: Set<Int>
     var isSearchActive: Bool = false
 
+    private var sections: SourceSections {
+        SourceSections(sources: state.musicSources, signedIn: state.signedInUser != nil, hidden: hiddenSIDs)
+    }
+
+    /// No row is selected while search results cover the page.
+    private var shownSelection: SidebarItem? {
+        isSearchActive ? nil : SidebarItem(destination: browseVM.currentDestination, browseStack: browseVM.browseStack)
+    }
+
+    private var selection: Binding<SidebarItem?> {
+        Binding(
+            get: { shownSelection },
+            // Opening the shown row again would push a duplicate page and drop the forward history.
+            set: { item in
+                guard let item, item != shownSelection else { return }
+                open(item)
+            }
+        )
+    }
+
     var body: some View {
+        let sections = sections
         VStack(spacing: 0) {
             sidebarLogo
-                .padding(.horizontal, DS.Sidebar.sectionPadding)
+                .padding(.horizontal, DS.Sidebar.logoInset)
                 .padding(.bottom, DS.Spacing.sm)
 
-            ScrollView {
-                VStack(spacing: DS.Spacing.sm) {
-                    sidebarRow(icon: DS.Icons.home, title: "Home",
-                               isSelected: browseVM.currentDestination == .home && !isSearchActive) {
-                        browseVM.navigateToHome()
-                    }
-                    .accessibilityIdentifier(AccessibilityID.Sidebar.home)
-
-                    let nonLibrary = state.musicSources.filter { !HEOSConstants.librarySIDs.contains($0.sid) }
-                    let availableServices = MusicSource.listed(nonLibrary, signedIn: state.signedInUser != nil).filter { !hiddenSIDs.contains($0.sid) }
-                    let localSources = nonLibrary.filter { $0.type != "music_service" && !hiddenSIDs.contains($0.sid) }
-
-                    if !availableServices.isEmpty {
-                        sidebarSection("Services") {
-                            ForEach(availableServices) { source in
-                                sourceRow(source)
-                            }
-                        }
-                        .accessibilityElement(children: .contain)
-                        .accessibilityIdentifier(AccessibilityID.Sidebar.servicesSection)
-                    }
-
-                    if !localSources.isEmpty {
-                        sidebarSection("Local") {
-                            ForEach(localSources) { source in
-                                sourceRow(source)
-                            }
-                        }
-                    }
-
-                    sidebarSection("Library") {
-                        libraryRow(sid: 1028, name: "Favorites", icon: DS.Icons.radio)
-                        libraryRow(sid: 1025, name: "Playlists", icon: DS.Icons.playlists)
-                        libraryRow(sid: 1026, name: "History", icon: DS.Icons.history)
-                        queueRow
-                    }
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier(AccessibilityID.Sidebar.librarySection)
+            List(selection: selection) {
+                row(.home, title: "Home", identifier: AccessibilityID.Sidebar.home) {
+                    ServiceBranding.symbolTile(DS.Icons.home, size: DS.ImageSize.sidebarIcon)
                 }
-                .padding(DS.Sidebar.sectionPadding)
+
+                if !sections.services.isEmpty {
+                    Section {
+                        ForEach(sections.services) { sourceRow($0) }
+                    } header: {
+                        Text("Services").accessibilityIdentifier(AccessibilityID.Sidebar.servicesSection)
+                    }
+                }
+
+                if !sections.local.isEmpty {
+                    Section("Local") {
+                        ForEach(sections.local) { sourceRow($0) }
+                    }
+                }
+
+                Section {
+                    ForEach(sections.library) { entry in
+                        row(.source(entry.id), title: entry.title, identifier: AccessibilityID.Sidebar.source(entry.id)) {
+                            ServiceBranding.symbolTile(entry.symbol, size: DS.ImageSize.sidebarIcon)
+                        }
+                    }
+                    row(.queue, title: "Queue", identifier: AccessibilityID.Sidebar.queue) {
+                        ServiceBranding.symbolTile(DS.Icons.queue, size: DS.ImageSize.sidebarIcon)
+                    } trailing: {
+                        queueCount
+                    }
+                } header: {
+                    Text("Library").accessibilityIdentifier(AccessibilityID.Sidebar.librarySection)
+                }
             }
-            .accessibilityIdentifier(AccessibilityID.Sidebar.scrollView)
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .tint(DS.Colors.accent)
+            .accessibilityIdentifier(AccessibilityID.Sidebar.list)
         }
         .background(DS.Colors.background)
         .overlay(alignment: .trailing) {
@@ -67,7 +82,7 @@ struct SidebarView: View {
         }
     }
 
-    // MARK: - Sidebar Logo
+    // MARK: - Logo
 
     private var sidebarLogo: some View {
         HStack {
@@ -77,143 +92,70 @@ struct SidebarView: View {
                 .frame(height: 22)
             Spacer()
         }
-        .padding(.horizontal, DS.Sidebar.itemPaddingH)
         .padding(.top, DS.Spacing.xl)
     }
 
-    // MARK: - Section Header
-
-    private func sidebarSection(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-            Text(title)
-                .typography(.sidebarSection)
-                .padding(.horizontal, DS.Sidebar.itemPaddingH)
-                .padding(.top, DS.Spacing.sm)
-
-            content()
-        }
-    }
-
-    // MARK: - Unified Source Row
+    // MARK: - Rows
 
     private func sourceRow(_ source: MusicSource) -> some View {
-        let isSelected = !isSearchActive && browseVM.isBrowsing(sid: source.sid)
-        return Button(action: { browseVM.selectSource(source) }) {
-            HStack(spacing: DS.Spacing.sm) {
-                ServiceBranding.serviceIcon(for: source, size: DS.ImageSize.sidebarIcon)
-
-                Text(source.name)
-                    .typography(isSelected ? .bodyEmphasis : .bodyPrimary)
-                    .lineLimit(1)
-
-                Spacer()
-            }
-            .contentShape(Rectangle())
-            .sidebarItemStyle(isSelected: isSelected)
+        row(.source(source.sid), title: source.name, identifier: AccessibilityID.Sidebar.source(source.sid)) {
+            ServiceBranding.serviceIcon(for: source, size: DS.ImageSize.sidebarIcon)
         }
-        .buttonStyle(.plain)
         .opacity(source.available ? 1 : 0.6)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier(AccessibilityID.Sidebar.source(source.sid))
     }
 
-    // MARK: - Sidebar Rows
-
-    private func sidebarRow(icon: String, title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: DS.Spacing.sm) {
-                Image(systemName: icon)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .frame(width: DS.ImageSize.sidebarIcon, height: DS.ImageSize.sidebarIcon)
-                    .background(.black, in: RoundedRectangle(cornerRadius: DS.Radius.small))
-
-                Text(title)
-                    .typography(isSelected ? .bodyEmphasis : .bodyPrimary)
-                    .lineLimit(1)
-
-                Spacer()
-            }
-            .contentShape(Rectangle())
-            .sidebarItemStyle(isSelected: isSelected)
+    private func row(
+        _ item: SidebarItem,
+        title: String,
+        identifier: String,
+        @ViewBuilder icon: () -> some View,
+        @ViewBuilder trailing: () -> some View = { EmptyView() }
+    ) -> some View {
+        HStack(spacing: DS.Spacing.sm) {
+            icon()
+            Text(title)
+                .typography(.bodyPrimary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            trailing()
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
+        // Clicking the selected row changes no selection, so below a source's first page it goes back there itself.
+        .simultaneousGesture(TapGesture().onEnded { open(item) }, including: leadsBackUp(item) ? .all : .subviews)
+        .tag(item)
     }
 
-    private func libraryRow(sid: Int, name: String, icon: String) -> some View {
-        let isSelected = !isSearchActive && browseVM.isBrowsing(sid: sid)
-        let source = state.musicSources.first(where: { $0.sid == sid })
-            ?? MusicSource(sid: sid, name: name)
-        return sidebarRow(icon: icon, title: name, isSelected: isSelected) {
+    @ViewBuilder
+    private var queueCount: some View {
+        if !state.queue.isEmpty {
+            Text("\(state.queue.count)")
+                .typography(.badge)
+                .foregroundStyle(DS.Colors.textSecondary)
+                .padding(.horizontal, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xs)
+                .background(.quaternary, in: Capsule())
+        }
+    }
+
+    // MARK: - Navigation
+
+    private func leadsBackUp(_ item: SidebarItem) -> Bool {
+        guard case .source = item, item == shownSelection else { return false }
+        return browseVM.browseStack.count > 1
+    }
+
+    private func open(_ item: SidebarItem) {
+        switch item {
+        case .home:
+            browseVM.navigateToHome()
+        case .queue:
+            browseVM.selectQueue()
+        case .source(let sid):
+            let sections = sections
+            let sources = sections.services + sections.local + sections.library.map(\.source)
+            guard let source = sources.first(where: { $0.sid == sid }) else { return }
             browseVM.selectSource(source)
         }
-    }
-
-    private var queueRow: some View {
-        let isSelected = !isSearchActive && browseVM.currentDestination == .queue
-        return Button(action: { browseVM.selectQueue() }) {
-            HStack(spacing: DS.Spacing.sm) {
-                Image(systemName: DS.Icons.queue)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .frame(width: DS.ImageSize.sidebarIcon, height: DS.ImageSize.sidebarIcon)
-                    .background(.black, in: RoundedRectangle(cornerRadius: DS.Radius.small))
-
-                Text("Queue")
-                    .typography(isSelected ? .bodyEmphasis : .bodyPrimary)
-                    .lineLimit(1)
-
-                Spacer()
-
-                if !state.queue.isEmpty {
-                    Text("\(state.queue.count)")
-                        .typography(.badge)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                        .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, DS.Spacing.xs)
-                        .background(.quaternary, in: Capsule())
-                }
-            }
-            .contentShape(Rectangle())
-            .sidebarItemStyle(isSelected: isSelected)
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier(AccessibilityID.Sidebar.queue)
-    }
-}
-
-// MARK: - Sidebar Item Style
-
-private struct SidebarItemStyleModifier: ViewModifier {
-    let isSelected: Bool
-    @State private var isHovered = false
-
-    func body(content: Content) -> some View {
-        content
-            .padding(.horizontal, DS.Sidebar.itemPaddingH)
-            .padding(.vertical, DS.Sidebar.itemPaddingV)
-            .background(
-                backgroundColor,
-                in: RoundedRectangle(cornerRadius: DS.Sidebar.cornerRadius)
-            )
-            .onHover { isHovered = $0 }
-    }
-
-    private var backgroundColor: Color {
-        if isSelected {
-            return DS.Sidebar.selectedBackground
-        } else if isHovered {
-            return DS.Sidebar.selectedBackground.opacity(0.5)
-        } else {
-            return DS.Sidebar.defaultBackground
-        }
-    }
-}
-
-private extension View {
-    func sidebarItemStyle(isSelected: Bool) -> some View {
-        modifier(SidebarItemStyleModifier(isSelected: isSelected))
     }
 }

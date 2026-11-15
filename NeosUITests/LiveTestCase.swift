@@ -86,7 +86,7 @@ class LiveTestCase: XCTestCase {
         _ element: XCUIElement,
         timeout: TimeInterval = 10
     ) -> XCUIElement {
-        let sidebarScroll = app.scrollViews[AccessibilityID.Sidebar.scrollView]
+        let sidebarScroll = SidebarScreen(app: app).list
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             if element.exists { return element }
