@@ -45,7 +45,7 @@ struct BrowseItemRow: View {
                 actionMenu
             }
 
-            if item.playable {
+            if item.canJoinQueue {
                 if isAddingToQueue {
                     Spinner(size: 12, lineWidth: 1.5)
                 } else {

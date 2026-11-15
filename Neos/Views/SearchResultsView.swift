@@ -289,7 +289,7 @@ struct SearchResultsView: View {
     }
 
     private func handleAddToQueue(_ item: BrowseItem, sid: Int) {
-        guard item.playable else { return }
+        guard item.canJoinQueue else { return }
         let effectiveSID = item.sid ?? sid
         let cid = item.cid ?? ""
         guard let pid = state.selectedPlayerID else {

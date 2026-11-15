@@ -206,12 +206,12 @@ struct BrowseContentView: View {
     }
 
     private func playNextHandler(for item: BrowseItem) -> (() -> Void)? {
-        guard item.playable else { return nil }
+        guard item.canJoinQueue else { return nil }
         return { browseVM.addToQueue(item, criteria: .playNext) }
     }
 
     private func addToQueueHandler(for item: BrowseItem) -> (() -> Void)? {
-        guard item.playable else { return nil }
+        guard item.canJoinQueue else { return nil }
         return { browseVM.addToQueue(item, criteria: .addToEnd) }
     }
 
