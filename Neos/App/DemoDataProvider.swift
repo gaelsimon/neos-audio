@@ -238,6 +238,7 @@ enum DemoDataProvider {
             sid: 13, name: "Amazon Music",
             type: "music_service", available: false
         ),
+        MusicSource(sid: 1024, name: "Local Music", type: "heos_server", available: true),
         MusicSource(sid: 1027, name: "AUX Input", type: "heos_server", available: true),
         MusicSource(sid: 1028, name: "Favorites", type: "heos_service", available: true),
         MusicSource(sid: 1025, name: "Playlists", type: "heos_service", available: true),

@@ -57,6 +57,9 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     }
 
     func browseSource(sid: Int, range: ClosedRange<Int>?) async throws -> BrowseResult {
+        if let items = DemoCatalog.root(of: sid) {
+            return DemoCatalog.page(items, range)
+        }
         switch sid {
         case 1028:
             return BrowseResult(items: DemoDataProvider.favorites, returned: DemoDataProvider.favorites.count, count: DemoDataProvider.favorites.count)
@@ -74,15 +77,18 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     }
 
     func browseContainer(sid: Int, cid: String, range: ClosedRange<Int>?) async throws -> BrowseResult {
+        if cid == DemoCatalog.brokenCID {
+            throw DemoCatalog.Failure()
+        }
         let items: [BrowseItem]
         switch cid {
         case "cat-albums": items = DemoDataProvider.deezerAlbums
         case "album-opera": items = DemoDataProvider.deezerAlbumTracks
         case "td-albums": items = DemoDataProvider.tidalAlbums
         case "td-album-blue": items = DemoDataProvider.tidalAlbumTracks
-        default: items = []
+        default: items = DemoCatalog.container(sid: sid, cid: cid) ?? []
         }
-        return BrowseResult(items: items, returned: items.count, count: items.count)
+        return DemoCatalog.page(items, range)
     }
 
     func playStation(pid: Int, sid: Int, cid: String, mid: String, name: String) async throws {}
@@ -101,16 +107,11 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
     // MARK: - Search Actions
 
     func getSearchCriteria(sid: Int) async throws -> [SearchCriteria] {
-        [
-            SearchCriteria(scid: 1, name: "Artist"),
-            SearchCriteria(scid: 2, name: "Album"),
-            SearchCriteria(scid: 3, name: "Track"),
-            SearchCriteria(scid: 4, name: "Playlist")
-        ]
+        DemoCatalog.criteria(for: sid)
     }
 
     func search(sid: Int, query: String, scid: Int, range: ClosedRange<Int>?) async throws -> BrowseResult {
-        BrowseResult(items: DemoDataProvider.searchTracks, returned: DemoDataProvider.searchTracks.count, count: DemoDataProvider.searchTracks.count)
+        DemoCatalog.page(DemoCatalog.search(sid: sid, scid: scid, query: query), range)
     }
 
     // MARK: - Account Actions

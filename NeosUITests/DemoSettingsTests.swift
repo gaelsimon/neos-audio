@@ -9,18 +9,16 @@ final class DemoSettingsTests: DemoTestCase {
     private var topBar: TopBarScreen { TopBarScreen(app: app) }
     private var sidebar: SidebarScreen { SidebarScreen(app: app) }
 
-    override func setUp() {
-        super.setUp()
-        resetToHome()
-    }
-
+    /// Both helpers stay on the page when it is already showing, so a run of tests on one page opens it once.
     private func navigateToSettings() {
+        if settings.view.exists { return }
         waitForElement(topBar.profileButton)
         topBar.profileButton.click()
         waitForElement(settings.view)
     }
 
     private func navigateToAmpSettings() {
+        if ampSettings.view.exists { return }
         waitForElement(sidebar.ampCard)
         sidebar.ampCard.click()
         waitForElement(ampSettings.view)
