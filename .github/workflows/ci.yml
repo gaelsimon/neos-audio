@@ -17,8 +17,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # SonarCloud needs full history for blame
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -63,9 +61,75 @@ jobs:
             DEVELOPMENT_TEAM= \
             | xcbeautify
 
-      # Must run before the scan: the scanner reads the report from disk.
       - name: Convert coverage for SonarCloud
-        run: python3 scripts/xccov-to-sonar.py build/Neos.xcresult coverage-sonar.xml Neos/
+        run: python3 scripts/xccov-to-sonar.py build/Neos.xcresult coverage-mac.xml Neos/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-mac
+          path: coverage-mac.xml
+
+  ios-build:
+    name: iOS build & tests
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26'
+
+      - name: Install tools
+        run: brew install xcodegen xcbeautify
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      # Any available iPhone will do: runner images change which simulators they ship.
+      - name: Unit tests on an iPhone simulator
+        run: |
+          set -o pipefail
+          UDID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
+          xcodebuild test \
+            -project Neos.xcodeproj \
+            -scheme NeosMobile \
+            -destination "id=$UDID" \
+            -enableCodeCoverage YES \
+            -resultBundlePath build/NeosMobile.xcresult \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM= \
+            | xcbeautify
+
+      - name: Convert coverage for SonarCloud
+        run: python3 scripts/xccov-to-sonar.py build/NeosMobile.xcresult coverage-ios.xml Neos/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-ios
+          path: coverage-ios.xml
+
+  # The Mac and the iPhone builds each cover code the other does not compile, so the scan waits for both.
+  sonar:
+    name: SonarCloud
+    needs: [app-build, ios-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # SonarCloud needs full history for blame
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      # Must run before the scan: the scanner reads the report from disk.
+      - name: Merge the Mac and iPhone coverage
+        run: python3 scripts/merge-sonar-coverage.py coverage-sonar.xml coverage-mac.xml coverage-ios.xml
 
       - name: SonarCloud Scan
         if: ${{ env.SONAR_TOKEN != '' }}
@@ -104,35 +168,3 @@ jobs:
           curl -sSf -u "$SONAR_TOKEN:" \
             "https://sonarcloud.io/api/issues/search?componentKeys=$PROJECT&pullRequest=$PR_NUMBER&issueStatuses=OPEN,CONFIRMED&ps=100" \
             | jq -r '.issues[] | "::warning file=\(.component | sub("^[^:]+:";"")),line=\(.line // 1),title=Sonar \(.rule)::\(.message)"'
-
-  ios-build:
-    name: iOS build & tests
-    runs-on: macos-26
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '26'
-
-      - name: Install tools
-        run: brew install xcodegen xcbeautify
-
-      - name: Generate Xcode project
-        run: xcodegen generate
-
-      # Any available iPhone will do: runner images change which simulators they ship.
-      - name: Unit tests on an iPhone simulator
-        run: |
-          set -o pipefail
-          UDID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for r in sorted(d, reverse=True) if "iOS" in r for x in d[r] if x["name"].startswith("iPhone")))')
-          xcodebuild test \
-            -project Neos.xcodeproj \
-            -scheme NeosMobile \
-            -destination "id=$UDID" \
-            CODE_SIGN_IDENTITY=- \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGNING_REQUIRED=NO \
-            DEVELOPMENT_TEAM= \
-            | xcbeautify
