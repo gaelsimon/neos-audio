@@ -41,6 +41,7 @@ enum AccessibilityID {
         static let albumArt = "player.albumArt"
         static let qualityBadge = "player.qualityBadge"
         static let speakerName = "player.speakerName"
+        static let bar = "player.bar"
     }
 
     // MARK: - Home
@@ -85,6 +86,7 @@ enum AccessibilityID {
         static let resultsView = "search.resultsView"
         static let historyOverlay = "search.historyOverlay"
         static let clearHistoryButton = "search.clearHistoryButton"
+        static func serviceHeader(_ sid: Int) -> String { "search.serviceHeader.\(sid)" }
     }
 
     // MARK: - Settings

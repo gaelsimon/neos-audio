@@ -27,8 +27,11 @@ struct PagedStack<Root: View>: View {
 
     @Environment(\.showsPadChrome) private var showsPadChrome
     @Environment(\.miniPlayerInTabBar) private var miniPlayerInTabBar
+    @Environment(\.tabBarPlacement) private var tabBarPlacement
+    @Environment(\.isSidebarShowing) private var isSidebarShowing
     @State private var rootModel: BrowseViewModel?
     @State private var pages: [BrowsePage] = []
+    @State private var playerBarHeight: CGFloat = 0
 
     var body: some View {
         NavigationStack(path: $pages) {
@@ -38,6 +41,7 @@ struct PagedStack<Root: View>: View {
                         .modifier(AccountToolbar(state: state, container: container))
                         // Explicit: with its tabs at the top, iPad would otherwise show no title.
                         .navigationBarTitleDisplayMode(.large)
+                        .safeAreaPadding(.bottom, playerBarHeight)
                 }
             }
             .navigationDestination(for: BrowsePage.self) { page in
@@ -45,11 +49,22 @@ struct PagedStack<Root: View>: View {
                     .navigationTitle(page.model.currentLocationName)
                     // The artwork header carries the title, so the bar keeps a small one.
                     .navigationBarTitleDisplayMode(page.model.opensOnArtwork ? .inline : .large)
+                    .safeAreaPadding(.bottom, playerBarHeight)
             }
         }
-        // Before the player bar, so the toast shows above it.
-        .overlay(alignment: .bottom) { ToastOverlay(state: state) }
-        .safeAreaInset(edge: .bottom, spacing: 0) { playerBar }
+        // An inset around the stack never reaches its pages, so each page makes room for the bar itself.
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 0) {
+                ToastOverlay(state: state)
+                playerBar
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier(AccessibilityID.Player.bar)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { playerBarHeight = $0 }
+            }
+        }
+        .onChange(of: tabBarPlacement == .sidebar, initial: true) { _, isShowing in
+            isSidebarShowing.wrappedValue = isShowing
+        }
         .onAppear {
             guard rootModel == nil else { return }
             let model = makeModel()

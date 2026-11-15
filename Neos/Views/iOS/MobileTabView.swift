@@ -4,10 +4,12 @@ import NeosDomain
 extension EnvironmentValues {
     /// The tab bar holds the mini player, so the pages leave it out.
     @Entry var miniPlayerInTabBar = false
+    /// Written by the pages: only a tab's content knows where its tab view draws the tabs.
+    @Entry var isSidebarShowing = Binding.constant(false)
 }
 
-/// Tabs on iPhone and a sidebar on iPad, from one declaration. A wide iPad lists every source in its sidebar and
-/// groups them in its tab bar; an iPhone and a narrow iPad window reach them through the Library tab.
+/// Tabs on iPhone and a sidebar on iPad, from one declaration. A wide iPad lists every source in its sidebar; its
+/// tab bar, an iPhone and a narrow iPad window reach them through the Library tab.
 struct MobileTabView: View {
     enum Section: Hashable {
         case home
@@ -20,6 +22,7 @@ struct MobileTabView: View {
     let state: AppState
     let container: ViewModelContainer
     @State private var selection: Section = .home
+    @State private var isSidebarShowing = false
     @Environment(\.showsPadChrome) private var showsPadChrome
 
     var body: some View {
@@ -55,7 +58,8 @@ struct MobileTabView: View {
                     LibraryView(state: state, container: container, model: model)
                 }
             }
-            .hidden(showsPadChrome)
+            // The sidebar lists the sources itself. The tab stays while it is the page on screen.
+            .hidden(isSidebarShowing && selection != .library)
             Tab(value: Section.search, role: .search) {
                 PagedStack(state: state, container: container) { model in
                     MobileSearchView(state: state, container: container, model: model)
@@ -74,20 +78,24 @@ struct MobileTabView: View {
                 }
             }
             .hidden(!showsPadChrome)
+            .defaultVisibility(.hidden, for: .tabBar)
             TabSection("Services") {
                 ForEach(sources.services) { source in
                     sourceTab(source, title: source.name, icon: SidebarIcon.image(for: source))
                 }
             }
             .hidden(!showsPadChrome)
+            .defaultVisibility(.hidden, for: .tabBar)
             TabSection("Local") {
                 ForEach(sources.local) { source in
                     sourceTab(source, title: source.name, icon: SidebarIcon.image(for: source))
                 }
             }
             .hidden(!showsPadChrome)
+            .defaultVisibility(.hidden, for: .tabBar)
         }
         .tabViewStyle(.sidebarAdaptable)
+        .environment(\.isSidebarShowing, $isSidebarShowing)
         .onChange(of: state.musicSources.map(\.sid)) { _, sids in
             // A source that went away takes its tab with it.
             if case .source(let sid) = selection, !sids.contains(sid) {
@@ -95,10 +103,9 @@ struct MobileTabView: View {
             }
         }
         .onChange(of: showsPadChrome) { _, isWide in
-            // Resizing the window swaps the Library tab and the source tabs; the open one may be the one that goes.
+            // A narrow window has no source tabs; the open one may be the one that goes.
             switch selection {
             case .source where !isWide, .queue where !isWide: selection = .library
-            case .library where isWide: selection = .home
             default: break
             }
         }

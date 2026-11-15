@@ -78,7 +78,7 @@ struct SearchResultsView: View {
     private var resultsContent: some View {
         if searchVM.isSearching && searchVM.serviceResults.isEmpty {
             SearchPlaceholderView()
-        } else if !searchVM.isSearching && searchVM.serviceResults.isEmpty && !searchVM.query.isEmpty {
+        } else if !searchVM.isSearching && searchVM.filteredServiceSIDs.isEmpty && !searchVM.query.isEmpty {
             ContentUnavailableView.search(text: searchVM.query)
                 .padding(.top, DS.Spacing.xxxl)
         } else {
@@ -141,6 +141,9 @@ struct SearchResultsView: View {
             Spacer()
         }
         .padding(.horizontal, groupInset)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier(AccessibilityID.Search.serviceHeader(source.sid))
     }
 
     // MARK: - Category Section

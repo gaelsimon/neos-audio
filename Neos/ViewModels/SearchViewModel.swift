@@ -187,9 +187,9 @@ final class SearchViewModel {
         return sorted
     }
 
-    /// SIDs that have results or are loading, ordered by source list position.
+    /// SIDs with something to show under the current filters or still loading, ordered by source list position.
     var filteredServiceSIDs: [Int] {
-        let resultSIDs = Set(serviceResults.keys.map(\.sid))
+        let resultSIDs = Set(serviceResults.keys.map(\.sid)).filter { !filteredResults(for: $0).isEmpty }
         let activeSIDs = resultSIDs.union(loadingServiceSIDs)
 
         if let selected = selectedServiceFilter {

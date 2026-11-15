@@ -258,8 +258,13 @@ struct BrowseContentView: View {
         GridItem(.adaptive(minimum: 140), spacing: DS.Spacing.xl)
     ]
 
-    /// Human-friendly noun for the dominant item type in the current container.
+    /// Human-friendly noun for the dominant item type in the current container, singular for a single item.
     var itemNoun: String {
+        let isSingle = browseVM.items.count == 1 && !browseVM.hasMore
+        return isSingle ? String(pluralItemNoun.dropLast()) : pluralItemNoun
+    }
+
+    private var pluralItemNoun: String {
         let items = browseVM.items
         guard !items.isEmpty else { return "items" }
         let dominant = items.first?.type ?? .container

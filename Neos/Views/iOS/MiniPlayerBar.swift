@@ -47,6 +47,8 @@ struct MiniPlayerAccessory: View {
             .padding(.leading, DS.Spacing.sm)
             .contentShape(Rectangle())
             .onTapGesture { state.isNowPlayingCanvasOpen = true }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(AccessibilityID.Player.bar)
             .tracksArtworkColors(state)
     }
 }

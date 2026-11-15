@@ -50,6 +50,7 @@ struct LocalServerSettingsView: View {
         #if os(macOS)
         .toggleStyle(.checkbox)
         #endif
+        .tint(DS.Colors.accent)
         .labelsHidden()
         .padding(.vertical, DS.Spacing.xs)
     }

@@ -23,6 +23,8 @@ struct MobileSearchView: View {
             // iPad would otherwise fold the field into a toolbar button: a second tap after the tab.
             placement: showsPadChrome ? .navigationBarDrawer(displayMode: .always) : .automatic
         )
+        // iPad draws its tabs in the bar a search would hide, and iPadOS 26 offers no Cancel to bring them back.
+        .searchPresentationToolbarBehavior(showsPadChrome ? .avoidHidingContent : .automatic)
     }
 }
 
