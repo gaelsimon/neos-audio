@@ -65,7 +65,7 @@ final class AccountViewModel {
     var rememberMe: Bool {
         didSet {
             if !Self.isTestHost {
-                UserDefaults.standard.set(rememberMe, forKey: "settings.rememberMe")
+                AppDefaults.store.set(rememberMe, forKey: "settings.rememberMe")
             }
             if !rememberMe {
                 deleteCredentials()
@@ -84,7 +84,7 @@ final class AccountViewModel {
     init(service: any AudioService, state: AppState) {
         self.service = service
         self.state = state
-        self.rememberMe = Self.isTestHost ? true : UserDefaults.standard.object(forKey: "settings.rememberMe") as? Bool ?? true
+        self.rememberMe = Self.isTestHost ? true : AppDefaults.store.object(forKey: "settings.rememberMe") as? Bool ?? true
         loadCredentials()
     }
 

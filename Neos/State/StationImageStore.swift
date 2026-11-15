@@ -15,9 +15,9 @@ enum StationImageStore {
     private static func ensureLoaded() -> [String: String] {
         if let cache = inMemoryCache { return cache }
         // Migrate from UserDefaults on first access
-        if let legacy = UserDefaults.standard.dictionary(forKey: legacyKey) as? [String: String], !legacy.isEmpty {
+        if let legacy = AppDefaults.store.dictionary(forKey: legacyKey) as? [String: String], !legacy.isEmpty {
             saveToDisk(legacy)
-            UserDefaults.standard.removeObject(forKey: legacyKey)
+            AppDefaults.store.removeObject(forKey: legacyKey)
             inMemoryCache = legacy
             return legacy
         }

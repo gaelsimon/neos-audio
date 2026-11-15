@@ -61,7 +61,7 @@ struct UpdateChecker {
     let fetch: @Sendable (URL) async -> Data?
     let now: () -> Date
 
-    init(currentVersion: String, defaults: UserDefaults = .standard,
+    init(currentVersion: String, defaults: UserDefaults = AppDefaults.store,
          fetch: @escaping @Sendable (URL) async -> Data? = Self.fetchFromGitHub, now: @escaping () -> Date = Date.init) {
         self.currentVersion = currentVersion
         self.defaults = defaults

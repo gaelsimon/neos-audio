@@ -19,7 +19,7 @@ final class SettingsViewModel {
             } else {
                 state.playback.maxVolume = nil
             }
-            UserDefaults.standard.set(volumeLimitEnabled, forKey: "settings.volumeLimitEnabled")
+            AppDefaults.store.set(volumeLimitEnabled, forKey: "settings.volumeLimitEnabled")
         }
     }
 
@@ -30,7 +30,7 @@ final class SettingsViewModel {
             if volumeLimitEnabled {
                 state.playback.maxVolume = clamped
             }
-            UserDefaults.standard.set(clamped, forKey: "settings.volumeLimitValue")
+            AppDefaults.store.set(clamped, forKey: "settings.volumeLimitValue")
         }
     }
 
@@ -92,8 +92,8 @@ final class SettingsViewModel {
         self.imageCacheBytes = imageCacheBytes
         self.clearImageCache = clearImageCache
         self.copyText = copyText
-        self.volumeLimitEnabled = UserDefaults.standard.bool(forKey: "settings.volumeLimitEnabled")
-        let savedValue = UserDefaults.standard.integer(forKey: "settings.volumeLimitValue")
+        self.volumeLimitEnabled = AppDefaults.store.bool(forKey: "settings.volumeLimitEnabled")
+        let savedValue = AppDefaults.store.integer(forKey: "settings.volumeLimitValue")
         self.volumeLimitValue = savedValue > 0 ? savedValue : 80
 
         // Apply persisted limit on launch

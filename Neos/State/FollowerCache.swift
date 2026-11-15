@@ -12,14 +12,14 @@ enum FollowerCache {
     static func save(_ serials: Set<String>) {
         do {
             let data = try JSONEncoder().encode(serials)
-            UserDefaults.standard.set(data, forKey: key)
+            AppDefaults.store.set(data, forKey: key)
         } catch {
             followerCacheLogger.warning("Failed to encode follower cache: \(error.localizedDescription)")
         }
     }
 
     static func load() -> Set<String> {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
+        guard let data = AppDefaults.store.data(forKey: key) else { return [] }
         do {
             return try JSONDecoder().decode(Set<String>.self, from: data)
         } catch {
@@ -32,14 +32,14 @@ enum FollowerCache {
     static func saveFollowerNames(_ names: Set<String>) {
         do {
             let data = try JSONEncoder().encode(names)
-            UserDefaults.standard.set(data, forKey: followerNamesKey)
+            AppDefaults.store.set(data, forKey: followerNamesKey)
         } catch {
             followerCacheLogger.warning("Failed to encode follower names: \(error.localizedDescription)")
         }
     }
 
     static func loadFollowerNames() -> Set<String> {
-        guard let data = UserDefaults.standard.data(forKey: followerNamesKey) else { return [] }
+        guard let data = AppDefaults.store.data(forKey: followerNamesKey) else { return [] }
         do {
             return try JSONDecoder().decode(Set<String>.self, from: data)
         } catch {
@@ -52,14 +52,14 @@ enum FollowerCache {
     static func savePairNames(_ names: [String: String]) {
         do {
             let data = try JSONEncoder().encode(names)
-            UserDefaults.standard.set(data, forKey: pairNamesKey)
+            AppDefaults.store.set(data, forKey: pairNamesKey)
         } catch {
             followerCacheLogger.warning("Failed to encode pair names: \(error.localizedDescription)")
         }
     }
 
     static func loadPairNames() -> [String: String] {
-        guard let data = UserDefaults.standard.data(forKey: pairNamesKey) else { return [:] }
+        guard let data = AppDefaults.store.data(forKey: pairNamesKey) else { return [:] }
         do {
             return try JSONDecoder().decode([String: String].self, from: data)
         } catch {
@@ -69,8 +69,8 @@ enum FollowerCache {
     }
 
     static func clear() {
-        UserDefaults.standard.removeObject(forKey: key)
-        UserDefaults.standard.removeObject(forKey: followerNamesKey)
-        UserDefaults.standard.removeObject(forKey: pairNamesKey)
+        AppDefaults.store.removeObject(forKey: key)
+        AppDefaults.store.removeObject(forKey: followerNamesKey)
+        AppDefaults.store.removeObject(forKey: pairNamesKey)
     }
 }

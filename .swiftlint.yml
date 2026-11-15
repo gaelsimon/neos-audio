@@ -122,3 +122,9 @@ custom_rules:
     regex: '\.typography\([^)]*\)\s*\.foreground(Style|Color)\('
     message: "Ignored for the roles that have their own colour. Pass typography(_:color:) instead."
     severity: error
+  # Demo mode keeps its own preferences, so a demo or a UI test run leaves the real app's alone.
+  preferences_outside_app_defaults:
+    name: "Preferences outside AppDefaults"
+    regex: 'UserDefaults\.standard'
+    message: "Read and write through AppDefaults.store, which demo mode replaces."
+    severity: error

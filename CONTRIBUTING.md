@@ -160,6 +160,7 @@ Sample HEOS CLI responses live in `docs/samples/` and are useful test fixtures.
 - Prefer the platform's own controls: `Form` for settings, labelled `Toggle`, `Picker` and `TextField`, `.keyboardShortcut` for Return and Escape in sheets. A custom control needs a reason the native one cannot meet, written next to it.
 - Text takes its font and colour from `typography()`. A colour other than the role's goes through `typography(_:color:)`: a `foregroundStyle` chained after it never shows for most roles, and SwiftLint rejects it.
 - A form shown as a sheet goes through `FormSheet`, and a page shown as a sheet through `DoneSheet`. Both cap the text size, which a sheet on iPhone and iPad does not inherit from the page behind it; a sheet built another way calls `cappedTextSize()` itself. A field for an address, an e-mail or a URL takes `literalTextInput`.
+- Settings and caches are read and written through `AppDefaults.store`. Demo mode swaps it for a store of its own, emptied at each launch, so a demo or a UI test run neither shows nor changes what the app saved for a real speaker; SwiftLint rejects `UserDefaults.standard`.
 - Tests for new behaviour. The app has over 400 unit tests and the protocol package has its own, keep that bar.
 
 ## Pull request process
