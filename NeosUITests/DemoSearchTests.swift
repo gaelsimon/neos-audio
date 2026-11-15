@@ -1,19 +1,15 @@
 import XCTest
 
-/// Tests for search functionality in demo mode.
-/// Verifies search field interaction, results display, and clear behavior.
+/// Search in demo mode. No test leaves Home, so none goes back to it first.
 final class DemoSearchTests: DemoTestCase {
 
     private var topBar: TopBarScreen { TopBarScreen(app: app) }
     private var search: SearchScreen { SearchScreen(app: app) }
 
-    override func setUp() {
-        super.setUp()
-        resetToHome()
-    }
-
+    /// Empties the field first: the previous test's query is still in it, and typing would add to it.
     private func typeSearch(_ query: String) {
         waitForElement(topBar.searchField)
+        if search.clearButton.exists { search.clearButton.click() }
         topBar.searchField.click()
         topBar.searchField.typeText(query)
     }
@@ -22,7 +18,6 @@ final class DemoSearchTests: DemoTestCase {
 
     func testSearchFieldAcceptsInput() {
         typeSearch("The Velvet Hours")
-        // The field should contain the typed text
         let value = topBar.searchField.value as? String ?? ""
         XCTAssertTrue(value.contains("The Velvet Hours"), "Search field should contain typed text, got: \(value)")
     }
@@ -44,7 +39,6 @@ final class DemoSearchTests: DemoTestCase {
         waitForElement(search.clearButton)
         search.clearButton.click()
 
-        // After clearing, results should disappear and home should show
         let home = HomeScreen(app: app)
         waitForElement(home.view)
         XCTAssertTrue(home.view.exists, "Home should be visible after clearing search")
@@ -56,7 +50,6 @@ final class DemoSearchTests: DemoTestCase {
         typeSearch("The Velvet Hours")
         waitForElement(search.resultsView)
 
-        // Press back to dismiss search
         let backButton = TopBarScreen(app: app).backButton
         waitForElement(backButton)
         backButton.click()

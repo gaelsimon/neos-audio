@@ -6,11 +6,6 @@ final class DemoBreadcrumbTests: DemoTestCase {
     private var sidebar: SidebarScreen { SidebarScreen(app: app) }
     private var browse: BrowseScreen { BrowseScreen(app: app) }
 
-    override func setUp() {
-        super.setUp()
-        resetToHome()
-    }
-
     // Rows and tiles carry no identifier of their own: each is one button labelled from its texts.
     private func clickRow(labelled label: String) {
         let row = app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
@@ -18,6 +13,7 @@ final class DemoBreadcrumbTests: DemoTestCase {
         row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
     }
 
+    /// From wherever the previous test stopped: a click on a source's row always lands on its first page.
     private func openDeezerRoot() {
         waitForElement(sidebar.sourceButton(sid: 2))
         sidebar.sourceButton(sid: 2).click()
