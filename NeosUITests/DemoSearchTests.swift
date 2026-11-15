@@ -44,6 +44,27 @@ final class DemoSearchTests: DemoTestCase {
         XCTAssertTrue(home.view.exists, "Home should be visible after clearing search")
     }
 
+    // MARK: - What a search found
+
+    func testASearchNobodyAnswersSaysSo() {
+        typeSearch("zzz")
+        waitForElement(search.resultsView)
+
+        let nothing = app.staticTexts
+            .matching(NSPredicate(format: "value BEGINSWITH 'No Results' OR label BEGINSWITH 'No Results'")).firstMatch
+        XCTAssertTrue(nothing.waitForExistence(timeout: 5), "The page should say nothing was found")
+    }
+
+    func testAServiceThatFoundNothingIsLeftOut() {
+        let deezer = app.descendants(matching: .any).matching(identifier: AccessibilityID.Search.serviceHeader(2)).firstMatch
+        let tuneIn = app.descendants(matching: .any).matching(identifier: AccessibilityID.Search.serviceHeader(3)).firstMatch
+
+        typeSearch("radio")
+
+        XCTAssertTrue(tuneIn.waitForExistence(timeout: 5), "TuneIn answered")
+        XCTAssertFalse(deezer.exists, "Deezer found nothing and should not show an empty section")
+    }
+
     // MARK: - Search to Navigation Flow
 
     func testSearchThenNavigateBackShowsHome() {

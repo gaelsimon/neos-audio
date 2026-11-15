@@ -46,6 +46,12 @@ final class DemoCatalogTests: XCTestCase {
         XCTAssertTrue(DemoCatalog.search(sid: DemoCatalog.deezerSID, scid: 3, query: "zzz").isEmpty)
     }
 
+    func testOnlyTuneInAnswersASearchForRadio() {
+        XCTAssertFalse(DemoCatalog.search(sid: DemoCatalog.tuneInSID, scid: 1, query: "Radio").isEmpty)
+        XCTAssertTrue(DemoCatalog.search(sid: DemoCatalog.deezerSID, scid: 3, query: "Radio").isEmpty)
+        XCTAssertTrue(DemoCatalog.search(sid: DemoCatalog.tidalSID, scid: 2, query: "Radio").isEmpty)
+    }
+
     @MainActor
     func testTheBrokenFolderFailsAndTheOthersAnswer() async throws {
         let service = DemoAudioService()

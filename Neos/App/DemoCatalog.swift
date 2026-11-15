@@ -172,10 +172,12 @@ enum DemoCatalog {
         ]
     }
 
-    /// One kind of item per criterion, and nothing at all for a query with "zzz" in it.
+    /// One kind of item per criterion. Nothing at all for a query with "zzz" in it, and stations only for "radio".
     static func search(sid: Int, scid: Int, query: String) -> [BrowseItem] {
-        if query.lowercased().contains("zzz") { return [] }
+        let query = query.lowercased()
+        if query.contains("zzz") { return [] }
         if sid == tuneInSID { return stations }
+        if query.contains("radio") { return [] }
         switch scid {
         case 1: return artists(sid: sid)
         case 2: return sid == tidalSID ? DemoDataProvider.tidalAlbums : DemoDataProvider.deezerAlbums

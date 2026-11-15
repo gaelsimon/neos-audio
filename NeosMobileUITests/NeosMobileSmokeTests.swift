@@ -31,13 +31,8 @@ final class NeosMobileSmokeTests: MobileDemoTestCase {
 
     func testABreadcrumbGoesBackToItsPage() throws {
         try XCTSkipUnless(isPad, "Only the wide layout shows the path")
-        // The group opens on its first service, which the demo makes Deezer.
-        tab("Services").tap()
-        for label in ["Albums", "Midnight Opera,"] {
-            let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "No \(label) to open")
-            row.tap()
-        }
+        openSidebarEntry("Deezer")
+        open("Albums", "Midnight Opera,")
         let crumb = element(AccessibilityID.Browse.breadcrumbItem(1))
         XCTAssertTrue(crumb.waitForExistence(timeout: 5))
 
@@ -52,25 +47,22 @@ final class NeosMobileSmokeTests: MobileDemoTestCase {
 
     func testTheRootBreadcrumbEmptiesTheStack() throws {
         try XCTSkipUnless(isPad, "Only the wide layout shows the path")
-        tab("Services").tap()
-        for label in ["Albums", "Midnight Opera,"] {
-            let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "No \(label) to open")
-            row.tap()
-        }
+        openSidebarEntry("Deezer")
+        open("Albums", "Midnight Opera,")
         let crumb = element(AccessibilityID.Browse.breadcrumbItem(0))
         XCTAssertTrue(crumb.waitForExistence(timeout: 5))
 
         crumb.tap()
 
-        let albums = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Albums'")).firstMatch
-        XCTAssertTrue(albums.waitForExistence(timeout: 5), "The service's first page should be back")
+        XCTAssertTrue(waitUntil { item(startingWith: "Albums") != nil }, "The service's first page should be back")
         XCTAssertFalse(app.navigationBars.buttons["Albums"].exists, "Nothing should be left to go back to")
     }
 
     func testTheVolumeLimitSwitchHasAName() {
         app.buttons["Settings"].firstMatch.tap()
         let toggle = app.switches[AccessibilityID.Settings.volumeLimitToggle]
+        // A short sheet opens with the switch below its fold.
+        if !toggle.waitForExistence(timeout: 3) { app.swipeUp() }
 
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         XCTAssertTrue(toggle.label.contains("Volume Limit"), "VoiceOver would read \(toggle.label)")

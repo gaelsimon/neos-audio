@@ -9,17 +9,8 @@ final class NeosMobilePlaybackTests: MobileDemoTestCase {
     }
 
     private func openDeezerAlbum(_ name: String) {
-        if isPad {
-            // The group opens on its first service, which the demo makes Deezer.
-            tab("Services").tap()
-        } else {
-            openLibraryPage("Deezer")
-        }
-        for label in ["Albums", name] {
-            let entry = button(startingWith: label)
-            XCTAssertTrue(entry.waitForExistence(timeout: 5), "No \(label) to open")
-            entry.tap()
-        }
+        openLibraryPage("Deezer")
+        open("Albums", name)
     }
 
     func test1NextMovesToTheFollowingTrack() {

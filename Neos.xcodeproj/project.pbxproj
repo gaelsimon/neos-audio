@@ -26,6 +26,7 @@
 		091D95063A940FC2A73E9E62 /* QueuePanelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7D06DFFD9CBAF3C8FA08F4 /* QueuePanelViewModel.swift */; };
 		091F0E20B4F50531CC382EDA /* PlaybackRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967CC43A382B30C89860F293 /* PlaybackRouter.swift */; };
 		099AF3CF6C1D6925301DA63F /* DemoDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CB9A97376FD1914412C9BD /* DemoDataProvider.swift */; };
+		0AD2D7FB85A651FD38397611 /* NeosMobileLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67A91D4086F7BBCE77E17325 /* NeosMobileLayoutTests.swift */; };
 		0D051F9765A3CDB872B3EDAF /* HomeCardRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB41952DA89549CBFB05688 /* HomeCardRow.swift */; };
 		0E2F6438142DA79BD502F313 /* GroupViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B431061BB0E200A459CAF630 /* GroupViewModelTests.swift */; };
 		0E3F137DC9F0D50C15CC5E10 /* NowPlayingArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C5FFD7B4515BF86604D4E9F /* NowPlayingArtwork.swift */; };
@@ -165,6 +166,7 @@
 		517821DDEF7414D5B0E4B9FC /* NowPlayingMedia+Display.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C98BC73D0E2BC4DE7BE7387 /* NowPlayingMedia+Display.swift */; };
 		517A136E0C4CC0D75B7BEEE2 /* CancellableTaskHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA91B9970B64593857EE303B /* CancellableTaskHandle.swift */; };
 		51933A5FE9766C8143746981 /* WebAddress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10094260C0A45B49426BEA69 /* WebAddress.swift */; };
+		523891A749C00AC51D9566E9 /* NeosMobileNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F081E2D2574653F8C17F0F /* NeosMobileNavigationTests.swift */; };
 		526B7E6D7DC888275EB1BA77 /* DiscoveredDeviceCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B00F160FF7E04BDE0141A11 /* DiscoveredDeviceCard.swift */; };
 		53826AB6FC07758FAC8B90DB /* BrowseViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 069F59E7B8CC0D17BD4ECD21 /* BrowseViewModelTests.swift */; };
 		545EE17BFB7BC135E6523EB3 /* HEOSConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14056CD01D2FD18118A48043 /* HEOSConstants.swift */; };
@@ -371,6 +373,7 @@
 		B59FF0DC4B0714C60B819D12 /* QueuePanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB5B78D9E08604461E96F3DC /* QueuePanelView.swift */; };
 		B6011599E5275CE6B5A2A1B2 /* PlayerViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85219238727C8D45814AB9AE /* PlayerViewModelTests.swift */; };
 		B6BE6650BBC12BF18370AAA4 /* demo-love.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 2DC006545B3C91902F218B5C /* demo-love.jpg */; };
+		B829ED09488DBA90DE688144 /* NeosMobileSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6AE9AB331598F53D2440116 /* NeosMobileSearchTests.swift */; };
 		B85018C03721D87C7880506D /* BrowseItem+MediaServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B37B5455CDE080A55778EB7 /* BrowseItem+MediaServer.swift */; };
 		B86BF455BE6CD86D7BC34967 /* demo-harrys.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 190413A26B44C7BFCC23DA72 /* demo-harrys.jpg */; };
 		B917511F3B8B757B049A9660 /* ConnectionPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38FBA017369BC28D216760D /* ConnectionPresentation.swift */; };
@@ -599,6 +602,7 @@
 		2FA823D961B42F9AAA4EEB22 /* FolderSymbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSymbol.swift; sourceTree = "<group>"; };
 		3166CF4E93E3A03A147E0DA5 /* PlayerControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerControlView.swift; sourceTree = "<group>"; };
 		325DD36E2762D6288625611A /* SearchViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewModelTests.swift; sourceTree = "<group>"; };
+		33F081E2D2574653F8C17F0F /* NeosMobileNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeosMobileNavigationTests.swift; sourceTree = "<group>"; };
 		351F050D8FEC229EEB174F21 /* TestImages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestImages.swift; sourceTree = "<group>"; };
 		35BFD10B831669F752E4013E /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 		36F9DEEDEFC18234802FF173 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
@@ -654,6 +658,7 @@
 		64DFA794FE47CBCCB7D4580E /* ExternalLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalLink.swift; sourceTree = "<group>"; };
 		665534F8F9737292E81E1371 /* ImageCacheState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCacheState.swift; sourceTree = "<group>"; };
 		679EF2086801994AE1C64F6F /* CircularIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularIconButton.swift; sourceTree = "<group>"; };
+		67A91D4086F7BBCE77E17325 /* NeosMobileLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeosMobileLayoutTests.swift; sourceTree = "<group>"; };
 		67EBCBDA28626FAF24BBF5F0 /* ImageURLCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageURLCache.swift; sourceTree = "<group>"; };
 		694BB426729B7468DA59B50F /* ImageCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCacheTests.swift; sourceTree = "<group>"; };
 		69ED4EF743B3D4FAD3F936A0 /* RequestTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestTracker.swift; sourceTree = "<group>"; };
@@ -749,6 +754,7 @@
 		B431061BB0E200A459CAF630 /* GroupViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupViewModelTests.swift; sourceTree = "<group>"; };
 		B4ADA2DB815947449B0D18F5 /* NeosMobileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NeosMobileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B5B396E88879501223C1DDB4 /* DemoAddStationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAddStationTests.swift; sourceTree = "<group>"; };
+		B6AE9AB331598F53D2440116 /* NeosMobileSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeosMobileSearchTests.swift; sourceTree = "<group>"; };
 		B6EDE0243D4627CDA12280BD /* SpeakerNameTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerNameTests.swift; sourceTree = "<group>"; };
 		B70EF0DCDA8D8279139D81FF /* TopBarScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBarScreen.swift; sourceTree = "<group>"; };
 		B857172376380AAE5AA19938 /* DemoSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoSettingsTests.swift; sourceTree = "<group>"; };
@@ -1328,8 +1334,11 @@
 			isa = PBXGroup;
 			children = (
 				9C20FFC27635C171A7330910 /* MobileDemoTestCase.swift */,
+				67A91D4086F7BBCE77E17325 /* NeosMobileLayoutTests.swift */,
 				EAC8CF1701B1F96682C3DEDA /* NeosMobileLiveTests.swift */,
+				33F081E2D2574653F8C17F0F /* NeosMobileNavigationTests.swift */,
 				FAF88577016E057D222E8848 /* NeosMobilePlaybackTests.swift */,
+				B6AE9AB331598F53D2440116 /* NeosMobileSearchTests.swift */,
 				6086E6D74C8E1DF3BD2D4F17 /* NeosMobileSmokeTests.swift */,
 			);
 			path = NeosMobileUITests;
@@ -2018,8 +2027,11 @@
 			files = (
 				B0DBE2E9E49322713D0BA522 /* AccessibilityID.swift in Sources */,
 				2F47CFF8584F7B90EB8CAC90 /* MobileDemoTestCase.swift in Sources */,
+				0AD2D7FB85A651FD38397611 /* NeosMobileLayoutTests.swift in Sources */,
 				7FB4CCBE8BD467907651D5C4 /* NeosMobileLiveTests.swift in Sources */,
+				523891A749C00AC51D9566E9 /* NeosMobileNavigationTests.swift in Sources */,
 				99FF6734B8B051F85F0AE1C0 /* NeosMobilePlaybackTests.swift in Sources */,
+				B829ED09488DBA90DE688144 /* NeosMobileSearchTests.swift in Sources */,
 				2EC96FEEA83787CAFD814201 /* NeosMobileSmokeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
