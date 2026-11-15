@@ -97,7 +97,7 @@ struct NeosApp: App {
         // Debug only, and ahead of the XCTest check: the demo initialises even under tests.
         #if DEBUG
         if DemoSession.isActive {
-            let svc = DemoAudioService()
+            let svc = DemoAudioService(state: appState)
             let vms = ViewModelContainer(service: svc, state: appState)
             self.container = vms
             installSpaceKeyMonitor(for: vms)

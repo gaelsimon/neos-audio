@@ -144,6 +144,7 @@ private struct MiniPlayerContent: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("Opens the player")
+        .accessibilityIdentifier(AccessibilityID.Player.songTitle)
     }
 }
 
