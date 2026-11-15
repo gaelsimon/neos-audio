@@ -135,6 +135,7 @@ final class GroupViewModel {
     }
 
     func setGroupVolume(gid: Int, level: Int) {
+        let level = withinTheVolumeLimit(level)
         groupVolumeTask.replace(with: Task {
             try? await Task.sleep(for: .milliseconds(100))
             guard !Task.isCancelled else { return }
@@ -148,6 +149,7 @@ final class GroupViewModel {
 
     /// Sets one speaker's volume, debounced per speaker so sliders never cancel each other.
     func setMemberVolume(pid: Int, level: Int) {
+        let level = withinTheVolumeLimit(level)
         let handle = memberVolumeTasks[pid] ?? CancellableTaskHandle()
         memberVolumeTasks[pid] = handle
         handle.replace(with: Task {
@@ -159,6 +161,10 @@ final class GroupViewModel {
                 state.error = .groupFailed(error.localizedDescription)
             }
         })
+    }
+
+    private func withinTheVolumeLimit(_ level: Int) -> Int {
+        min(level, state.maxVolume ?? 100)
     }
 
     /// Fetches each member's current volume for the sliders.

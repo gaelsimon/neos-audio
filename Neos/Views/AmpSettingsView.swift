@@ -159,13 +159,14 @@ struct AmpSettingsView: View {
                 iconColor: player.role == .leader ? DS.Colors.accent : DS.Colors.textSecondary,
                 level: state.playerVolumes[player.pid],
                 label: "Speaker volume",
+                maximum: state.maxVolume ?? 100,
                 onDragging: { groupVM.setAdjustingMemberVolume(pid: player.pid, $0) }
             ) { groupVM.setMemberVolume(pid: player.pid, level: $0) }
         }
 
         LevelRow(
             name: "All Speakers", icon: DS.Icons.speakerActive, iconColor: DS.Colors.textSecondary,
-            level: state.groupVolumes[group.gid], label: "Group volume"
+            level: state.groupVolumes[group.gid], label: "Group volume", maximum: state.maxVolume ?? 100
         ) { groupVM.setGroupVolume(gid: group.gid, level: $0) }
 
         Button(role: .destructive) {
@@ -343,6 +344,7 @@ private struct LevelRow: View {
     let iconColor: Color
     let level: Int?
     let label: String
+    var maximum = 100
     var onDragging: (Bool) -> Void = { _ in }
     let onChange: (Int) -> Void
 
@@ -386,7 +388,7 @@ private struct LevelRow: View {
                     value = newValue
                     onChange(Int(newValue.rounded()))
                 }),
-                in: 0...100
+                in: 0...Double(maximum)
             ) {
                 Text(label)
             } onEditingChanged: { editing in

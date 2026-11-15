@@ -325,11 +325,42 @@ final class AppStateTests: XCTestCase {
     @MainActor
     func testSetMaxVolumeNilClearsValue() {
         let state = AppState()
-        state.playback.maxVolume = 50
+        state.setMaxVolume(50)
 
         state.setMaxVolume(nil)
 
         XCTAssertNil(state.maxVolume)
+    }
+
+    @MainActor
+    func testTheSpeakersOwnLimitDoesNotLiftTheOneSetInSettings() {
+        let state = AppState()
+        state.playback.volumeLimit = 40
+
+        state.setMaxVolume(57)
+
+        XCTAssertEqual(state.maxVolume, 40)
+    }
+
+    @MainActor
+    func testALowerSpeakerLimitWinsOverTheOneSetInSettings() {
+        let state = AppState()
+        state.playback.volumeLimit = 80
+
+        state.setMaxVolume(57)
+
+        XCTAssertEqual(state.maxVolume, 57)
+    }
+
+    @MainActor
+    func testTheLimitSetInSettingsOutlastsTheConnection() {
+        let state = AppState()
+        state.playback.volumeLimit = 40
+        state.setMaxVolume(57)
+
+        state.setMaxVolume(nil)
+
+        XCTAssertEqual(state.maxVolume, 40)
     }
 
     // MARK: - Computed Properties

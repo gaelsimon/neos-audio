@@ -518,7 +518,7 @@ final class AppState: StateUpdater {
     }
 
     func setMaxVolume(_ level: Int?) {
-        playback.maxVolume = level.map { max(1, $0) }
+        playback.speakerVolumeLimit = level.map { max(1, $0) }
     }
 
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities) {

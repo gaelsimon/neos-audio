@@ -5,6 +5,7 @@ import NeosDomain
 @MainActor
 final class SettingsViewModel {
     private let state: AppState
+    private let defaults: UserDefaults
     /// The image cache and the clipboard are the app's own; tests hand in their stand-ins.
     private let imageCacheBytes: () -> Int
     private let clearImageCache: () -> Void
@@ -15,11 +16,11 @@ final class SettingsViewModel {
     var volumeLimitEnabled: Bool {
         didSet {
             if volumeLimitEnabled {
-                state.playback.maxVolume = volumeLimitValue
+                state.playback.volumeLimit = volumeLimitValue
             } else {
-                state.playback.maxVolume = nil
+                state.playback.volumeLimit = nil
             }
-            AppDefaults.store.set(volumeLimitEnabled, forKey: "settings.volumeLimitEnabled")
+            defaults.set(volumeLimitEnabled, forKey: "settings.volumeLimitEnabled")
         }
     }
 
@@ -28,9 +29,9 @@ final class SettingsViewModel {
             let clamped = max(1, min(100, volumeLimitValue))
             if clamped != volumeLimitValue { volumeLimitValue = clamped }
             if volumeLimitEnabled {
-                state.playback.maxVolume = clamped
+                state.playback.volumeLimit = clamped
             }
-            AppDefaults.store.set(clamped, forKey: "settings.volumeLimitValue")
+            defaults.set(clamped, forKey: "settings.volumeLimitValue")
         }
     }
 
@@ -84,21 +85,23 @@ final class SettingsViewModel {
 
     init(
         state: AppState,
+        defaults: UserDefaults = AppDefaults.store,
         imageCacheBytes: @escaping () -> Int = { ImageCache.shared.diskSizeBytes() },
         clearImageCache: @escaping () -> Void = { ImageCache.shared.clearAll() },
         copyText: @escaping @MainActor (String) -> Void = { Clipboard.copy($0) }
     ) {
         self.state = state
+        self.defaults = defaults
         self.imageCacheBytes = imageCacheBytes
         self.clearImageCache = clearImageCache
         self.copyText = copyText
-        self.volumeLimitEnabled = AppDefaults.store.bool(forKey: "settings.volumeLimitEnabled")
-        let savedValue = AppDefaults.store.integer(forKey: "settings.volumeLimitValue")
+        self.volumeLimitEnabled = defaults.bool(forKey: "settings.volumeLimitEnabled")
+        let savedValue = defaults.integer(forKey: "settings.volumeLimitValue")
         self.volumeLimitValue = savedValue > 0 ? savedValue : 80
 
         // Apply persisted limit on launch
         if volumeLimitEnabled {
-            state.playback.maxVolume = volumeLimitValue
+            state.playback.volumeLimit = volumeLimitValue
         }
     }
 }

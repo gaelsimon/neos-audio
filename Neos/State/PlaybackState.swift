@@ -36,7 +36,12 @@ final class PlaybackState {
     var nowPlayingOptions: [ServiceOption] = []
     var trackMetadata: TrackMetadata?
     var volume: Int = 0
-    var maxVolume: Int?
+    /// The limit set in Settings.
+    var volumeLimit: Int?
+    /// The limit the speaker reports for itself.
+    var speakerVolumeLimit: Int?
+    /// The lower of the two.
+    var maxVolume: Int? { [volumeLimit, speakerVolumeLimit].compactMap { $0 }.min() }
     var isMuted: Bool = false
     var repeatMode: RepeatMode = .off
     var shuffleMode: ShuffleMode = .off
