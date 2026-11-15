@@ -1,4 +1,6 @@
 import XCTest
+import Network
+import dnssd
 @testable import Neos
 import NeosDomain
 
@@ -328,5 +330,72 @@ final class SpeakerListViewModelTests: XCTestCase {
 
         try? await Task.sleep(for: .milliseconds(250))
         XCTAssertFalse(state.isDiscovering)
+    }
+
+    // MARK: - Local network permission
+
+    private static let refusal = NWBrowser.State.waiting(.dns(DNSServiceErrorType(kDNSServiceErr_PolicyDenied)))
+
+    @MainActor
+    func testEachSearchAsksWhetherTheLocalNetworkIsAllowed() {
+        var checks = 0
+        let access = LocalNetworkAccess(probe: { _ in
+            checks += 1
+            return {}
+        })
+        let vm = SpeakerListViewModel(service: MockAudioService(), state: AppState(), localNetwork: access)
+
+        vm.discover()
+        vm.startContinuousDiscovery(giveUpAfter: .milliseconds(10))
+
+        XCTAssertEqual(checks, 2)
+    }
+
+    @MainActor
+    func testARefusedLocalNetworkShowsOnTheViewModel() {
+        let access = LocalNetworkAccess(probe: { _ in {} })
+        let vm = SpeakerListViewModel(service: MockAudioService(), state: AppState(), localNetwork: access)
+        XCTAssertFalse(vm.isLocalNetworkDenied)
+
+        access.apply(Self.refusal)
+
+        XCTAssertTrue(vm.isLocalNetworkDenied)
+    }
+
+    @MainActor
+    func testThePermissionComingBackStartsASearch() {
+        let state = AppState()
+        let access = LocalNetworkAccess(probe: { _ in {} })
+        let vm = SpeakerListViewModel(service: MockAudioService(), state: state, localNetwork: access)
+        access.apply(Self.refusal)
+        XCTAssertFalse(state.isDiscovering)
+
+        access.apply(.ready)
+
+        XCTAssertTrue(state.isDiscovering)
+        XCTAssertFalse(vm.isLocalNetworkDenied)
+    }
+
+    @MainActor
+    func testComingBackToTheAppSearchesAgainOnlyAfterARefusal() {
+        let state = AppState()
+        let access = LocalNetworkAccess(probe: { _ in {} })
+        let vm = SpeakerListViewModel(service: MockAudioService(), state: state, localNetwork: access)
+
+        vm.retryIfLocalNetworkWasDenied()
+        XCTAssertFalse(state.isDiscovering)
+
+        access.apply(Self.refusal)
+        vm.retryIfLocalNetworkWasDenied()
+        XCTAssertTrue(state.isDiscovering)
+    }
+
+    @MainActor
+    func testWithoutACheckTheLocalNetworkIsNeverSaidRefused() {
+        let vm = SpeakerListViewModel(service: MockAudioService(), state: AppState())
+
+        vm.discover()
+
+        XCTAssertFalse(vm.isLocalNetworkDenied)
     }
 }

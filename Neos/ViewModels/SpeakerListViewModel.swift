@@ -13,10 +13,21 @@ final class SpeakerListViewModel {
     private let connectTask = CancellableTaskHandle()
     private let powerTask = CancellableTaskHandle()
     private let discoveryTracker = RequestTracker()
+    private let localNetwork: LocalNetworkAccess?
 
-    init(service: any AudioService, state: AppState) {
+    var isLocalNetworkDenied: Bool { localNetwork?.isDenied ?? false }
+
+    init(service: any AudioService, state: AppState, localNetwork: LocalNetworkAccess? = nil) {
         self.service = service
         self.state = state
+        self.localNetwork = localNetwork
+        localNetwork?.onAllowedAgain = { [weak self] in self?.discover() }
+    }
+
+    /// Back in the app, perhaps from the system's settings where the permission was just given.
+    func retryIfLocalNetworkWasDenied() {
+        guard isLocalNetworkDenied else { return }
+        discover()
     }
 
     func selectPlayer(_ player: Player) {
@@ -27,6 +38,7 @@ final class SpeakerListViewModel {
         let requestID = discoveryTracker.next()
         state.isDiscovering = true
         state.discoveryError = nil
+        localNetwork?.check()
         discoveryTask.replace(with: Task {
             do {
                 let devices = try await service.discoverDevices()
@@ -46,6 +58,7 @@ final class SpeakerListViewModel {
         let requestID = discoveryTracker.next()
         state.isDiscovering = true
         state.discoveryError = nil
+        localNetwork?.check()
         continuousDiscoveryTask.replace(with: Task {
             service.startContinuousDiscovery()
             try? await Task.sleep(for: timeout)

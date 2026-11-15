@@ -24,8 +24,10 @@ struct NeosApp: App {
                     #endif
                 }
                 .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active else { return }
                     // Recover any playback events missed while the window was inactive.
-                    if phase == .active { container.playerVM.resyncPlaybackState() }
+                    container.playerVM.resyncPlaybackState()
+                    container.speakerVM.retryIfLocalNetworkWasDenied()
                 }
 
             } else {
@@ -119,7 +121,7 @@ struct NeosApp: App {
 
         let svc = HEOSService(stateUpdater: appState)
         self.service = svc
-        let vms = ViewModelContainer(service: svc, state: appState)
+        let vms = ViewModelContainer(service: svc, state: appState, localNetwork: LocalNetworkAccess())
         self.container = vms
 
         let monitor = LifecycleMonitor(service: svc, state: appState)

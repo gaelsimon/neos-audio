@@ -30,11 +30,11 @@ final class ViewModelContainer {
     private let state: AppState
     private let serverPreferences: LocalServerPreferences
 
-    init(service: any AudioService, state: AppState) {
+    init(service: any AudioService, state: AppState, localNetwork: LocalNetworkAccess? = nil) {
         self.service = service
         self.state = state
         self.playerVM = PlayerViewModel(service: service, state: state)
-        self.speakerVM = SpeakerListViewModel(service: service, state: state)
+        self.speakerVM = SpeakerListViewModel(service: service, state: state, localNetwork: localNetwork)
         self.queueVM = QueueViewModel(service: service, state: state)
         let serverPreferences = LocalServerPreferences()
         self.serverPreferences = serverPreferences

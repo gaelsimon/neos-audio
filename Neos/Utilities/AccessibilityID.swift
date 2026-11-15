@@ -149,6 +149,8 @@ enum AccessibilityID {
         static let manualConnectSection = "discovery.manualConnectSection"
         static let manualConnectToggle = "discovery.manualConnectToggle"
         static let progressIndicator = "discovery.progressIndicator"
+        static let localNetworkDenied = "discovery.localNetworkDenied"
+        static let openSettingsButton = "discovery.openSettingsButton"
 
         static func deviceCard(_ host: String) -> String {
             "discovery.deviceCard.\(host)"

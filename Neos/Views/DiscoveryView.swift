@@ -5,6 +5,7 @@ struct DiscoveryView: View {
     let state: AppState
     @Bindable var speakerVM: SpeakerListViewModel
     @State private var showManualConnect = CommandLine.arguments.contains("--uitesting")
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         GeometryReader { proxy in
@@ -12,15 +13,20 @@ struct DiscoveryView: View {
                 VStack(spacing: DS.Spacing.xl) {
                     brandingHeader
 
-                    if state.isDiscovering && state.visibleDiscoveredDevices.isEmpty {
-                        discoveringState
-                    } else if !state.visibleDiscoveredDevices.isEmpty {
+                    if !state.visibleDiscoveredDevices.isEmpty {
                         devicesFoundState
+                    } else if speakerVM.isLocalNetworkDenied {
+                        // Nothing can answer, a scan or an address included, until the system allows it.
+                        localNetworkDeniedState
+                    } else if state.isDiscovering {
+                        discoveringState
                     } else {
                         noDevicesState
                     }
 
-                    manualConnect
+                    if !speakerVM.isLocalNetworkDenied {
+                        manualConnect
+                    }
                 }
                 .frame(maxWidth: 500)
                 .padding(DS.Spacing.xl)
@@ -95,6 +101,32 @@ struct DiscoveryView: View {
         .buttonStyle(.bordered)
         .controlSize(.large)
         .accessibilityIdentifier(AccessibilityID.Sidebar.scanButton)
+    }
+
+    @ViewBuilder
+    private var localNetworkDeniedState: some View {
+        VStack(spacing: DS.Spacing.sm) {
+            Text("Local Network Access Is Off")
+                .typography(.bodyEmphasis)
+
+            Group {
+                Text("Neos finds and controls your speakers over the local network.")
+                Text(LocalNetworkSettings.advice)
+            }
+            .typography(.secondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: 380)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(AccessibilityID.Discovery.localNetworkDenied)
+
+        if let url = LocalNetworkSettings.url {
+            Button(LocalNetworkSettings.buttonTitle) { openURL(url) }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .accessibilityIdentifier(AccessibilityID.Discovery.openSettingsButton)
+        }
     }
 
     // MARK: - Branding Header
