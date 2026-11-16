@@ -10,6 +10,7 @@ struct AddFavoriteForm: View {
     @State private var name = ""
     @State private var streamURL = ""
     @State private var isSaving = false
+    private static let example = "https://example.com/stream.mp3" // NOSONAR: an example in an empty field, never opened
 
     // Artwork, held in memory until the station is actually added.
     @State private var previewImage: PlatformImage?
@@ -25,7 +26,7 @@ struct AddFavoriteForm: View {
         ) {
             Section {
                 TextField("Name", text: $name, prompt: Text("Station name"))
-                TextField("Stream URL", text: $streamURL, prompt: Text(verbatim: "https://example.com/stream.mp3"))
+                TextField("Stream URL", text: $streamURL, prompt: Text(verbatim: Self.example))
                     .literalTextInput(.url)
             } footer: {
                 Text("The stream's address starts with http:// or https://.")

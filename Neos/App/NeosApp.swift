@@ -88,8 +88,9 @@ struct NeosApp: App {
         self.playbackKeyMonitor = monitor
     }
     #else
-    /// iOS has neither a menu bar nor a key monitor to install.
-    private func installPlaybackKeyMonitor(for _: ViewModelContainer) {}
+    private func installPlaybackKeyMonitor(for _: ViewModelContainer) {
+        // iOS has neither a menu bar nor a key monitor to install.
+    }
     #endif
 
     /// Idempotent: whichever scene appears first boots the services.

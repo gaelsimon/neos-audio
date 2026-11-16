@@ -8,7 +8,7 @@ struct DemoPlaybackTests {
     private static let trackLength = 200_000
 
     private static func track(_ name: String) -> DemoTrack {
-        DemoTrack(song: name, mid: "m-\(name)", sid: 2, duration: trackLength)
+        DemoTrack(song: name, mid: "m-\(name)", sid: 2).lasting(trackLength)
     }
 
     private static let tracks = ["A", "B", "C", "D"].map(track)
@@ -457,7 +457,7 @@ struct DemoTrackTests {
     }
 
     @Test func aLengthGivenWins() {
-        #expect(DemoTrack(song: "x", mid: "dz-12345", sid: 2, duration: 1_000).duration == 1_000)
+        #expect(DemoTrack(song: "x", mid: "dz-12345", sid: 2).lasting(1_000).duration == 1_000)
     }
 
     @Test func aListedTrackTakesTheCoverOfItsAlbum() {

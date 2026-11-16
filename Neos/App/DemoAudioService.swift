@@ -43,19 +43,19 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
         change { $0.set(.play) }
     }
 
-    func pause(pid: Int) async throws {
+    func pause(pid _: Int) async throws {
         change { $0.set(.pause) }
     }
 
-    func stop(pid: Int) async throws {
+    func stop(pid _: Int) async throws {
         change { $0.set(.stop) }
     }
 
-    func next(pid: Int) async throws {
+    func next(pid _: Int) async throws {
         try change { try $0.skip(by: 1) }
     }
 
-    func previous(pid: Int) async throws {
+    func previous(pid _: Int) async throws {
         try change { try $0.skip(by: -1) }
     }
 
@@ -78,7 +78,7 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
         }
     }
 
-    func setPlayMode(pid: Int, repeat repeatMode: RepeatMode, shuffle: ShuffleMode) async throws {
+    func setPlayMode(pid _: Int, repeat repeatMode: RepeatMode, shuffle: ShuffleMode) async throws {
         playback.repeatMode = repeatMode
         playback.shuffleMode = shuffle
         state?.setRepeatMode(repeatMode)
@@ -92,19 +92,19 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
         return Array(playback.queue.dropFirst(range.lowerBound).prefix(range.count))
     }
 
-    func playQueueItem(pid: Int, qid: Int) async throws {
+    func playQueueItem(pid _: Int, qid: Int) async throws {
         change { $0.play(qid: qid) }
     }
 
-    func removeFromQueue(pid: Int, qids: [Int]) async throws {
+    func removeFromQueue(pid _: Int, qids: [Int]) async throws {
         change { $0.remove(qids: qids) }
     }
 
-    func clearQueue(pid: Int) async throws {
+    func clearQueue(pid _: Int) async throws {
         change { $0.clear() }
     }
 
-    func moveQueueItem(pid: Int, from sourceQIDs: [Int], to destQID: Int) async throws {
+    func moveQueueItem(pid _: Int, from sourceQIDs: [Int], to destQID: Int) async throws {
         change { $0.move(qids: sourceQIDs, to: destQID) }
     }
 
@@ -184,20 +184,20 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
         return DemoCatalog.page(DemoCatalog.container(sid: sid, cid: cid) ?? [], range)
     }
 
-    func playStation(pid: Int, sid: Int, cid: String, mid: String, name: String) async throws {
+    func playStation(pid _: Int, sid: Int, cid _: String, mid: String, name: String) async throws {
         change { $0.play(stream: DemoCatalog.station(sid: sid, mid: mid, name: name)) }
     }
 
     /// The app names the stream from what the user picked: the speaker only knows it is a URL.
-    func playURL(pid: Int, url: String) async throws {
+    func playURL(pid _: Int, url _: String) async throws {
         change { $0.playURL() }
     }
 
-    func playInput(pid: Int, input: String) async throws {
+    func playInput(pid _: Int, input: String) async throws {
         change { $0.play(stream: DemoCatalog.input(input)) }
     }
 
-    func addToQueue(pid: Int, sid: Int, cid: String, mid: String?, criteria: AddCriteria) async throws {
+    func addToQueue(pid _: Int, sid: Int, cid: String, mid: String?, criteria: AddCriteria) async throws {
         let tracks = DemoCatalog.tracks(sid: sid, cid: cid, mid: mid)
         change { $0.add(tracks, criteria) }
     }
@@ -233,7 +233,7 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
 
     // MARK: - Account Actions
 
-    func signIn(username: String, password: String) async throws {
+    func signIn(username: String, password _: String) async throws {
         signedInUser = username
     }
 
@@ -268,8 +268,8 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
 
     // MARK: - Playback Sync
 
-    func resyncPlaybackState(pid: Int) async {
-        change { _ in }
+    func resyncPlaybackState(pid _: Int) async {
+        refresh()
     }
 
     // MARK: - Time
@@ -298,8 +298,15 @@ final class DemoAudioService: AudioService, @unchecked Sendable {
         trackEnd.replace(with: Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(remaining))
             guard !Task.isCancelled else { return }
-            self?.change { _ in }
+            self?.refresh()
         })
+    }
+
+    /// Brings the playback up to now and tells the app.
+    private func refresh() {
+        change { _ in
+            // Only time has moved.
+        }
     }
 
     // MARK: - What the app hears

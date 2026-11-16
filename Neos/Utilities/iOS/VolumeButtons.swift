@@ -16,7 +16,7 @@ final class VolumeButtons {
     static let maxPressesPerReport = 2
 
     private let system: any SystemVolume
-    private var onPress: (Int) -> Void = { _ in }
+    private var onPress: ((Int) -> Void)?
     private var stopObserving: (() -> Void)?
     private var original: Float?
     private var held: Int?
@@ -75,7 +75,7 @@ final class VolumeButtons {
         // The phone coming back to the held notch is the reset below, not a press.
         guard notch != held else { return }
         if notch != last {
-            onPress(min(max(notch - last, -Self.maxPressesPerReport), Self.maxPressesPerReport))
+            onPress?(min(max(notch - last, -Self.maxPressesPerReport), Self.maxPressesPerReport))
         }
         put(held)
     }

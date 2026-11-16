@@ -181,8 +181,8 @@ enum DemoDataProvider {
         ),
         DemoTrack(
             song: "Paper Lanterns", album: "Midnight Opera", artist: "The Velvet Hours",
-            imageURL: DemoArtwork.url("abc123"), mid: "dz-12345", albumID: "alb-67890", sid: 2, duration: 354_000
-        ),
+            imageURL: DemoArtwork.url("abc123"), mid: "dz-12345", albumID: "alb-67890", sid: 2
+        ).lasting(354_000),
         DemoTrack(
             song: "Glass Weather", album: "Warm Rooms", artist: "The Velvet Hours & Nova Lane",
             imageURL: DemoArtwork.url("hot"), mid: "dz-33333", albumID: "alb-ccccc", sid: 2

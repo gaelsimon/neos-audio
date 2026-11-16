@@ -6,12 +6,13 @@ struct ArtworkChooser: View {
 
     @State private var urlText = ""
     @State private var isDownloading = false
+    private static let example = "https://example.com/image.png" // NOSONAR: an example in an empty field, never opened
 
     var body: some View {
         ImagePickerButton(onPick: onPick)
 
         HStack(spacing: DS.Spacing.sm) {
-            TextField("Image URL", text: $urlText, prompt: Text(verbatim: "https://example.com/image.png"))
+            TextField("Image URL", text: $urlText, prompt: Text(verbatim: Self.example))
                 .literalTextInput(.url)
                 .onSubmit(download)
             if isDownloading {

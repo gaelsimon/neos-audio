@@ -12,11 +12,11 @@ struct DemoTrack: Equatable {
     let albumID: String
     let sid: Int
     /// In milliseconds. Zero for what has no end.
-    let duration: Int
+    private(set) var duration: Int
 
     init(
         song: String, album: String = "", artist: String = "", imageURL: String = "",
-        mid: String, albumID: String = "", sid: Int, duration: Int? = nil
+        mid: String, albumID: String = "", sid: Int
     ) {
         self.song = song
         self.album = album
@@ -25,7 +25,13 @@ struct DemoTrack: Equatable {
         self.mid = mid
         self.albumID = albumID
         self.sid = sid
-        self.duration = duration ?? Self.length(of: mid)
+        duration = Self.length(of: mid)
+    }
+
+    func lasting(_ duration: Int) -> Self {
+        var track = self
+        track.duration = duration
+        return track
     }
 
     /// `cover` stands in for a track listed without artwork, as an album's tracks are.
@@ -40,8 +46,8 @@ struct DemoTrack: Equatable {
     /// What a speaker queues for a bare URL: it knows nothing of the stream but that it is one.
     static let urlStream = Self(
         song: "Url Stream", album: "Url Stream", artist: "Url Stream",
-        mid: "1", albumID: "1", sid: DemoCatalog.localMusicSID, duration: 0
-    )
+        mid: "1", albumID: "1", sid: DemoCatalog.localMusicSID
+    ).lasting(0)
 
     /// The same for a given track on every launch, between about three and six minutes.
     private static func length(of mid: String) -> Int {

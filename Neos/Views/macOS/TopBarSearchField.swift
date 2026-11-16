@@ -67,7 +67,7 @@ struct TopBarSearchField: NSViewRepresentable {
             parent.text = field.stringValue
         }
 
-        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        func control(_: NSControl, textView _: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.insertNewline(_:)) {
                 parent.onSubmit()
             }
@@ -86,7 +86,9 @@ final class FocusTrackingSearchField: NSSearchField {
 
     override static var cellClass: AnyClass? {
         get { SearchFieldCell.self }
-        set {}
+        set {
+            // Always SearchFieldCell.
+        }
     }
 
     override func becomeFirstResponder() -> Bool {
@@ -131,7 +133,7 @@ final class FocusTrackingSearchField: NSSearchField {
     }
 
     // Escape leaves the field and keeps the query, where a search field would clear it.
-    override func cancelOperation(_ sender: Any?) {
+    override func cancelOperation(_: Any?) {
         window?.makeFirstResponder(nil)
     }
 

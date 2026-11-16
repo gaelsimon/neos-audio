@@ -33,17 +33,23 @@ final class PhoneVolume: SystemVolume {
             await self?.waitForTheSlider()
             guard !Task.isCancelled, let self else { return }
             report(level, Self.output)
-            observation = session.observe(\.outputVolume, options: .new) { _, change in
-                guard let level = change.newValue else { return }
-                let output = Self.output
-                Task { @MainActor in report(level, output) }
-            }
+            observation = Self.observeLevel(of: session, report: report)
         }
         return { [volumeView] in
             start.cancel()
             observation?.invalidate()
             volumeView.removeFromSuperview()
             try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        }
+    }
+
+    private static func observeLevel(
+        of session: AVAudioSession, report: @escaping @MainActor (Float, String) -> Void
+    ) -> NSKeyValueObservation {
+        session.observe(\.outputVolume, options: .new) { _, change in
+            guard let level = change.newValue else { return }
+            let output = Self.output
+            Task { @MainActor in report(level, output) }
         }
     }
 

@@ -10,7 +10,7 @@ final class LocalNetworkAccess {
     typealias Probe = @MainActor (_ report: @escaping @Sendable (NWBrowser.State) -> Void) -> () -> Void
 
     private(set) var isDenied = false
-    @ObservationIgnored var onAllowedAgain: () -> Void = {}
+    @ObservationIgnored var onAllowedAgain: (() -> Void)?
     @ObservationIgnored private let probe: Probe
     @ObservationIgnored private var stopProbe: (() -> Void)?
 
@@ -28,7 +28,7 @@ final class LocalNetworkAccess {
     func apply(_ state: NWBrowser.State) {
         guard let denied = Self.isDenial(state), denied != isDenied else { return }
         isDenied = denied
-        if !denied { onAllowedAgain() }
+        if !denied { onAllowedAgain?() }
     }
 
     /// Nil while the browse has said nothing either way.

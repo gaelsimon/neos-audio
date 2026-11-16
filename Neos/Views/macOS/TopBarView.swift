@@ -116,7 +116,7 @@ struct TopBarView: View {
                 HStack(spacing: DS.Spacing.sm) {
                     statusDot
                     Text(playerName)
-                        .typography(.secondary, color: isActive ? DS.Colors.accent : hovered ? .white : nil)
+                        .typography(.secondary, color: Self.highlight(isActive: isActive, hovered: hovered))
                         .lineLimit(1)
                         .frame(maxWidth: 160)
                         .fixedSize(horizontal: true, vertical: false)
@@ -130,6 +130,12 @@ struct TopBarView: View {
         .help(playerName)
         .accessibilityLabel(playerName)
         .accessibilityIdentifier(AccessibilityID.Sidebar.ampCard)
+    }
+
+    /// The accent on the page it opens, white under the pointer.
+    private static func highlight(isActive: Bool, hovered: Bool) -> Color? {
+        if isActive { return DS.Colors.accent }
+        return hovered ? .white : nil
     }
 
     private var playerName: String {
@@ -154,7 +160,7 @@ struct TopBarView: View {
         }) { hovered in
             Image(systemName: DS.Icons.person)
                 .font(DS.IconFont.lgEmphasis)
-                .foregroundStyle(isActive ? DS.Colors.accent : hovered ? .white : Color.white.opacity(0.7))
+                .foregroundStyle(Self.highlight(isActive: isActive, hovered: hovered) ?? Color.white.opacity(0.7))
                 .frame(width: DS.TopBar.controlHeight, height: DS.TopBar.controlHeight)
                 .background { GlassCapsule() }
         }

@@ -10,7 +10,7 @@ struct AccentSlider: View {
     let value: Double
     var bounds: ClosedRange<Double> = 0...100
     let label: String
-    var onEditingChanged: (Bool) -> Void = { _ in }
+    var onEditingChanged: ((Bool) -> Void)?
     let onChange: (Double) -> Void
 
     @Environment(\.sliderFill) private var fill
@@ -55,14 +55,14 @@ struct AccentSlider: View {
                     .onChanged { drag in
                         if !isDragging {
                             isDragging = true
-                            onEditingChanged(true)
+                            onEditingChanged?(true)
                         }
                         onChange(level(at: drag.location.x, width: width))
                     }
                     .onEnded { drag in
                         onChange(level(at: drag.location.x, width: width))
                         isDragging = false
-                        onEditingChanged(false)
+                        onEditingChanged?(false)
                     }
             )
             .onHover { hovering in

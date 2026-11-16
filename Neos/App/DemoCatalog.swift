@@ -199,9 +199,14 @@ enum DemoCatalog {
         BrowseItem(
             name: number == 3 ? "A Title Long Enough To Run Past The Edge Of Any Row It Is Shown In (Extended Live Version)" : "Mile \(number)",
             type: .song, mid: "road-\(number)", sid: deezerSID, playable: true,
-            artist: number.isMultiple(of: 7) ? nil : (number.isMultiple(of: 2) ? "The Velvet Hours" : "Neon Harbor"),
+            artist: longPlaylistArtist(number),
             album: "Road Trip"
         )
+    }
+
+    private static func longPlaylistArtist(_ number: Int) -> String? {
+        if number.isMultiple(of: 7) { return nil }
+        return number.isMultiple(of: 2) ? "The Velvet Hours" : "Neon Harbor"
     }
 
     private static func artists(sid: Int) -> [BrowseItem] {
