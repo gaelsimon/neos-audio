@@ -2,8 +2,8 @@
 @MainActor
 protocol SystemVolume: AnyObject {
     func setLevel(_ level: Float)
-    /// Reports the level once it is known, then each new level, until the returned closure is called.
-    func observe(_ report: @escaping @MainActor (Float) -> Void) -> () -> Void
+    /// Reports the level and the output it plays on once known, then at each change, until the returned closure is called.
+    func observe(_ report: @escaping @MainActor (_ level: Float, _ output: String) -> Void) -> () -> Void
 }
 
 /// While started, each press of the phone's volume buttons is reported and the phone's volume put back where it was.
@@ -21,7 +21,9 @@ final class VolumeButtons {
     private var original: Float?
     private var held: Int?
     private var last: Int?
+    private var output: String?
     private var hasMoved = false
+    private var generation = 0
 
     init(system: any SystemVolume) {
         self.system = system
@@ -31,7 +33,12 @@ final class VolumeButtons {
     func start(onPress: @escaping (Int) -> Void) {
         guard stopObserving == nil else { return }
         self.onPress = onPress
-        stopObserving = system.observe { [weak self] in self?.handle($0) }
+        let generation = generation
+        stopObserving = system.observe { [weak self] level, output in
+            // A report can land after stop(), already queued on the main actor.
+            guard let self, self.generation == generation else { return }
+            handle(level, on: output)
+        }
     }
 
     func stop() {
@@ -44,7 +51,9 @@ final class VolumeButtons {
         original = nil
         held = nil
         last = nil
+        output = nil
         hasMoved = false
+        generation += 1
     }
 
     static func notch(of level: Float) -> Int {
@@ -56,10 +65,10 @@ final class VolumeButtons {
         min(max(notch, 1), notches - 1)
     }
 
-    private func handle(_ level: Float) {
+    private func handle(_ level: Float, on output: String) {
         let notch = Self.notch(of: level)
-        guard let held, let last else {
-            hold(level, at: notch)
+        guard let held, let last, output == self.output else {
+            hold(level, at: notch, on: output)
             return
         }
         self.last = notch
@@ -71,9 +80,10 @@ final class VolumeButtons {
         put(held)
     }
 
-    private func hold(_ level: Float, at notch: Int) {
+    private func hold(_ level: Float, at notch: Int, on output: String) {
         let held = Self.heldNotch(for: notch)
         original = level
+        self.output = output
         self.held = held
         last = held
         if held != notch {

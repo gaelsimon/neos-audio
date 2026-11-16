@@ -22,7 +22,7 @@ final class PhoneVolume: SystemVolume {
         slider?.setValue(level, animated: false)
     }
 
-    func observe(_ report: @escaping @MainActor (Float) -> Void) -> () -> Void {
+    func observe(_ report: @escaping @MainActor (_ level: Float, _ output: String) -> Void) -> () -> Void {
         let session = AVAudioSession.sharedInstance()
         // Mixes with whatever else plays; while it is active the buttons move the media volume, not the ringer's.
         try? session.setCategory(.playback, options: .mixWithOthers)
@@ -32,10 +32,11 @@ final class PhoneVolume: SystemVolume {
         let start = Task { [weak self] in
             await self?.waitForTheSlider()
             guard !Task.isCancelled, let self else { return }
-            report(level)
+            report(level, Self.output)
             observation = session.observe(\.outputVolume, options: .new) { _, change in
                 guard let level = change.newValue else { return }
-                Task { @MainActor in report(level) }
+                let output = Self.output
+                Task { @MainActor in report(level, output) }
             }
         }
         return { [volumeView] in
@@ -51,6 +52,11 @@ final class PhoneVolume: SystemVolume {
         for _ in 0..<10 where (slider?.value ?? 0) == 0 {
             try? await Task.sleep(for: .milliseconds(50))
         }
+    }
+
+    /// Each output keeps its own volume, so plugging in headphones changes the level without a press.
+    nonisolated private static var output: String {
+        AVAudioSession.sharedInstance().currentRoute.outputs.map(\.uid).joined(separator: ",")
     }
 
     private static var keyWindow: UIWindow? {

@@ -6,7 +6,8 @@ private final class FakeSystemVolume: SystemVolume {
     private(set) var level: Float
     private(set) var setLevels: [Float] = []
     private(set) var isObserved = false
-    private var report: (@MainActor (Float) -> Void)?
+    private(set) var output = "Speaker"
+    private var report: (@MainActor (Float, String) -> Void)?
 
     init(level: Float) {
         self.level = level
@@ -17,7 +18,7 @@ private final class FakeSystemVolume: SystemVolume {
         self.level = level
     }
 
-    func observe(_ report: @escaping @MainActor (Float) -> Void) -> () -> Void {
+    func observe(_ report: @escaping @MainActor (Float, String) -> Void) -> () -> Void {
         isObserved = true
         self.report = report
         return { [weak self] in
@@ -27,9 +28,17 @@ private final class FakeSystemVolume: SystemVolume {
     }
 
     /// The level as iOS reports it: rounded to a twentieth.
-    func report(_ level: Float) {
+    func report(_ level: Float, output: String? = nil) {
         self.level = level
-        report?((level * 20).rounded() / 20)
+        self.output = output ?? self.output
+        report?((level * 20).rounded() / 20, self.output)
+    }
+
+    /// A report already queued for the main actor, which lands whenever the test says, even after observing stopped.
+    func queuedReport() -> (Float) -> Void {
+        let report = report
+        let output = output
+        return { level in report?(level, output) }
     }
 }
 
@@ -187,6 +196,43 @@ struct VolumeButtonsTests {
         #expect(rig.presses.isEmpty)
     }
 
+    @Test func headphonesComingInAreNoPress() {
+        let rig = Rig(level: Self.seven)
+
+        rig.system.report(5 * Self.notch, output: "AirPods")
+
+        #expect(rig.presses.isEmpty)
+    }
+
+    @Test func headphonesComingInKeepTheirOwnVolume() {
+        let rig = Rig(level: Self.seven)
+
+        rig.system.report(5 * Self.notch, output: "AirPods")
+
+        #expect(rig.system.setLevels.isEmpty)
+    }
+
+    @Test func aPressOnTheHeadphonesCountsFromTheirVolume() {
+        let rig = Rig(level: Self.seven)
+        rig.system.report(5 * Self.notch, output: "AirPods")
+
+        rig.press(1)
+
+        #expect(rig.presses == [1])
+    }
+
+    @Test func aReportLandingAfterStoppingIsNoPressOnReturn() {
+        let rig = Rig(level: Self.seven)
+        let queued = rig.system.queuedReport()
+        rig.stop()
+        queued(Self.seven)
+
+        rig.start { rig.presses.append($0) }
+        rig.system.report(Self.seven + 3 * Self.notch)
+
+        #expect(rig.presses.isEmpty)
+    }
+
     @Test func startingTwiceKeepsTheFirstStart() {
         let rig = Rig(level: Self.seven)
         var second: [Int] = []
@@ -220,7 +266,7 @@ struct PhoneVolumeTests {
         let volume = PhoneVolume()
         var reports = 0
 
-        let stop = volume.observe { _ in reports += 1 }
+        let stop = volume.observe { _, _ in reports += 1 }
         stop()
 
         #expect(reports == 0)
@@ -230,7 +276,7 @@ struct PhoneVolumeTests {
         let volume = PhoneVolume()
         var reports: [Float] = []
 
-        let stop = volume.observe { reports.append($0) }
+        let stop = volume.observe { level, _ in reports.append(level) }
         for _ in 0..<40 where reports.isEmpty {
             try? await Task.sleep(for: .milliseconds(50))
         }
