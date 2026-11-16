@@ -19,7 +19,7 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Playback") {
-            // No shortcut: `SpaceKeyMonitor` owns Space so typing still works.
+            // No shortcut: `PlaybackKeyMonitor` owns Space so typing still works.
             Button(state.isPlaying ? "Pause" : "Play") {
                 container?.playerVM.togglePlayPause()
             }

@@ -9,7 +9,7 @@ struct NeosApp: App {
     @State private var container: ViewModelContainer?
     @State private var lifecycleMonitor: LifecycleMonitor?
     #if os(macOS)
-    @State private var spaceKeyMonitor: SpaceKeyMonitor?
+    @State private var playbackKeyMonitor: PlaybackKeyMonitor?
     #endif
     @Environment(\.scenePhase) private var scenePhase
 
@@ -81,15 +81,15 @@ struct NeosApp: App {
         menuBarVinyl(connectionState: appState.connectionState, isPlaying: appState.isPlaying).image()
     }
 
-    /// Space is owned by a key monitor, which reads the first responder as the key lands.
-    private func installSpaceKeyMonitor(for vms: ViewModelContainer) {
-        let monitor = SpaceKeyMonitor(state: appState) { vms.playerVM.togglePlayPause() }
+    /// Space and ⌘ with an arrow go through a key monitor, which reads the first responder as the key lands.
+    private func installPlaybackKeyMonitor(for vms: ViewModelContainer) {
+        let monitor = PlaybackKeyMonitor(state: appState) { vms.playerVM.togglePlayPause() }
         monitor.start()
-        self.spaceKeyMonitor = monitor
+        self.playbackKeyMonitor = monitor
     }
     #else
     /// iOS has neither a menu bar nor a key monitor to install.
-    private func installSpaceKeyMonitor(for _: ViewModelContainer) {}
+    private func installPlaybackKeyMonitor(for _: ViewModelContainer) {}
     #endif
 
     /// Idempotent: whichever scene appears first boots the services.
@@ -102,7 +102,7 @@ struct NeosApp: App {
             let svc = DemoAudioService(state: appState)
             let vms = ViewModelContainer(service: svc, state: appState)
             self.container = vms
-            installSpaceKeyMonitor(for: vms)
+            installPlaybackKeyMonitor(for: vms)
             DemoDataProvider.populate(appState)
             return
         }
@@ -128,7 +128,7 @@ struct NeosApp: App {
         monitor.start()
         self.lifecycleMonitor = monitor
 
-        installSpaceKeyMonitor(for: vms)
+        installPlaybackKeyMonitor(for: vms)
 
         // Skip network operations when running UI tests without a speaker
         if skipDiscovery {

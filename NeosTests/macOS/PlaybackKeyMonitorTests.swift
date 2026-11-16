@@ -5,14 +5,14 @@ import NeosDomain
 @testable import Neos
 
 @MainActor
-final class SpaceKeyMonitorTests: XCTestCase {
+final class PlaybackKeyMonitorTests: XCTestCase {
 
     private func makeMonitor(connectionState: ConnectionState = .connected)
-        -> (SpaceKeyMonitor, AppState, Box) {
+        -> (PlaybackKeyMonitor, AppState, Box) {
         let state = AppState()
         state.connectionState = connectionState
         let box = Box()
-        let monitor = SpaceKeyMonitor(state: state) { box.toggles += 1 }
+        let monitor = PlaybackKeyMonitor(state: state) { box.toggles += 1 }
         return (monitor, state, box)
     }
 
@@ -97,6 +97,63 @@ final class SpaceKeyMonitorTests: XCTestCase {
         // No keystroke yet: the editing notifications have not fired, but focus is already here.
         XCTAssertFalse(monitor.handle(keyEvent(characters: " "), firstResponder: window.firstResponder))
         XCTAssertEqual(box.toggles, 0)
+    }
+
+    // MARK: - ⌘ and an arrow
+
+    func testCommandArrowMovesTheCaretOfTheFieldBeingEdited() {
+        let (monitor, _, _) = makeMonitor()
+        let (window, editor) = editorInAWindow(text: "http://radio")
+        defer { window.close() }
+
+        _ = monitor.handle(commandArrow(NSLeftArrowFunctionKey, keyCode: 123), firstResponder: editor)
+
+        XCTAssertEqual(editor.selectedRange().location, 0)
+    }
+
+    func testCommandArrowIsLeftToTheMenuOutsideAField() {
+        let (monitor, _, _) = makeMonitor()
+
+        XCTAssertFalse(monitor.handle(commandArrow(NSLeftArrowFunctionKey, keyCode: 123), firstResponder: nil))
+    }
+
+    func testCommandShiftArrowIsLeftToTheField() {
+        let (monitor, _, _) = makeMonitor()
+        let (window, editor) = editorInAWindow(text: "http://radio")
+        defer { window.close() }
+
+        let event = commandArrow(NSLeftArrowFunctionKey, keyCode: 123, extra: .shift)
+
+        XCTAssertFalse(monitor.handle(event, firstResponder: editor))
+    }
+
+    private func commandArrow(_ key: Int, keyCode: UInt16, extra: NSEvent.ModifierFlags = []) -> NSEvent {
+        let characters = String(Character(UnicodeScalar(UInt16(key))!))
+        return NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [.command, .function, .numericPad, extra],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: characters,
+            charactersIgnoringModifiers: characters,
+            isARepeat: false,
+            keyCode: keyCode
+        )!
+    }
+
+    private func editorInAWindow(text: String) -> (NSWindow, NSTextView) {
+        let frame = NSRect(x: 0, y: 0, width: 300, height: 60)
+        let window = NSWindow(contentRect: frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let editor = NSTextView(frame: frame)
+        editor.string = text
+        window.contentView = editor
+        window.makeKeyAndOrderFront(nil)
+        XCTAssertTrue(window.makeFirstResponder(editor), "editor refused first responder")
+        editor.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
+        return (window, editor)
     }
 
     private func findTextField(in view: NSView) -> NSTextField? {
