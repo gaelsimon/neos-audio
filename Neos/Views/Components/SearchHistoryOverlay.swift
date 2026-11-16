@@ -16,6 +16,8 @@ struct SearchHistoryOverlay: View {
         .background(DS.Colors.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.large))
         .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+        // Without its own element, the label and identifier land on every row and the Clear button.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.Search.historyOverlay)
         .accessibilityLabel("Recent searches")
     }
