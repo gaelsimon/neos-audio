@@ -65,6 +65,30 @@ final class DemoSearchTests: DemoTestCase {
         XCTAssertFalse(deezer.exists, "Deezer found nothing and should not show an empty section")
     }
 
+    // MARK: - Recent searches
+
+    /// The list shows while the field is focused and empty; each row is labelled "Search for <query>".
+    private func recentSearch(_ query: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Search for \(query)")).firstMatch
+    }
+
+    private func showRecentSearches() {
+        search.clearButton.click()
+        topBar.searchField.click()
+    }
+
+    func testOnlyASubmittedSearchIsRemembered() {
+        typeSearch("pap")
+        waitForElement(search.resultsView)
+        showRecentSearches()
+        XCTAssertFalse(recentSearch("pap").waitForExistence(timeout: 1), "Typing alone should not be remembered")
+
+        topBar.searchField.typeText("paper\n")
+        waitForElement(search.resultsView)
+        showRecentSearches()
+        XCTAssertTrue(recentSearch("paper").waitForExistence(timeout: 5), "A submitted search should be remembered")
+    }
+
     // MARK: - Search to Navigation Flow
 
     func testSearchThenNavigateBackShowsHome() {

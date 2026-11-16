@@ -32,6 +32,7 @@ struct MobileSearchView: View {
             text: Binding(get: { searchVM.query }, set: { searchVM.onQueryChanged($0) }),
             placement: keepsFieldUnderTitle ? .navigationBarDrawer(displayMode: .always) : .automatic
         )
+        .onSubmit(of: .search) { searchVM.commitQueryToHistory() }
         // iPad draws its tabs in the bar a search would hide, and iPadOS 26 offers no Cancel to bring them back.
         .searchPresentationToolbarBehavior(showsPadChrome ? .avoidHidingContent : .automatic)
     }
@@ -55,7 +56,7 @@ private struct RecentSearchesView: View {
             List {
                 Section {
                     ForEach(searchVM.recentQueries, id: \.self) { query in
-                        Button { searchVM.onQueryChanged(query) } label: {
+                        Button { searchVM.searchAgain(query) } label: {
                             Label(query, systemImage: "clock.arrow.circlepath")
                         }
                     }

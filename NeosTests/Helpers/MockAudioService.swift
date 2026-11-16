@@ -275,8 +275,13 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         return searchCriteriaBySID[sid] ?? searchCriteria
     }
 
+    /// How long a search on a criteria takes to answer, keyed by scid.
+    var searchDelays: [Int: Duration] = [:]
+
+    /// Searches run side by side, so the call log is kept on the main actor.
     func search(sid: Int, query: String, scid: Int, range: ClosedRange<Int>?) async throws -> BrowseResult {
-        calls.append("search:\(sid):\(query):\(scid)")
+        await MainActor.run { calls.append("search:\(sid):\(query):\(scid)") }
+        if let delay = searchDelays[scid] { try await Task.sleep(for: delay) }
         return searchResult
     }
 

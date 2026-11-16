@@ -643,4 +643,110 @@ final class SearchViewModelTests: XCTestCase {
             XCTAssertEqual(mock.calls.filter { $0.hasPrefix("search:-2:") }, [])
         }
     }
+
+    // MARK: - Searching every category at once
+
+    @MainActor
+    private func makeTidalSearch(_ mock: MockAudioService) -> SearchViewModel {
+        let state = AppState()
+        state.musicSources = [MusicSource(sid: 10, name: "Tidal", type: "music_service")]
+        state.searchCriteria = [10: [SearchCriteria(scid: 1, name: "Artist"), SearchCriteria(scid: 3, name: "Track")]]
+        return SearchViewModel(service: mock, state: state)
+    }
+
+    @MainActor
+    func testAQuickCategoryShowsWhileASlowerOneIsStillSearching() async {
+        await withIsolatedStores { _ in
+            let mock = MockAudioService()
+            mock.searchDelays = [1: .seconds(5)]
+            let vm = makeTidalSearch(mock)
+
+            vm.onQueryChanged("karma")
+            await waitUntil { vm.serviceResults[ServiceCriteriaKey(sid: 10, scid: 3)] != nil }
+
+            XCTAssertTrue(vm.isPending(ServiceCriteriaKey(sid: 10, scid: 1)))
+            XCTAssertFalse(vm.isPending(ServiceCriteriaKey(sid: 10, scid: 3)))
+            XCTAssertTrue(vm.loadingServiceSIDs.contains(10))
+            vm.clearSearch()
+        }
+    }
+
+    @MainActor
+    func testAServiceStopsLoadingOnceEveryCategoryAnswered() async {
+        await withIsolatedStores { _ in
+            let mock = MockAudioService()
+            let vm = makeTidalSearch(mock)
+
+            vm.onQueryChanged("karma")
+            await waitUntil { !vm.isSearching && mock.calls.count == 2 }
+
+            XCTAssertTrue(vm.loadingServiceSIDs.isEmpty)
+            XCTAssertNotNil(vm.serviceResults[ServiceCriteriaKey(sid: 10, scid: 1)])
+            XCTAssertNotNil(vm.serviceResults[ServiceCriteriaKey(sid: 10, scid: 3)])
+        }
+    }
+
+    @MainActor
+    func testLocalServersAreAskedFirst() {
+        let artist = [SearchCriteria(scid: 1, name: "Artist")]
+        let state = AppState()
+        state.musicSources = [MusicSource(sid: 10, name: "Tidal", type: "music_service")]
+        state.searchCriteria = [10: artist, -1: artist]
+        let vm = SearchViewModel(service: MockAudioService(), state: state)
+        vm.registerSubSource(BrowseItem(name: "Kantele NAS", type: .heosServer, sid: -1), sid: -1)
+
+        let order = vm.searchOrder([10: artist, -1: artist])
+
+        XCTAssertEqual(order.map(\.sid), [-1, 10])
+    }
+
+    // MARK: - Recent searches
+
+    @MainActor
+    func testTypingDoesNotFillRecentSearches() async {
+        await withIsolatedStores { _ in
+            SearchHistoryStore.clearAll()
+            let mock = MockAudioService()
+            let vm = makeTidalSearch(mock)
+
+            vm.onQueryChanged("radio")
+            await waitUntil { !vm.isSearching && mock.calls.count == 2 }
+
+            XCTAssertEqual(SearchHistoryStore.recentQueries(), [])
+        }
+    }
+
+    @MainActor
+    func testASubmittedQueryIsKept() {
+        let vm = SearchViewModel(service: MockAudioService(), state: AppState())
+        let saved = SearchHistoryStore.recentQueries()
+        defer {
+            SearchHistoryStore.clearAll()
+            saved.reversed().forEach(SearchHistoryStore.addQuery)
+        }
+        SearchHistoryStore.clearAll()
+
+        vm.query = "  radiohead "
+        vm.commitQueryToHistory()
+
+        XCTAssertEqual(vm.recentQueries, ["radiohead"])
+    }
+
+    @MainActor
+    func testSearchingAgainMovesAPastQueryToTheTop() {
+        let vm = SearchViewModel(service: MockAudioService(), state: AppState())
+        let saved = SearchHistoryStore.recentQueries()
+        defer {
+            vm.clearSearch()
+            SearchHistoryStore.clearAll()
+            saved.reversed().forEach(SearchHistoryStore.addQuery)
+        }
+        SearchHistoryStore.clearAll()
+        SearchHistoryStore.addQuery("portishead")
+        SearchHistoryStore.addQuery("massive attack")
+
+        vm.searchAgain("portishead")
+
+        XCTAssertEqual(vm.recentQueries, ["portishead", "massive attack"])
+    }
 }

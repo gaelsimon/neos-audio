@@ -7,6 +7,7 @@ struct TopBarSearchField: NSViewRepresentable {
     @Binding var isFocused: Bool
     /// The clear button resets the filters too; deleting the text keeps them.
     let onClear: () -> Void
+    let onSubmit: () -> Void
 
     func makeNSView(context: Context) -> FocusTrackingSearchField {
         let field = FocusTrackingSearchField()
@@ -64,6 +65,13 @@ struct TopBarSearchField: NSViewRepresentable {
         func controlTextDidChange(_ obj: Notification) {
             guard let field = obj.object as? NSTextField else { return }
             parent.text = field.stringValue
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                parent.onSubmit()
+            }
+            return false
         }
 
         @objc func clear() {

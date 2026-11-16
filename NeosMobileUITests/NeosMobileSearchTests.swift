@@ -56,6 +56,27 @@ final class NeosMobileSearchTests: MobileDemoTestCase {
         XCTAssertTrue(waitUntil { !app.keyboards.firstMatch.exists }, "Scrolling the results should put the keyboard away")
     }
 
+    func testOnlyASubmittedSearchIsRemembered() {
+        tab("Search").tap()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "No search field")
+        field.tap()
+        let clearText = app.buttons["Clear text"].firstMatch
+        if clearText.exists { clearText.tap() }
+        let clearRecents = app.buttons["Clear Recent Searches"].firstMatch
+        if clearRecents.exists { clearRecents.tap() }
+
+        field.typeText("pap")
+        XCTAssertTrue(element(AccessibilityID.Search.resultsView).waitForExistence(timeout: 5), "The search never answered")
+        clearText.tap()
+        XCTAssertFalse(app.buttons["pap"].waitForExistence(timeout: 1), "Typing alone should not be remembered")
+
+        field.typeText("paper\n")
+        XCTAssertTrue(element(AccessibilityID.Search.resultsView).waitForExistence(timeout: 5), "The search never answered")
+        clearText.tap()
+        XCTAssertTrue(app.buttons["paper"].waitForExistence(timeout: 5), "A submitted search should be remembered")
+    }
+
     func testTheTabsAreInReachOfTheResults() {
         search("mi")
         if isPad, #available(iOS 26, *) {

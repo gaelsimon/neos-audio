@@ -117,7 +117,7 @@ struct SearchResultsView: View {
                         items: entry.items,
                         sid: sid,
                         scid: entry.criteria.scid,
-                        isServiceLoading: isLoading
+                        isPending: searchVM.isPending(ServiceCriteriaKey(sid: sid, scid: entry.criteria.scid))
                     )
                 }
             }
@@ -163,12 +163,12 @@ struct SearchResultsView: View {
         items: [BrowseItem],
         sid: Int,
         scid: Int,
-        isServiceLoading: Bool
+        isPending: Bool
     ) -> some View {
         let cardLayout = isCardLayout(items)
 
         let key = ServiceCriteriaKey(sid: sid, scid: scid)
-        let showSeeAll = !isServiceLoading
+        let showSeeAll = !isPending
             && items.count >= searchVM.previewCount
             && !searchVM.expandedCategories.contains(key)
 
@@ -187,7 +187,7 @@ struct SearchResultsView: View {
             }
             .padding(.horizontal, groupInset)
 
-            if isServiceLoading {
+            if isPending {
                 if cardLayout {
                     PlaceholderCardRow(cardCount: min(items.count, searchVM.previewCount), inset: groupInset)
                 } else {
@@ -256,6 +256,7 @@ struct SearchResultsView: View {
 
     private func seeAll(criteriaName: String, sid: Int, scid: Int) {
         guard let source = searchVM.musicSource(for: sid) else { return }
+        searchVM.commitQueryToHistory()
         browseVM.navigateToSearchResults(
             source: source,
             categoryName: criteriaName,
@@ -265,6 +266,7 @@ struct SearchResultsView: View {
     }
 
     private func handleItemTap(_ item: BrowseItem, sid: Int) {
+        searchVM.commitQueryToHistory()
         if item.browsable {
             browseInto(item, sid: sid)
         } else if item.playable {
@@ -293,6 +295,7 @@ struct SearchResultsView: View {
 
     private func handleAddToQueue(_ item: BrowseItem, sid: Int) {
         guard item.canJoinQueue else { return }
+        searchVM.commitQueryToHistory()
         let effectiveSID = item.sid ?? sid
         let cid = item.cid ?? ""
         guard let pid = state.selectedPlayerID else {

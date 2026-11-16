@@ -58,7 +58,8 @@ struct TopBarView: View {
                 get: { state.isSearchFieldFocused },
                 set: { state.isSearchFieldFocused = $0 }
             ),
-            onClear: { searchVM.clearSearch() }
+            onClear: { searchVM.clearSearch() },
+            onSubmit: { searchVM.commitQueryToHistory() }
         )
         .padding(.horizontal, DS.Spacing.md)
         .frame(minWidth: DS.TopBar.searchMinWidth, maxWidth: DS.TopBar.searchWidth)
@@ -84,7 +85,7 @@ struct TopBarView: View {
                     queries: searchVM.recentQueries,
                     onSelect: { query in
                         state.isSearchFieldFocused = false
-                        searchVM.onQueryChanged(query)
+                        searchVM.searchAgain(query)
                     },
                     onClear: {
                         searchVM.clearHistory()

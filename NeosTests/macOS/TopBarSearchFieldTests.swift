@@ -7,6 +7,7 @@ import XCTest
 final class TopBarSearchFieldTests: XCTestCase {
     private var window: NSWindow?
     private var clears = 0
+    private var submits = 0
 
     override func tearDown() async throws {
         await MainActor.run {
@@ -21,7 +22,8 @@ final class TopBarSearchFieldTests: XCTestCase {
             rootView: TopBarSearchField(
                 text: .constant(text),
                 isFocused: .constant(true),
-                onClear: { [weak self] in self?.clears += 1 }
+                onClear: { [weak self] in self?.clears += 1 },
+                onSubmit: { [weak self] in self?.submits += 1 }
             )
             .frame(width: size.width, height: size.height)
         )
@@ -95,6 +97,15 @@ final class TopBarSearchFieldTests: XCTestCase {
         NSApp.sendAction(try XCTUnwrap(button.action), to: button.target, from: field)
 
         XCTAssertEqual(clears, 1)
+    }
+
+    func testReturnSubmitsTheQuery() throws {
+        let field = try focusedField()
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+
+        editor.doCommand(by: #selector(NSResponder.insertNewline(_:)))
+
+        XCTAssertEqual(submits, 1)
     }
 }
 
