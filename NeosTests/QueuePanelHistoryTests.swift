@@ -79,15 +79,37 @@ final class QueuePanelHistoryTests: XCTestCase {
         XCTAssertEqual(mock.calls.filter { $0 == "getHistory" }.count, 1)
     }
 
-    func testATrackChangeMovesUpNextAndRefetchesTheHistory() async {
-        let state = AppState()
-        let mock = MockAudioService()
-        let vm = QueuePanelViewModel(service: mock, state: state)
+    private func makeViewModelOnTheFirstTrack(_ mock: MockAudioService, state: AppState) -> QueuePanelViewModel {
         state.setNowPlaying(NowPlayingMedia(mid: "m1", qid: 1))
         state.setQueue([QueueItem(qid: 1, song: "A", mid: "m1"), QueueItem(qid: 2, song: "B", mid: "m2")])
+        return QueuePanelViewModel(service: mock, state: state)
+    }
+
+    func testATrackChangeRefetchesTheHistoryWhileThePanelIsOpen() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = makeViewModelOnTheFirstTrack(mock, state: state)
+        state.isQueuePanelOpen = true
 
         vm.onTrackChanged()
+
         await waitUntil { mock.calls.contains("getHistory") }
+    }
+
+    func testATrackChangeLeavesTheHistoryAloneWhileThePanelIsClosed() async {
+        let mock = MockAudioService()
+        let vm = makeViewModelOnTheFirstTrack(mock, state: AppState())
+
+        vm.onTrackChanged()
+        await yieldForTask()
+
+        XCTAssertFalse(mock.calls.contains("getHistory"))
+    }
+
+    func testATrackChangeMovesUpNextWhileThePanelIsClosed() {
+        let vm = makeViewModelOnTheFirstTrack(MockAudioService(), state: AppState())
+
+        vm.onTrackChanged()
 
         XCTAssertEqual(vm.upNextItems.map(\.qid), [2])
     }

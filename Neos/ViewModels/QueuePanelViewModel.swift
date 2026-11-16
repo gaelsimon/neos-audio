@@ -153,8 +153,10 @@ final class QueuePanelViewModel {
 
     // MARK: - Track Change Refresh
 
+    /// The history is refetched only while the panel shows it.
     func onTrackChanged() {
         refreshDisplayData()
+        guard state.isQueuePanelOpen else { return }
         loadHistory()
     }
 

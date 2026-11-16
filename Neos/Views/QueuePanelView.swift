@@ -47,14 +47,6 @@ struct QueuePanelView: View {
                         recentlyPlayedTabContent
                     }
                 }
-                .onChange(of: state.nowPlaying) { _, _ in
-                    if state.isQueuePanelOpen {
-                        viewModel.onTrackChanged()
-                    }
-                }
-                .onChange(of: state.queue) { _, _ in
-                    viewModel.refreshDisplayData()
-                }
                 .onChange(of: selectedTab) { _, tab in
                     if tab == .recentlyPlayed {
                         viewModel.loadHistoryIfNeeded()
@@ -84,6 +76,18 @@ struct QueuePanelView: View {
         .accessibilityLabel("Queue and history panel")
         .task {
             viewModel.onPanelOpen()
+        }
+        // An inspector builds this once, with its window and before the speaker answers: every refresh comes from the state.
+        .onChange(of: state.isQueuePanelOpen) { _, isOpen in
+            if isOpen {
+                viewModel.onPanelOpen()
+            }
+        }
+        .onChange(of: state.nowPlaying) { _, _ in
+            viewModel.onTrackChanged()
+        }
+        .onChange(of: state.queue) { _, _ in
+            viewModel.refreshDisplayData()
         }
     }
 
