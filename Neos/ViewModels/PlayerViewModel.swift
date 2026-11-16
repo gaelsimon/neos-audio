@@ -162,6 +162,15 @@ final class PlayerViewModel {
         setVolume(max(0, state.volume + delta))
     }
 
+    static let volumeButtonStep = 2
+
+    /// Held like a slider drag, so the speaker's answers to earlier presses do not pull the level back.
+    func pressVolumeButtons(_ presses: Int) {
+        setAdjustingVolume(true)
+        stepVolume(by: presses * Self.volumeButtonStep)
+        setAdjustingVolume(false)
+    }
+
     func setAdjustingVolume(_ adjusting: Bool) {
         if adjusting {
             volumeGraceTask.cancel()

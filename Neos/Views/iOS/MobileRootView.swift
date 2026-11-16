@@ -10,13 +10,32 @@ struct MobileRootView: View {
     let state: AppState
     let container: ViewModelContainer
     @State private var showConnectedSplash = false
+    @State private var volumeButtons = VolumeButtons(system: PhoneVolume())
+    @State private var volumeButtonPresses = 0
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.scenePhase) private var scenePhase
 
     private var isPad: Bool { DeviceIdiom.isPad }
+
+    /// As in the HEOS app, the phone's volume buttons are the speaker's while the app is in front.
+    private var takesVolumeButtons: Bool { scenePhase == .active && state.isConnected }
 
     var body: some View {
         ConnectionGate(state: state, speakerVM: container.speakerVM, isHoldingSplash: $showConnectedSplash) {
             MobileTabView(state: state, container: container)
+        }
+        .overlay(alignment: .top) {
+            VolumeButtonIndicator(state: state, presses: volumeButtonPresses)
+        }
+        .onChange(of: takesVolumeButtons, initial: true) { _, takes in
+            if takes {
+                volumeButtons.start { presses in
+                    container.playerVM.pressVolumeButtons(presses)
+                    volumeButtonPresses += 1
+                }
+            } else {
+                volumeButtons.stop()
+            }
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: playerPresentation(fullScreen: false)) {
