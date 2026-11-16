@@ -32,4 +32,33 @@ struct AppDefaultsTests {
 
         #expect(UserDefaults.standard.object(forKey: key) == nil)
     }
+
+    @Test func demoModeKeepsItsFilesOutOfTheAppsFolder() {
+        let base = URL.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        #expect(AppDefaults.makeSupportDirectory(demo: true, in: base) != AppDefaults.makeSupportDirectory(demo: false, in: base))
+    }
+
+    @Test func demoModeStartsFromAnEmptyFolder() throws {
+        let base = URL.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let earlier = AppDefaults.makeSupportDirectory(demo: true, in: base)
+        try Data("left by the last launch".utf8).write(to: earlier.appendingPathComponent("image-url-cache.json"))
+
+        let folder = AppDefaults.makeSupportDirectory(demo: true, in: base)
+
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).isEmpty)
+    }
+
+    @Test func theAppKeepsItsFilesAcrossLaunches() throws {
+        let base = URL.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let earlier = AppDefaults.makeSupportDirectory(demo: false, in: base)
+        try Data("saved for a real speaker".utf8).write(to: earlier.appendingPathComponent("custom-artwork.json"))
+
+        let folder = AppDefaults.makeSupportDirectory(demo: false, in: base)
+
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path) == ["custom-artwork.json"])
+    }
 }

@@ -128,3 +128,8 @@ custom_rules:
     regex: 'UserDefaults\.standard'
     message: "Read and write through AppDefaults.store, which demo mode replaces."
     severity: error
+  files_outside_app_defaults:
+    name: "Files outside AppDefaults"
+    regex: 'URL\.applicationSupportDirectory'
+    message: "Write under AppDefaults.supportDirectory, which demo mode replaces."
+    severity: error

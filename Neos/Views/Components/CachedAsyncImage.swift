@@ -122,7 +122,7 @@ final class ImageCache: @unchecked Sendable {
         memoryCache.countLimit = 200
         memoryCache.totalCostLimit = 50 * 1024 * 1024 // 50 MB
 
-        diskURL = URL.applicationSupportDirectory.appendingPathComponent("Neos/ImageCache", isDirectory: true)
+        diskURL = AppDefaults.supportDirectory.appendingPathComponent("ImageCache", isDirectory: true)
         try? FileManager.default.createDirectory(at: diskURL, withIntermediateDirectories: true)
     }
 

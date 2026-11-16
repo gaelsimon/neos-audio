@@ -1,13 +1,8 @@
 import Foundation
 
 /// Persistent store for custom station artwork URLs, keyed by media/container ID.
-/// Stores a JSON file at ~/Library/Application Support/Neos/custom-artwork.json.
 enum StationImageStore {
-    private static let fileURL: URL = {
-        let dir = URL.applicationSupportDirectory.appendingPathComponent("Neos", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("custom-artwork.json")
-    }()
+    private static let fileURL = AppDefaults.supportDirectory.appendingPathComponent("custom-artwork.json")
 
     private static let legacyKey = "customStationImages"
     private static var inMemoryCache: [String: String]?

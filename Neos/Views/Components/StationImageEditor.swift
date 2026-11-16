@@ -94,7 +94,7 @@ struct StationImageEditor: View {
     static func copyToAppSupport(image: PlatformImage, forMID mid: String) -> URL? {
         guard let png = image.pngRepresentation() else { return nil }
 
-        let dir = URL.applicationSupportDirectory.appendingPathComponent("Neos/CustomArtwork", isDirectory: true)
+        let dir = AppDefaults.supportDirectory.appendingPathComponent("CustomArtwork", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let name = "\(sha256Hex(mid))-\(sha256Hex(png).prefix(16)).png"
