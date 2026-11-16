@@ -757,6 +757,37 @@ final class AppStateTests: XCTestCase {
         XCTAssertNil(state.trackMetadata)
     }
 
+    /// What the Marantz reports for BBC Radio 4 on TuneIn, playing and then paused.
+    private func bbcRadio4(paused: Bool) -> NowPlayingMedia {
+        let stream = "https://open.live.bbc.co.uk/mediaselector/6/redir/version/2.0/mediaset/audio-syndication-low/vpid/bbc_radio_fourfm"
+        return NowPlayingMedia(
+            type: .station, song: paused ? "96 kbps hls" : "",
+            imageURL: paused ? "" : "https://cdn-profiles.tunein.com/s25419/images/logod.png?t=1",
+            albumID: "s25419", mid: paused ? stream + "?jwt_auth=token" : String(stream.prefix(40)) + "s25419",
+            qid: 1, sid: 3, station: paused ? "BBC Radio 4 (London, UK)" : "BBC Radio 4"
+        )
+    }
+
+    @MainActor
+    func testAPausedStationKeepsItsArtwork() {
+        let state = AppState()
+        state.setNowPlaying(bbcRadio4(paused: false))
+
+        state.setNowPlaying(bbcRadio4(paused: true))
+
+        XCTAssertEqual(state.nowPlaying.imageURL, "https://cdn-profiles.tunein.com/s25419/images/logod.png?t=1")
+    }
+
+    @MainActor
+    func testATrackWithoutArtworkTakesNoStationsImage() {
+        let state = AppState()
+        state.setNowPlaying(bbcRadio4(paused: false))
+
+        state.setNowPlaying(NowPlayingMedia(type: .song, song: "Track", albumID: "s25419", mid: "t1"))
+
+        XCTAssertEqual(state.nowPlaying.imageURL, "")
+    }
+
     @MainActor
     func testAStationMovingToItsNextSongKeepsPlayingTheTimeline() {
         let state = AppState()

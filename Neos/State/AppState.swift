@@ -391,6 +391,8 @@ final class AppState: StateUpdater {
             }
         }
 
+        enrichedMedia = withKnownStationArtwork(enrichedMedia)
+
         // A different track, which on a station is a different song under the same mid.
         if enrichedMedia.isDifferentTrack(from: playback.nowPlaying) {
             playback.trackMetadata = nil
@@ -417,6 +419,17 @@ final class AppState: StateUpdater {
             }
             imageCache.cacheImageEntries(entries)
         }
+    }
+
+    /// A paused TuneIn station comes back with no artwork and under a longer mid; its station id still finds the image.
+    private func withKnownStationArtwork(_ media: NowPlayingMedia) -> NowPlayingMedia {
+        guard media.type == .station, media.imageURL.isEmpty,
+              let known = imageCache.cachedImageURLs[media.albumID], !known.isEmpty else { return media }
+        return NowPlayingMedia(
+            type: media.type, song: media.song, album: media.album, artist: media.artist,
+            imageURL: known, albumID: media.albumID, mid: media.mid,
+            qid: media.qid, sid: media.sid, station: media.station
+        )
     }
 
     func setNowPlayingOptions(_ options: [ServiceOption]) {
