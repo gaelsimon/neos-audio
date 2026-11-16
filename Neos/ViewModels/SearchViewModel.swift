@@ -303,7 +303,7 @@ final class SearchViewModel {
         pendingKeys = []
 
         await loadMissingSearchCriteria()
-        guard searchTracker.isCurrent(requestID) else { return }
+        guard isCurrent(requestID) else { return }
 
         // Target services: the filtered one, or all when no filter is set.
         // Includes top-level services and discovered sub-sources.
@@ -331,7 +331,7 @@ final class SearchViewModel {
         loadingServiceSIDs = Set(keys.map(\.sid))
         await runSearches(keys, query: query, requestID: requestID)
 
-        guard searchTracker.isCurrent(requestID) else { return }
+        guard isCurrent(requestID) else { return }
 
         // Fresh query only: drop results from services not part of this search.
         // A filter change keeps them, so switching back to "All" is instant.
@@ -368,13 +368,18 @@ final class SearchViewModel {
                 }
             }
             for await (key, items) in group {
-                guard searchTracker.isCurrent(requestID) else {
+                guard isCurrent(requestID) else {
                     group.cancelAll()
                     return
                 }
                 record(items, for: key)
             }
         }
+    }
+
+    /// A cancelled search's requests come back empty, so it must stop before it records them as no results.
+    private func isCurrent(_ requestID: Int) -> Bool {
+        searchTracker.isCurrent(requestID) && !Task.isCancelled
     }
 
     /// A failed category is left out until the next search asks it again.

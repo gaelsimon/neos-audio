@@ -687,6 +687,25 @@ final class SearchViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testTypingDuringASearchKeepsTheResultsOnScreen() async {
+        await withIsolatedStores { _ in
+            let mock = MockAudioService()
+            let vm = makeTidalSearch(mock)
+            vm.onQueryChanged("radio")
+            await waitUntil { !vm.isSearching && mock.calls.count == 2 }
+
+            mock.searchDelays = [1: .seconds(5), 3: .seconds(5)]
+            vm.onQueryChanged("radioh")
+            await waitUntil { mock.calls.count == 4 }
+            vm.onQueryChanged("radiohe")
+            await waitUntil { mock.calls.count == 6 }
+
+            XCTAssertEqual(vm.serviceResults.count, 2)
+            vm.clearSearch()
+        }
+    }
+
+    @MainActor
     func testLocalServersAreAskedFirst() {
         let artist = [SearchCriteria(scid: 1, name: "Artist")]
         let state = AppState()
