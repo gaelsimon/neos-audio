@@ -31,6 +31,8 @@ final class SearchViewModel {
     var loadingServiceSIDs: Set<Int> = []
     /// Categories whose answer to the current query has not arrived yet.
     private(set) var pendingKeys: Set<ServiceCriteriaKey> = []
+    /// Services whose every category answered the current query; the others may still show an earlier query's results.
+    private var answeredSIDs: Set<Int> = []
     /// Lifecycle phase of the search overlay
     var overlayPhase: SearchOverlayPhase = .inactive
     /// Categories expanded via "More" -- shows all fetched items instead of preview
@@ -253,6 +255,7 @@ final class SearchViewModel {
             _ = searchTracker.next()
             isSearching = false
             serviceResults = [:]
+            answeredSIDs = []
             pendingKeys = []
             loadingServiceSIDs = []
             expandedCategories = []
@@ -279,6 +282,7 @@ final class SearchViewModel {
         overlayPhase = .inactive
         isSearching = false
         serviceResults = [:]
+        answeredSIDs = []
         pendingKeys = []
         loadingServiceSIDs = []
         expandedCategories = []
@@ -290,12 +294,15 @@ final class SearchViewModel {
     // MARK: - Search Execution
 
     /// Runs the search for `query`. Pass `reusingCache: true` for a filter change
-    /// (same query): it only searches target services with no cached results and
+    /// (same query): it only searches target services that have not answered it and
     /// keeps results for services outside the current filter.
     private func executeSearch(query: String, reusingCache: Bool = false) async {
         let requestID = searchTracker.next()
 
         isSearching = true
+        if !reusingCache {
+            answeredSIDs = []
+        }
         // Keep old serviceResults as the placeholder layout template; don't clear.
         expandedCategories = []
         loadingMoreCategories = []
@@ -322,8 +329,7 @@ final class SearchViewModel {
 
         // Filter change: only fetch target services we don't already have.
         if reusingCache {
-            let cachedSIDs = Set(serviceResults.keys.map(\.sid))
-            searchable = searchable.filter { !cachedSIDs.contains($0.key) }
+            searchable = searchable.filter { !answeredSIDs.contains($0.key) }
         }
 
         let keys = searchOrder(searchable)
@@ -395,6 +401,9 @@ final class SearchViewModel {
         let current = Set(state.searchCriteria[key.sid]?.map(\.scid) ?? [])
         for stale in Array(serviceResults.keys) where stale.sid == key.sid && !current.contains(stale.scid) {
             serviceResults.removeValue(forKey: stale)
+        }
+        if serviceResults.keys.contains(where: { $0.sid == key.sid }) {
+            answeredSIDs.insert(key.sid)
         }
     }
 
@@ -508,9 +517,11 @@ final class SearchViewModel {
     func registerSubSource(_ item: BrowseItem, sid: Int) {
         discoveredSubSources[sid] = MusicSource(sid: sid, name: item.name, imageURL: item.imageURL, type: "heos_server")
     }
+}
 
-    // MARK: - Filter Actions
+// MARK: - Filter Actions
 
+extension SearchViewModel {
     func selectCategoryFilter(_ scid: Int?) {
         if selectedCategoryFilter == scid {
             selectedCategoryFilter = nil
@@ -530,7 +541,7 @@ final class SearchViewModel {
     }
 
     /// Re-runs the search after a filter change (same query, no typing debounce).
-    /// No-op when every targeted service already has results -- switching is then
+    /// No-op when every targeted service already answered the query -- switching is then
     /// a pure display filter handled by `filteredServiceSIDs`.
     private func rerunSearchForCurrentQuery() {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -542,12 +553,11 @@ final class SearchViewModel {
         })
     }
 
-    /// True when the current service filter targets a service with no cached results.
+    /// True when the current service filter targets a service that has not answered the current query.
     private var hasUnloadedTargetServices: Bool {
-        let cachedSIDs = Set(serviceResults.keys.map(\.sid))
         if let sid = selectedServiceFilter {
-            return !cachedSIDs.contains(sid)
+            return !answeredSIDs.contains(sid)
         }
-        return allSearchableServices.contains { !cachedSIDs.contains($0.sid) }
+        return allSearchableServices.contains { !answeredSIDs.contains($0.sid) }
     }
 }

@@ -706,6 +706,34 @@ final class SearchViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testRemovingAFilterMidSearchSearchesWhatStillShowsTheLastQuery() async {
+        await withIsolatedStores { _ in
+            let mock = MockAudioService()
+            let state = AppState()
+            state.musicSources = [
+                MusicSource(sid: 10, name: "Tidal", type: "music_service"),
+                MusicSource(sid: 13, name: "Qobuz", type: "music_service"),
+            ]
+            state.searchCriteria = [10: [SearchCriteria(scid: 1, name: "Artist")], 13: []]
+            let vm = SearchViewModel(service: mock, state: state)
+            vm.onQueryChanged("beatles")
+            await waitUntil { !vm.isSearching && mock.calls.count == 1 }
+
+            state.searchCriteria[13] = [SearchCriteria(scid: 2, name: "Artist")]
+            mock.searchDelays = [1: .seconds(5), 2: .seconds(5)]
+            vm.onQueryChanged("stones")
+            await waitUntil { mock.calls.count == 3 }
+            vm.selectServiceFilter(13)
+            vm.selectServiceFilter(13)
+            let tidalSearches = { mock.calls.filter { $0 == "search:10:stones:1" }.count }
+            await waitUntil(timeout: 1) { tidalSearches() == 2 }
+
+            XCTAssertEqual(tidalSearches(), 2)
+            vm.clearSearch()
+        }
+    }
+
+    @MainActor
     func testLocalServersAreAskedFirst() {
         let artist = [SearchCriteria(scid: 1, name: "Artist")]
         let state = AppState()
