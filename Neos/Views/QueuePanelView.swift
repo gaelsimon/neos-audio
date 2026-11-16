@@ -167,7 +167,6 @@ struct QueuePanelView: View {
                         externalLink: ExternalLinkMenu.make(for: queueItem, sourceName: nil),
                         state: state
                     )
-                    .id("now-playing")
                     .bareListRow()
                 } else {
                     // Standalone now playing (station or not in queue)
@@ -182,7 +181,6 @@ struct QueuePanelView: View {
                         externalLink: ExternalLinkMenu.make(for: state.nowPlaying, sources: state.musicSources),
                         state: state
                     )
-                    .id("now-playing")
                     .bareListRow()
                 }
             }

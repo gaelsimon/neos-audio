@@ -68,6 +68,26 @@ final class DemoQueuePanelTests: DemoTestCase {
         XCTAssertTrue(nextTrack.count > 0 || panel.upNextSection.exists, "Up next section should have content")
     }
 
+    /// The inspector keeps the panel while it is closed; it must still show what started meanwhile.
+    func testAStationStartedWhileThePanelWasClosedShowsWhenItOpens() {
+        ensurePanelOpen()
+        waitForElement(panel.nowPlayingSection)
+        ensurePanelClosed()
+        SidebarScreen(app: app).sourceButton(sid: 3).click()
+        let localRadio = app.buttons["Local Radio"].firstMatch
+        waitForElement(localRadio)
+        localRadio.click()
+        let station = app.buttons.matching(NSPredicate(format: "label ENDSWITH %@", "Eclectic FM")).firstMatch
+        waitForElement(station)
+        station.click()
+
+        ensurePanelOpen()
+
+        let row = app.buttons.matching(identifier: AccessibilityID.QueuePanel.nowPlayingSection)
+            .matching(NSPredicate(format: "label == %@", "Eclectic FM")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "The panel should show the station that started while it was closed")
+    }
+
     func testEmptyStateNotVisibleWhenPlaying() {
         ensurePanelOpen()
         waitForElement(panel.nowPlayingSection)
