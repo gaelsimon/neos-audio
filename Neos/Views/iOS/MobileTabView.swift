@@ -25,7 +25,8 @@ struct MobileTabView: View {
                     MiniPlayerAccessory(state: state, playerVM: container.playerVM)
                         .disabled(!state.isConnected)
                 }
-                .tabBarMinimizeBehavior(.onScrollDown)
+                // iOS 27 ends the search results under the mini player while their tab bar may shrink.
+                .tabBarMinimizeBehavior(selection == .search ? .never : .onScrollDown)
                 .environment(\.miniPlayerInTabBar, true)
         } else {
             tabs
@@ -71,21 +72,22 @@ struct MobileTabView: View {
                 }
             }
             .hidden(!showsPadChrome)
-            .defaultVisibility(.hidden, for: .tabBar)
+            // On the section: iPadOS 27 ignores it on the tabs inside.
+            .tabPlacement(.sidebarOnly)
             TabSection("Services") {
                 ForEach(sources.services) { source in
                     sourceTab(source, title: source.name, icon: SidebarIcon.image(for: source))
                 }
             }
             .hidden(!showsPadChrome)
-            .defaultVisibility(.hidden, for: .tabBar)
+            .tabPlacement(.sidebarOnly)
             TabSection("Local") {
                 ForEach(sources.local) { source in
                     sourceTab(source, title: source.name, icon: SidebarIcon.image(for: source))
                 }
             }
             .hidden(!showsPadChrome)
-            .defaultVisibility(.hidden, for: .tabBar)
+            .tabPlacement(.sidebarOnly)
         }
         .tabViewStyle(.sidebarAdaptable)
         .environment(\.isSidebarShowing, $isSidebarShowing)
