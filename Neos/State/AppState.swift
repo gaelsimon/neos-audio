@@ -410,11 +410,11 @@ final class AppState: StateUpdater {
         // Cache mid → imageURL for later lookup (e.g. favorites with empty image_url)
         if !enrichedMedia.imageURL.isEmpty {
             var entries: [(mid: String, imageURL: String)] = []
-            if !enrichedMedia.mid.isEmpty {
+            if !enrichedMedia.mid.isEmpty, enrichedMedia.mid != HEOSConstants.urlStreamPlaceholderID {
                 entries.append((mid: enrichedMedia.mid, imageURL: enrichedMedia.imageURL))
             }
-            // Station ID lives in albumID (e.g. "s44491"), which matches favorites mid
-            if !enrichedMedia.albumID.isEmpty, enrichedMedia.albumID != enrichedMedia.mid {
+            // A station's albumID is its ID (e.g. "s44491"), which matches favorites mid; a track's names no image.
+            if enrichedMedia.type == .station, !enrichedMedia.albumID.isEmpty, enrichedMedia.albumID != enrichedMedia.mid {
                 entries.append((mid: enrichedMedia.albumID, imageURL: enrichedMedia.imageURL))
             }
             imageCache.cacheImageEntries(entries)

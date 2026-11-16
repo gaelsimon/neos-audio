@@ -18,4 +18,7 @@ enum HEOSConstants {
 
     /// Local Music source ID: USB drives and DLNA servers.
     static let localMusicSID = 1024
+
+    /// The mid and album id a speaker reports for every raw URL stream, and SoundCloud as its tracks' album id.
+    static let urlStreamPlaceholderID = "1"
 }

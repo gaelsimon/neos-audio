@@ -32,9 +32,9 @@ final class ImageCacheState {
             return custom
         }
 
-        // 2. Auto-discovered URL from a previous browse
+        // 2. Auto-discovered URL from a previous browse; the URL streams' placeholder names no media.
         if originalURL.isEmpty {
-            if let cached = cachedImageURLs[mid], !cached.isEmpty {
+            if mid != HEOSConstants.urlStreamPlaceholderID, let cached = cachedImageURLs[mid], !cached.isEmpty {
                 return cached
             }
             if let alias = aliasedMID, let cached = cachedImageURLs[alias], !cached.isEmpty {

@@ -778,6 +778,46 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.nowPlaying.imageURL, "https://cdn-profiles.tunein.com/s25419/images/logod.png?t=1")
     }
 
+    /// What the Marantz reports for a raw URL stream, a TuneIn custom URL among them.
+    private let urlStream = NowPlayingMedia(
+        type: .song, song: "Url Stream", album: "Url Stream", artist: "Url Stream",
+        albumID: "1", mid: "1", qid: 1, sid: 1024
+    )
+
+    @MainActor
+    func testAURLStreamTakesNoImageFromAnEarlierTrack() {
+        let state = AppState()
+        // SoundCloud tracks report "1" as their album id, the URL streams' placeholder.
+        state.setNowPlaying(NowPlayingMedia(
+            type: .song, song: "Shambhala", imageURL: "https://i1.sndcdn.com/\(UUID().uuidString).jpg",
+            albumID: "1", mid: "soundcloud:tracks:\(UUID().uuidString)", sid: 9
+        ))
+
+        state.setNowPlaying(urlStream)
+
+        XCTAssertEqual(state.resolvedImageURL(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL), "")
+    }
+
+    @MainActor
+    func testATracksAlbumIDKeysNoImage() {
+        let state = AppState()
+        let album = "album-\(UUID().uuidString)"
+
+        state.setNowPlaying(NowPlayingMedia(type: .song, song: "Track", imageURL: "https://art/x.jpg", albumID: album, mid: "t1"))
+
+        XCTAssertNil(state.cachedImageURLs[album])
+    }
+
+    @MainActor
+    func testAURLStreamsImageIsNotKeptUnderThePlaceholder() {
+        let state = AppState()
+        let image = "https://art/\(UUID().uuidString).jpg"
+
+        state.setNowPlaying(NowPlayingMedia(type: .song, song: "Url Stream", imageURL: image, albumID: "1", mid: "1", sid: 1024))
+
+        XCTAssertNotEqual(state.cachedImageURLs["1"], image)
+    }
+
     @MainActor
     func testATrackWithoutArtworkTakesNoStationsImage() {
         let state = AppState()
