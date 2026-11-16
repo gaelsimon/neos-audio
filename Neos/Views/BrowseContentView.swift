@@ -116,9 +116,11 @@ struct BrowseContentView: View {
 
     // MARK: - Scrollable Content
 
+    #if os(macOS)
     private var visibleTopID: Binding<String?> {
         Binding(get: { browseVM.visibleTopID }, set: { browseVM.visibleTopID = $0 })
     }
+    #endif
 
     private var scrollableContent: some View {
         // Read here, not inside .background: @Observable only tracks browseVM.items from the body.
@@ -169,8 +171,10 @@ struct BrowseContentView: View {
                 }
             }
         }
-        // Back seeds the binding from history, and a new scroll view opens on that row.
+        #if os(macOS)
+        // Back seeds the binding from history; iOS keeps each page alive, and there it stopped flicks on the first row.
         .scrollPosition(id: visibleTopID, anchor: .top)
+        #endif
         .coordinateSpace(name: "browse_scroll")
         #if os(macOS)
         .ignoresSafeArea(edges: backdropURL == nil ? [] : .top)

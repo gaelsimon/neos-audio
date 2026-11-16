@@ -25,6 +25,8 @@ struct MobileSearchView: View {
                 SearchResultsView(state: state, searchVM: searchVM, browseVM: model, service: searchVM.service)
             }
         }
+        // Results come in as the query is typed, so scrolling them is how the keyboard goes away.
+        .scrollDismissesKeyboard(.immediately)
         .navigationTitle("Search")
         .searchable(
             text: Binding(get: { searchVM.query }, set: { searchVM.onQueryChanged($0) }),

@@ -36,6 +36,22 @@ final class NeosMobileLayoutTests: MobileDemoTestCase {
         XCTAssertTrue(element(AccessibilityID.TrackList.row(120)).exists, "The last track should be on screen")
     }
 
+    /// A page that opens on its artwork must give it back to a flick, not stop on the first track.
+    func testAFlickBackUpReachesTheArtwork() {
+        openLibraryPage("Deezer")
+        open("Playlists", "Road Trip")
+        let firstTrack = element(AccessibilityID.TrackList.row(1))
+        XCTAssertTrue(firstTrack.waitForExistence(timeout: 5), "The playlist never showed its tracks")
+        Thread.sleep(forTimeInterval: 1)
+        let opening = firstTrack.frame.minY
+        let page = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
+        page.press(forDuration: 0.1, thenDragTo: page.withOffset(CGVector(dx: 0, dy: -700)), withVelocity: .slow, thenHoldForDuration: 0.3)
+
+        app.windows.firstMatch.swipeDown(velocity: .default)
+
+        XCTAssertTrue(waitUntil { firstTrack.exists && abs(firstTrack.frame.minY - opening) < 1 }, "The flick stopped short of the artwork")
+    }
+
     func testAGridEndsAboveThePlayer() {
         openLibraryPage("Deezer")
         open("Artists", "The Velvet Hours")

@@ -41,6 +41,21 @@ final class NeosMobileSearchTests: MobileDemoTestCase {
         XCTAssertTrue(waitUntil { nowPlaying.hasPrefix("Paper Hearts") }, "Playing \(nowPlaying)")
     }
 
+    func testScrollingTheResultsPutsTheKeyboardAway() {
+        tab("Search").tap()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "No search field")
+        field.tap()
+        field.typeText("mi")
+        XCTAssertTrue(element(AccessibilityID.Search.resultsView).waitForExistence(timeout: 5), "The search never answered")
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard should be up while typing")
+
+        let results = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+        results.press(forDuration: 0.1, thenDragTo: results.withOffset(CGVector(dx: 0, dy: -150)), withVelocity: .default, thenHoldForDuration: 0.2)
+
+        XCTAssertTrue(waitUntil { !app.keyboards.firstMatch.exists }, "Scrolling the results should put the keyboard away")
+    }
+
     func testTheTabsAreInReachOfTheResults() {
         search("mi")
         if isPad, #available(iOS 26, *) {
