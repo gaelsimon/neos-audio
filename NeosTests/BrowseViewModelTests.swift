@@ -1474,6 +1474,29 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testARefusedBrowseKeepsTheAccountTheSpeakerStillHolds() async {
+        let state = AppState()
+        state.signedInUser = "user"
+        var reported: [String?] = []
+        state.onAccountReported = { reported.append($0) }
+        let mock = MockAudioService()
+        mock.accountUser = "user"
+        let viewModel = BrowseViewModel(
+            service: mock,
+            state: state,
+            browseSource: { _ in
+                throw NSError(domain: "heos", code: 8, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+            },
+            browseContainer: { _, _, _ in MockData.deezerRoot }
+        )
+
+        viewModel.selectSource(MusicSource(sid: 9, name: "SoundCloud", type: "music_service", available: true))
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(reported.count, 0, "Reporting a lost account sends a sign-in")
+    }
+
+    @MainActor
     func testAuthErrorsAreRecognisedByTheirWording() {
         XCTAssertTrue(BrowseViewModel.isAuthError("User not logged in"))
         XCTAssertTrue(BrowseViewModel.isAuthError("Not signed in"))
@@ -1481,15 +1504,93 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
-    func testReportedBrowseErrorKeepsTheAccountWhenItIsNotAboutAuth() {
+    func testReportedBrowseErrorKeepsTheAccountWhenItIsNotAboutAuth() async {
         let state = AppState()
         state.signedInUser = "user"
         let viewModel = BrowseViewModel(service: MockAudioService(), state: state)
 
-        viewModel.reportBrowseError(NSError(domain: "heos", code: 12, userInfo: [NSLocalizedDescriptionKey: "System error"]))
+        await viewModel.reportBrowseError(
+            NSError(domain: "heos", code: 12, userInfo: [NSLocalizedDescriptionKey: "System error"]),
+            requestID: viewModel.beginBrowseRequest()
+        )
 
         XCTAssertEqual(viewModel.errorMessage, "System error")
         XCTAssertEqual(state.signedInUser, "user")
+    }
+
+    @MainActor
+    private func refusedViewModel(signedInUser: String?, service: MockAudioService) -> BrowseViewModel {
+        let state = AppState()
+        state.signedInUser = signedInUser
+        return BrowseViewModel(
+            service: service,
+            state: state,
+            browseSource: { _ in
+                throw NSError(domain: "heos", code: 8, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+            },
+            browseContainer: { _, _, _ in MockData.deezerRoot }
+        )
+    }
+
+    private let soundCloud = MusicSource(sid: 9, name: "SoundCloud", type: "music_service", available: true)
+
+    @MainActor
+    func testARefusalOnAnAccountTheSpeakerHoldsBlamesTheServiceLink() async {
+        let mock = MockAudioService()
+        mock.accountUser = "user"
+        let viewModel = refusedViewModel(signedInUser: "user", service: mock)
+
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(viewModel.refusedAccess, .serviceLinkExpired)
+    }
+
+    @MainActor
+    func testARefusalAfterTheSpeakerDroppedItsAccountAsksToSignIn() async {
+        let viewModel = refusedViewModel(signedInUser: "user", service: MockAudioService())
+
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(viewModel.refusedAccess, .accountSignedOut)
+    }
+
+    @MainActor
+    func testARefusalWhileSignedOutAsksToSignInWithoutAskingTheSpeaker() async {
+        let mock = MockAudioService()
+        let viewModel = refusedViewModel(signedInUser: nil, service: mock)
+
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(viewModel.refusedAccess, .accountSignedOut)
+        XCTAssertFalse(mock.calls.contains("checkAccount"))
+    }
+
+    @MainActor
+    func testARefusalShowsWhyTheSpeakerCouldNotBeAsked() async {
+        let mock = MockAudioService()
+        mock.checkAccountError = NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Timed out"])
+        let viewModel = refusedViewModel(signedInUser: "user", service: mock)
+
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(viewModel.errorMessage, "Timed out")
+        XCTAssertNil(viewModel.refusedAccess)
+    }
+
+    @MainActor
+    func testAnErrorThatIsNotARefusalHasNoRefusedAccess() async {
+        let viewModel = BrowseViewModel(service: MockAudioService(), state: AppState())
+
+        await viewModel.reportBrowseError(
+            NSError(domain: "heos", code: 12, userInfo: [NSLocalizedDescriptionKey: "System error"]),
+            requestID: viewModel.beginBrowseRequest()
+        )
+
+        XCTAssertNil(viewModel.refusedAccess)
     }
 }
 

@@ -74,14 +74,17 @@ struct BrowseContentView: View {
                !MusicSource.listed(state.musicSources, signedIn: state.signedInUser != nil).contains(where: { $0.sid == source.sid }) {
                 unavailableServiceView(source)
             } else if let error = browseVM.errorMessage {
-                if isAuthError(error) {
+                switch browseVM.refusedAccess {
+                case .accountSignedOut:
                     SignInPromptView(
                         title: "Sign in to access this service",
                         message: "Connect your HEOS account to browse and play from streaming services.",
                         style: .centered,
                         onSignIn: { browseVM.navigateToSettings() }
                     )
-                } else {
+                case .serviceLinkExpired:
+                    expiredServiceLinkView
+                case nil:
                     errorView(error)
                 }
             } else if browseVM.items.isEmpty && !browseVM.isLoading {

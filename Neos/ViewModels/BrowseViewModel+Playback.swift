@@ -187,7 +187,7 @@ extension BrowseViewModel {
                 #endif
             } catch {
                 guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                reportBrowseError(error)
+                await reportBrowseError(error, requestID: requestID)
             }
             guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoading = false
@@ -223,7 +223,7 @@ extension BrowseViewModel {
                 }
             } catch {
                 guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                reportBrowseError(error)
+                await reportBrowseError(error, requestID: requestID)
             }
             guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoading = false
@@ -249,17 +249,33 @@ extension BrowseViewModel {
 
     // MARK: - Errors
 
+    enum RefusedAccess {
+        case accountSignedOut
+        case serviceLinkExpired
+    }
+
+    var refusedAccess: RefusedAccess? {
+        guard let errorMessage, Self.isAuthError(errorMessage) else { return nil }
+        return state.signedInUser == nil ? .accountSignedOut : .serviceLinkExpired
+    }
+
     static func isAuthError(_ message: String) -> Bool {
         let lower = message.lowercased()
         return lower.contains("not logged in") || lower.contains("not signed in")
     }
 
-    // The speaker drops its account without an event at times; the first refused browse is how Neos learns of it.
-    func reportBrowseError(_ error: Error) {
-        errorMessage = error.localizedDescription
+    // A service whose own link expired refuses like a speaker that dropped its account, so the speaker is asked which it is.
+    func reportBrowseError(_ error: Error, requestID: Int) async {
+        var shown = error
         if state.signedInUser != nil, Self.isAuthError(error.localizedDescription) {
-            state.setSignedInUser(nil)
+            do {
+                if try await service.checkAccount() == nil { state.setSignedInUser(nil) }
+            } catch {
+                shown = error
+            }
+            guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
         }
+        errorMessage = shown.localizedDescription
     }
 
     // MARK: - Scroll Position
