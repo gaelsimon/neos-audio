@@ -64,7 +64,7 @@ With no credentials in the environment this produces an ad-hoc signed DMG in `bu
 the Gatekeeper warning on first launch. Set `CODE_SIGN_IDENTITY`, `DEVELOPMENT_TEAM` and the
 `NOTARY_*` variables to get a signed, notarised one.
 
-### Uploading to the Mac App Store
+### Uploading to the App Store
 
 ```bash
 DEVELOPMENT_TEAM=XXXXXXXXXX \
@@ -82,6 +82,11 @@ installer package with identities from the keychain, and uploads with `altool`. 
 cloud-managed signing is not used: when the certificate name has an accented letter, its export
 writes a designated requirement the signature does not satisfy, and App Store Connect rejects the
 build (ITMS-90238). `DESTINATION=export` keeps the package local instead of uploading it.
+
+`PLATFORM=ios` builds the iPhone and iPad app the same way, with an iOS App Store profile
+(`.mobileprovision`) and no installer identity. The device archive is left unsigned, and the script
+signs it and zips it into an `.ipa`. The iOS app shares the Mac app's bundle identifier and its App
+Store Connect record, so a purchase covers both.
 
 ### Signing and notarisation in CI
 
