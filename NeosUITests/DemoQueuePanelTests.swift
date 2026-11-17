@@ -80,6 +80,12 @@ final class DemoQueuePanelTests: DemoTestCase {
         let station = app.buttons.matching(NSPredicate(format: "label ENDSWITH %@", "Eclectic FM")).firstMatch
         waitForElement(station)
         station.click()
+        // A click while the bar changes to the station can miss the toggle.
+        let barShowsStation = expectation(
+            for: NSPredicate(format: "value == %@", "Eclectic FM"),
+            evaluatedWith: PlayerScreen(app: app).songTitle
+        )
+        wait(for: [barShowsStation], timeout: 5)
 
         ensurePanelOpen()
 
