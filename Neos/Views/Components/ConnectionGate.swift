@@ -6,6 +6,8 @@ struct ConnectionGate<Content: View>: View {
     let speakerVM: SpeakerListViewModel
     /// True for a moment after the session's first connection, while the splash says so.
     @Binding var isHoldingSplash: Bool
+    /// False where the window lays the banner over chrome of its own, which covers the gate.
+    var showsBanner = true
     @ViewBuilder let content: () -> Content
 
     /// Armed once per session, so only the first connect gets the splash.
@@ -35,9 +37,8 @@ struct ConnectionGate<Content: View>: View {
             }
         }
         .overlay(alignment: .top) {
-            if presentation.showsReconnectingBanner {
-                ReconnectingBanner(deviceName: deviceName, onChooseAnother: { speakerVM.disconnect() })
-                    .transition(.move(edge: .top).combined(with: .opacity))
+            if showsBanner {
+                ReconnectingBannerSlot(state: state, speakerVM: speakerVM, isHoldingSplash: isHoldingSplash)
             }
         }
         .animation(.easeInOut(duration: DS.Animation.standard), value: presentation.showsReconnectingBanner)
@@ -70,11 +71,7 @@ struct ConnectionGate<Content: View>: View {
         }
     }
 
-    private var deviceName: String {
-        state.selectedPlayerDisplayName
-            ?? state.connectedDevice.map { state.displayName(for: $0) }
-            ?? "Speaker"
-    }
+    private var deviceName: String { state.connectionDeviceName }
 
     /// Content updates in place, without fading.
     private var splash: some View {
@@ -97,5 +94,38 @@ struct ConnectionGate<Content: View>: View {
                 }
             }
         }
+    }
+}
+
+/// The reconnecting banner, sliding in at the top of what it is laid over.
+struct ReconnectingBannerSlot: View {
+    let state: AppState
+    let speakerVM: SpeakerListViewModel
+    let isHoldingSplash: Bool
+
+    private var isShown: Bool {
+        ConnectionPresentation(
+            connectionState: state.connectionState,
+            hasEstablishedSession: state.hasEstablishedSession,
+            isHoldingConnectedSplash: isHoldingSplash
+        ).showsReconnectingBanner
+    }
+
+    var body: some View {
+        ZStack {
+            if isShown {
+                ReconnectingBanner(deviceName: state.connectionDeviceName, onChooseAnother: { speakerVM.disconnect() })
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: DS.Animation.standard), value: isShown)
+    }
+}
+
+private extension AppState {
+    var connectionDeviceName: String {
+        selectedPlayerDisplayName
+            ?? connectedDevice.map { displayName(for: $0) }
+            ?? "Speaker"
     }
 }

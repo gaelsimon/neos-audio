@@ -35,6 +35,30 @@ final class QueuePanelViewModelTests: XCTestCase {
         XCTAssertFalse(mock.calls.contains("getQueue:42"))
     }
 
+    // MARK: - isQueueTabEmpty
+
+    @MainActor
+    func testTheQueueTabIsEmptyOnceNothingPlaysThoughHistoryRemains() {
+        let state = AppState()
+        let vm = QueuePanelViewModel(service: MockAudioService(), state: state)
+
+        vm.historyTracks = [BrowseItem(name: "Past", mid: "m2")]
+        vm.refreshDisplayData()
+
+        XCTAssertEqual([vm.isQueueTabEmpty, vm.isEmpty], [true, false])
+    }
+
+    @MainActor
+    func testTheQueueTabIsNotEmptyWhileATrackPlays() {
+        let state = AppState()
+        let vm = QueuePanelViewModel(service: MockAudioService(), state: state)
+
+        state.setNowPlaying(NowPlayingMedia(mid: "m1"))
+        vm.refreshDisplayData()
+
+        XCTAssertFalse(vm.isQueueTabEmpty)
+    }
+
     // MARK: - nowPlayingQueueItem
 
     @MainActor

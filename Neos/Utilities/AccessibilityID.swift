@@ -178,6 +178,7 @@ enum AccessibilityID {
         static let nowPlayingSection = "queuePanel.nowPlayingSection"
         static let upNextSection = "queuePanel.upNextSection"
         static let emptyState = "queuePanel.emptyState"
+        static let closeButton = "queuePanel.closeButton"
 
         static func historyRow(_ index: Int) -> String {
             "queuePanel.historyRow.\(index)"

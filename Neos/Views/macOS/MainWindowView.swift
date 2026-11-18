@@ -6,6 +6,7 @@ struct MainWindowView: View {
     let container: ViewModelContainer
     @State private var showConnectedSplash = false
     @State private var playerBarHeight: CGFloat = 0
+    @State private var pageWidth: CGFloat = 0
 
     private var playerVM: PlayerViewModel { container.playerVM }
     private var speakerVM: SpeakerListViewModel { container.speakerVM }
@@ -23,7 +24,7 @@ struct MainWindowView: View {
     }
 
     var body: some View {
-        ConnectionGate(state: state, speakerVM: speakerVM, isHoldingSplash: $showConnectedSplash) {
+        ConnectionGate(state: state, speakerVM: speakerVM, isHoldingSplash: $showConnectedSplash, showsBanner: false) {
             HStack(spacing: 0) {
                 SidebarView(
                     state: state,
@@ -48,11 +49,37 @@ struct MainWindowView: View {
         .animation(.easeInOut(duration: 0.35), value: state.isNowPlayingCanvasOpen)
         // The inspector keeps an inset set around it from the pages, so each side makes room for the bar itself.
         .safeAreaPadding(.bottom, playerBarHeight)
-        // Beside the full-screen player too, and above the player bar, which keeps the window's width.
+        // The page's width follows the column while it slides, which the column's own width does not.
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
+        // Beside the full-screen player too, and between the top bar and the player bar, which both keep the window's width.
         .inspector(isPresented: Bindable(state).isQueuePanelOpen) {
-            QueuePanelView(state: state, viewModel: queuePanelVM)
-                .safeAreaPadding(.bottom, playerBarHeight)
-                .inspectorColumnWidth(min: 320, ideal: 380, max: 480)
+            QueuePanelCard(
+                state: state,
+                viewModel: queuePanelVM,
+                playerBarHeight: playerBarHeight,
+                onClear: { container.queueVM.clearQueue() }
+            )
+            .inspectorColumnWidth(min: 320, ideal: 380, max: 480)
+        }
+        // Under the top bar, whose pills cross the column's edge.
+        .overlay {
+            QueuePanelColumnEdgeCover(state: state, pageWidth: pageWidth)
+        }
+        .overlay(alignment: .top) {
+            if showsContent && !showConnectedSplash {
+                TopBarView(state: state, container: container)
+                    .padding(.leading, DS.Sidebar.expandedWidth)
+                    .ignoresSafeArea(edges: .top)
+                    // It lies above the full-screen player, so it steps aside for it.
+                    .opacity(state.isNowPlayingCanvasOpen ? 0 : 1)
+                    .allowsHitTesting(!state.isNowPlayingCanvasOpen)
+                    .accessibilityHidden(state.isNowPlayingCanvasOpen)
+            }
+        }
+        .animation(.easeInOut(duration: 0.35), value: state.isNowPlayingCanvasOpen)
+        // Above the top bar, which it crosses in a narrow window.
+        .overlay(alignment: .top) {
+            ReconnectingBannerSlot(state: state, speakerVM: speakerVM, isHoldingSplash: showConnectedSplash)
         }
         .overlay(alignment: .bottom) {
             playerBar
@@ -105,8 +132,7 @@ struct MainWindowView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(DS.Colors.background)
         }
-        // On the container, not on the identity-switching Group: a rebuild there recreated the search field mid-typing.
-        .safeAreaInset(edge: .top, spacing: 0) { TopBarView(state: state, container: container) }
+        .safeAreaPadding(.top, DS.TopBar.height)
         .ignoresSafeArea(edges: .top)
         .overlay(alignment: .bottom) { ToastOverlay(state: state) }
     }

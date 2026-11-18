@@ -65,6 +65,8 @@ final class QueuePanelViewModel {
     private(set) var recentSongs: [RecentItem] = []
     private(set) var recentStations: [BrowseItem] = []
     private(set) var isEmpty: Bool = true
+    /// Nothing for the Queue tab to list, though Recently Played may have entries.
+    private(set) var isQueueTabEmpty = true
 
     init(service: any AudioService, state: AppState) {
         self.service = service
@@ -111,11 +113,8 @@ final class QueuePanelViewModel {
             return mid != nowMid
         }.reversed().suffix(10).reversed()
 
-        isEmpty = recentSongs.isEmpty
-            && recentStations.isEmpty
-            && nowPlayingQueueItem == nil
-            && nowMid.isEmpty
-            && upNextItems.isEmpty
+        isQueueTabEmpty = nowPlayingQueueItem == nil && nowMid.isEmpty && upNextItems.isEmpty
+        isEmpty = recentSongs.isEmpty && recentStations.isEmpty && isQueueTabEmpty
     }
 
     // MARK: - History Loading
