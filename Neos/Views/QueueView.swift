@@ -20,6 +20,7 @@ struct QueueView: View {
 
             if state.queue.isEmpty && !viewModel.isLoadingQueue {
                 ContentUnavailableView("Queue Is Empty", systemImage: DS.Icons.playlists)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 // MARK: - Column Header
 
