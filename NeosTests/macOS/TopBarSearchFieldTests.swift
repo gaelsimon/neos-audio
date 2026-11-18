@@ -99,6 +99,24 @@ final class TopBarSearchFieldTests: XCTestCase {
         XCTAssertEqual(clears, 1)
     }
 
+    func testAClickKeepsTheFocusWhenTheBarRedrawsBeforeTheFieldReportsIt() throws {
+        let model = FieldModel()
+        let host = NSHostingView(rootView: FieldHarness(model: model))
+        host.frame = CGRect(x: 0, y: 0, width: 260, height: 32)
+        let window = NSWindow(contentRect: host.frame, styleMask: [], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        self.window = window
+        let field = try XCTUnwrap(host.firstDescendant(ofType: FocusTrackingSearchField.self))
+
+        window.makeFirstResponder(field)
+        model.text = "V"
+        host.layoutSubtreeIfNeeded()
+
+        XCTAssertNotNil(field.currentEditor(), "The field should keep the focus a click gave it")
+    }
+
     func testReturnSubmitsTheQuery() throws {
         let field = try focusedField()
         let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
@@ -106,6 +124,21 @@ final class TopBarSearchFieldTests: XCTestCase {
         editor.doCommand(by: #selector(NSResponder.insertNewline(_:)))
 
         XCTAssertEqual(submits, 1)
+    }
+}
+
+@Observable
+private final class FieldModel {
+    var text = ""
+    var isFocused = false
+}
+
+private struct FieldHarness: View {
+    @Bindable var model: FieldModel
+
+    var body: some View {
+        TopBarSearchField(text: $model.text, isFocused: $model.isFocused, onClear: {}, onSubmit: {})
+            .frame(width: 260, height: 32)
     }
 }
 

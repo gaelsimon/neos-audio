@@ -26,9 +26,12 @@ struct TopBarSearchField: NSViewRepresentable {
             cancelButton.action = #selector(Coordinator.clear)
             cancelButton.setAccessibilityIdentifier(AccessibilityID.Search.clearButton)
         }
-        field.onFocusChange = { focused in
+        let coordinator = context.coordinator
+        field.onFocusChange = { [weak coordinator] focused in
+            coordinator?.reportingFocus = focused
             DispatchQueue.main.async {
-                context.coordinator.parent.isFocused = focused
+                coordinator?.reportingFocus = nil
+                coordinator?.parent.isFocused = focused
             }
         }
         return field
@@ -39,6 +42,8 @@ struct TopBarSearchField: NSViewRepresentable {
         if field.stringValue != text {
             field.stringValue = text
         }
+        // Until the field's report lands, the binding still holds the old focus.
+        guard context.coordinator.reportingFocus == nil else { return }
         if !isFocused && field.currentEditor() != nil {
             field.window?.makeFirstResponder(nil)
         }
@@ -57,6 +62,7 @@ struct TopBarSearchField: NSViewRepresentable {
 
     final class Coordinator: NSObject, NSSearchFieldDelegate {
         var parent: TopBarSearchField
+        var reportingFocus: Bool?
 
         init(_ parent: TopBarSearchField) {
             self.parent = parent
