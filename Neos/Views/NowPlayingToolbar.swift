@@ -281,6 +281,8 @@ struct NowPlayingToolbar: View {
                     trailingControls(showsSpeakerName: false, showsQuality: false, inlineVolume: true)
                     trailingControls(showsSpeakerName: false, showsQuality: false, inlineVolume: false)
                 }
+                // Animated, a switch back to the first variant stays drawn where the previous one stood.
+                .transaction(value: state.isNowPlayingCanvasOpen) { $0.animation = nil }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.horizontal, state.isNowPlayingCanvasOpen ? DS.Spacing.xxl : DS.Spacing.xl)
