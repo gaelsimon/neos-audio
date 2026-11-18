@@ -123,7 +123,7 @@ struct QueueView: View {
         .scrollContentBackground(.hidden)
         #else
         ScrollView {
-            VStack(spacing: DS.TrackList.rowSpacing) {
+            LazyVStack(spacing: DS.TrackList.rowSpacing) {
                 ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
                     queueRow(index: index, item: item)
                 }
