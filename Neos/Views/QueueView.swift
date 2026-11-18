@@ -114,11 +114,6 @@ struct QueueView: View {
                         }
                     }
             }
-
-            if viewModel.isLoadingMore {
-                loadingMoreRow
-                    .bareListRow()
-            }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -127,10 +122,6 @@ struct QueueView: View {
             LazyVStack(spacing: DS.TrackList.rowSpacing) {
                 ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
                     queueRow(index: index, item: item)
-                }
-
-                if viewModel.isLoadingMore {
-                    loadingMoreRow
                 }
             }
         }
@@ -144,7 +135,7 @@ struct QueueView: View {
             artist: item.artist,
             album: item.album,
             imageURL: item.imageURL,
-            isNowPlaying: state.nowPlaying.station == nil && item.qid == state.nowPlaying.qid,
+            isNowPlaying: state.nowPlaying.playsFromQueue && item.qid == state.nowPlaying.qid,
             showArtist: true,
             showAlbum: true,
             onAlbumTap: albumTapHandler(for: item),
@@ -156,21 +147,6 @@ struct QueueView: View {
             showsRemoveButton: !DS.removesRowsBySwiping
         ) {
             viewModel.playItem(item)
-        }
-        .onAppear {
-            if index >= state.queue.count - 5 {
-                viewModel.loadMoreQueue()
-            }
-        }
-    }
-
-
-    private var loadingMoreRow: some View {
-        HStack {
-            Spacer()
-            Spinner(size: 16, lineWidth: 2)
-                .padding()
-            Spacer()
         }
     }
 

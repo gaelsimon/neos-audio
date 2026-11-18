@@ -57,6 +57,12 @@ final class ViewModelContainer {
             if user == nil { account?.restoreSession() }
         }
 
+        let player = playerVM
+        state.onTrackMetadataWanted = { [weak player] in player?.startTrackMetadataObserver() }
+
+        let queue = queueVM
+        state.onRadioStarted = { [weak queue] in queue?.removeLeftoverStreams() }
+
         let speakers = speakerVM
         state.onDeviceDiscovered = { [weak speakers] device in
             speakers?.autoConnectIfCached(device)

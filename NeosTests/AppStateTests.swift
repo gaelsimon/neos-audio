@@ -1568,4 +1568,36 @@ final class AppStateTests: XCTestCase {
         state.setPlayerVolume(pid: 5002, level: 55)
         XCTAssertEqual(state.playerVolumes[5002], 55)
     }
+
+    // MARK: - A radio started from here
+
+    @MainActor
+    private func radioStarts(awaited: Bool, reports: [PlayState]) -> Int {
+        let state = AppState()
+        var starts = 0
+        state.onRadioStarted = { starts += 1 }
+        state.playback.awaitsRadioStart = awaited
+        reports.forEach(state.setPlayState)
+        return starts
+    }
+
+    @MainActor
+    func testTheSpeakerPlayingTheRadioAskedForReportsItsStart() {
+        XCTAssertEqual(radioStarts(awaited: true, reports: [.stop, .play]), 1)
+    }
+
+    @MainActor
+    func testARadioStartIsReportedOnce() {
+        XCTAssertEqual(radioStarts(awaited: true, reports: [.play, .pause, .play]), 1)
+    }
+
+    @MainActor
+    func testPlayWithNoRadioAskedForReportsNoStart() {
+        XCTAssertEqual(radioStarts(awaited: false, reports: [.play]), 0)
+    }
+
+    @MainActor
+    func testARadioStillLoadingHasNotStarted() {
+        XCTAssertEqual(radioStarts(awaited: true, reports: [.stop]), 0)
+    }
 }

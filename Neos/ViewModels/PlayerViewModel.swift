@@ -40,6 +40,7 @@ final class PlayerViewModel {
                 await withCheckedContinuation { continuation in
                     withObservationTracking {
                         _ = self.state.nowPlaying
+                        _ = self.state.playback.trackMetadataIsStale
                     } onChange: {
                         continuation.resume()
                     }
@@ -63,9 +64,11 @@ final class PlayerViewModel {
         let startTrack = state.nowPlaying
         for gap in metadataAttemptGaps {
             guard !Task.isCancelled else { return false }
-            guard !state.nowPlaying.mid.isEmpty else { return false }
+            // A stopped raw stream has no id at all, and its address is still the only way to name it.
+            guard !state.nowPlaying.mid.isEmpty || state.nowPlaying.isUnnamedStream else { return false }
             guard !state.nowPlaying.isDifferentTrack(from: startTrack) else { return true }
             let needsFetch = state.trackMetadata == nil || state.trackMetadata?.qualityDescription == nil
+                || state.playback.trackMetadataIsStale
             guard needsFetch else { return false }
             // Jittered, so grouped players do not all ask on the same beat.
             let delay = gap + gap * Double.random(in: -0.25...0.25)
@@ -80,7 +83,7 @@ final class PlayerViewModel {
         do {
             let metadata = try await service.fetchTrackMetadata()
             guard !Task.isCancelled else { return }
-            state.playback.trackMetadata = metadata
+            state.setTrackMetadata(metadata)
         } catch {
             playerLogger.debug("Metadata fetch failed (non-fatal): \(error.localizedDescription)")
         }

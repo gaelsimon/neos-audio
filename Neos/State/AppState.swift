@@ -124,6 +124,10 @@ final class AppState: StateUpdater {
     /// Called for every device discovery reports, so a remembered speaker can reconnect on its own.
     @ObservationIgnored var onDeviceDiscovered: ((DiscoveredDevice) -> Void)?
     @ObservationIgnored var onAccountReported: ((String?) -> Void)?
+    /// A raw stream's address is worth reading now, without waiting out the retry gaps.
+    @ObservationIgnored var onTrackMetadataWanted: (() -> Void)?
+    /// The speaker plays the radio that was asked for here.
+    @ObservationIgnored var onRadioStarted: (() -> Void)?
 
     // MARK: - Sub-States
 
@@ -359,39 +363,12 @@ final class AppState: StateUpdater {
 
     func setNowPlaying(_ media: NowPlayingMedia) {
         endTrackLoad()
-        var enrichedMedia = media
+        let contextWasUnbound = playback.pendingStreamContext.map { $0.enrichedDeviceMID == nil } ?? false
+        var enrichedMedia = namedByPlayContext(media)
 
-        // Enrich generic "Url Stream" metadata with context captured at play-time
-        if let ctx = playback.pendingStreamContext {
-            if ctx.pid != selectedPlayerID {
-                playback.pendingStreamContext = nil
-            } else if media.song == "Url Stream", Self.isEnrichable(media, by: ctx) {
-                if let name = ctx.stationName, !name.isEmpty {
-                    enrichedMedia = NowPlayingMedia(
-                        type: media.type, song: media.song, album: media.album,
-                        artist: media.artist,
-                        imageURL: media.imageURL.isEmpty ? ctx.imageURL : media.imageURL,
-                        albumID: media.albumID, mid: media.mid,
-                        qid: media.qid, sid: media.sid,
-                        station: name
-                    )
-                }
-                // Register alias so resolvedImageURL can find custom artwork via browse MID
-                if !ctx.browseMID.isEmpty, ctx.browseMID != media.mid {
-                    imageCache.registerStreamAlias(deviceMID: media.mid, browseMID: ctx.browseMID)
-                }
-                // Bind: further events for this stream keep enriching, another stream drops below.
-                playback.pendingStreamContext?.enrichedDeviceMID = media.mid
-            } else if media.mid != ctx.previousMID {
-                // Another stream took over, or a genuinely new track started; drop it.
-                playback.pendingStreamContext = nil
-            } else {
-                // Tail event of the track playing at capture; the stream is still starting.
-                playback.pendingStreamContext?.toleratedTail = true
-            }
-        }
-
-        enrichedMedia = withKnownStationArtwork(enrichedMedia)
+        let startsStream = contextWasUnbound && playback.pendingStreamContext?.enrichedDeviceMID != nil
+        enrichedMedia = keepingStreamName(enrichedMedia, startsStream: startsStream)
+        enrichedMedia = withKnownStationArtwork(withKnownStationName(enrichedMedia))
 
         // A different track, which on a station is a different song under the same mid.
         if enrichedMedia.isDifferentTrack(from: playback.nowPlaying) {
@@ -438,6 +415,11 @@ final class AppState: StateUpdater {
 
     func setTrackMetadata(_ metadata: TrackMetadata?) {
         playback.trackMetadata = metadata
+        guard playback.nowPlaying.isUnnamedStream else {
+            playback.trackMetadataIsStale = false
+            return
+        }
+        readStreamAddress(metadata?.streamURL)
     }
 
     func setVolume(_ level: Int) {

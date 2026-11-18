@@ -96,6 +96,51 @@ final class ImageCacheState {
         streamMIDAlias[deviceMID] = browseMID
     }
 
+    func removeStreamAlias(deviceMID: String) {
+        streamMIDAlias[deviceMID] = nil
+    }
+
+    // MARK: - Stations Saved By Address
+
+    struct StreamStation: Equatable {
+        /// Nil when the station was saved under its address alone.
+        let name: String?
+        let browseMID: String
+        let imageURL: String
+    }
+
+    private(set) var stationsByStream: [String: StreamStation] = [:]
+    private(set) var stationNames: [String: String] = [:]
+
+    /// By the station id a speaker echoes as the album id, by the row it was played from, or by its stream.
+    func stationName(for media: NowPlayingMedia) -> String? {
+        let ids = [media.albumID, streamMIDAlias[media.mid] ?? "", media.mid]
+        return ids.lazy.compactMap { self.stationNames[$0] }.first ?? station(forStream: media.mid)?.name
+    }
+
+    func rememberStations(from items: [BrowseItem]) {
+        for item in items where item.type == .station {
+            guard let mid = item.mid, !mid.isEmpty else { continue }
+            if !StreamAddress.isAddress(item.name), stationNames[mid] != item.name { stationNames[mid] = item.name }
+            guard let address = [mid, item.name].first(where: StreamAddress.isAddress) else { continue }
+            let station = StreamStation(
+                name: StreamAddress.isAddress(item.name) ? nil : item.name,
+                browseMID: mid,
+                imageURL: item.imageURL
+            )
+            let key = StreamAddress.withoutScheme(address)
+            if stationsByStream[key] != station { stationsByStream[key] = station }
+        }
+    }
+
+    func rememberStation(_ station: StreamStation, forStream address: String) {
+        stationsByStream[StreamAddress.withoutScheme(address)] = station
+    }
+
+    func station(forStream address: String) -> StreamStation? {
+        stationsByStream[StreamAddress.withoutScheme(address)]
+    }
+
     /// Clear all stream aliases (called on disconnect/reset).
     func resetAliases() {
         streamMIDAlias = [:]

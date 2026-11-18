@@ -21,4 +21,7 @@ enum HEOSConstants {
 
     /// The mid and album id a speaker reports for every raw URL stream, and SoundCloud as its tracks' album id.
     static let urlStreamPlaceholderID = "1"
+
+    /// What a speaker gives as the song, the artist and the album of every raw URL stream.
+    static let urlStreamTitle = "Url Stream"
 }

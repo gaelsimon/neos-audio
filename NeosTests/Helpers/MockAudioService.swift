@@ -24,6 +24,7 @@ final class MockAudioService: AudioService, @unchecked Sendable {
     var browseResult: BrowseResult = MockData.deezerRoot
     var historyResult: BrowseResult = MockData.historyRoot
     var queueItems: [QueueItem] = MockData.queueItems
+    var queueRangesAsked: [ClosedRange<Int>?] = []
     var groups: [SpeakerGroup] = []
     var searchCriteria: [SearchCriteria] = MockData.searchCriteria
     var getGroupsError: Error?
@@ -138,6 +139,7 @@ final class MockAudioService: AudioService, @unchecked Sendable {
 
     func getQueue(pid: Int, range: ClosedRange<Int>?) async throws -> [QueueItem] {
         calls.append("getQueue:\(pid)")
+        queueRangesAsked.append(range)
         if let error = getQueueError { throw error }
         return queueItems
     }
@@ -224,8 +226,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         calls.append("playStation:\(pid):sid=\(sid):cid=\(cid)")
     }
 
+    var playURLError: Error?
+
     func playURL(pid: Int, url: String) async throws {
         calls.append("playURL:\(pid)")
+        if let error = playURLError { throw error }
     }
 
     func playInput(pid: Int, input: String) async throws {

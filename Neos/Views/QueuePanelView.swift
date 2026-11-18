@@ -171,8 +171,8 @@ struct QueuePanelView: View {
                 } else {
                     // Standalone now playing (station or not in queue)
                     QueuePanelRow(
-                        name: state.nowPlaying.song,
-                        artist: state.nowPlaying.station ?? state.nowPlaying.artist,
+                        name: state.nowPlaying.standaloneRowTitle,
+                        artist: state.nowPlaying.standaloneRowSubtitle,
                         imageURL: state.resolvedImageURL(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL),
                         isStation: state.nowPlaying.station != nil,
                         isNowPlaying: true,

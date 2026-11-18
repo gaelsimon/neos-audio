@@ -487,6 +487,48 @@ final class PlayerViewModelTests: XCTestCase {
         return condition()
     }
 
+    /// Two raw streams look the same to the speaker's events, so the address is read again at each one.
+    @MainActor
+    func testAnEventForARawStreamReadsItsAddressAgain() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitrate: 192_000, codec: "AAC", streamURL: "https://stream.example.com/a.aac")
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+        let stream = NowPlayingMedia(song: "Url Stream", album: "Url Stream", artist: "Url Stream", mid: "1", qid: 4)
+        state.setNowPlaying(stream)
+        vm.startTrackMetadataObserver()
+        _ = await eventually { state.nowPlaying.displayedTitle == "a" }
+        let before = metadataFetchCount(mock)
+
+        mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitrate: 192_000, codec: "AAC", streamURL: "https://stream.example.com/b.aac")
+        state.setNowPlaying(stream)
+
+        let renamed = await eventually { state.nowPlaying.displayedTitle == "b" }
+        XCTAssertTrue(renamed, "fetches before \(before), after \(metadataFetchCount(mock))")
+    }
+
+    /// As the app wires it: every event for a raw stream restarts the reads.
+    @MainActor
+    func testAStreamFoundStoppedAtLaunchIsNamedOnceItsAddressIsRead() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitrate: 192_000, codec: "AAC", streamURL: "https://stream.example.com/a.aac")
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+        state.onTrackMetadataWanted = { [weak vm] in vm?.startTrackMetadataObserver() }
+        vm.startTrackMetadataObserver()
+        // Measured on a MODEL 40n: stopped, a raw stream comes with an empty mid and album id.
+        let stream = NowPlayingMedia(song: "Url Stream", album: "Url Stream", artist: "Url Stream", mid: "", qid: 1)
+
+        state.setPlayState(.stop)
+        state.setNowPlaying(stream)
+        state.setNowPlaying(stream)
+
+        let named = await eventually { state.nowPlaying.displayedTitle == "a" }
+        XCTAssertTrue(named, "title \(state.nowPlaying.displayedTitle), fetches \(metadataFetchCount(mock))")
+    }
+
     @MainActor
     func testATrackChangeDuringTheAttemptsIsPickedUpImmediately() async {
         let state = AppState()

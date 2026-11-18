@@ -9,6 +9,13 @@ extension String {
     }
 }
 
+extension String {
+    /// "128 kbps mp3", which a speaker sends in place of a name while a stream buffers.
+    var isBitrateLabel: Bool {
+        range(of: #"^\d+ kbps \w+$"#, options: .regularExpression) != nil
+    }
+}
+
 extension BrowseItem {
     var displayTitle: String { name.displayTitle }
 }
