@@ -128,24 +128,16 @@ struct NowPlayingToolbar: View {
                 .lineLimit(1)
                 .accessibilityIdentifier(AccessibilityID.Player.songTitle)
             if let station = state.nowPlaying.displayedStation {
-                Text(station)
-                    .typography(.secondary)
-                    .lineLimit(1)
-                    .accessibilityIdentifier(AccessibilityID.Player.artistName)
-            } else if !state.nowPlaying.artist.isEmpty {
-                if browseVM.isResolvingArtist {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Spinner(size: 12, lineWidth: 1.5)
-                        Text(state.nowPlaying.artist)
-                            .typography(.secondary)
-                            .lineLimit(1)
-                    }
-                    .accessibilityIdentifier(AccessibilityID.Player.artistName)
-                } else {
-                    CrossLink(state.nowPlaying.artist, action: canBrowseArtist ? navigateToArtist : nil)
+                followedByQuality {
+                    Text(station)
+                        .typography(.secondary)
                         .lineLimit(1)
                         .accessibilityIdentifier(AccessibilityID.Player.artistName)
                 }
+            } else if !state.nowPlaying.artist.isEmpty {
+                followedByQuality { artistLine }
+            } else if let quality = state.trackMetadata?.qualityDescription {
+                qualityText(quality)
             }
             if !state.nowPlaying.album.isEmpty, state.nowPlaying.station == nil {
                 CrossLink(state.nowPlaying.album, action: canBrowseAlbum ? navigateToAlbum : nil)
@@ -159,7 +151,46 @@ struct NowPlayingToolbar: View {
         })
     }
 
-    private func trailingControls(showsSpeakerName: Bool, showsQuality: Bool, inlineVolume: Bool) -> some View {
+    @ViewBuilder private var artistLine: some View {
+        if browseVM.isResolvingArtist {
+            HStack(spacing: DS.Spacing.xs) {
+                Spinner(size: 12, lineWidth: 1.5)
+                Text(state.nowPlaying.artist)
+                    .typography(.secondary)
+                    .lineLimit(1)
+            }
+            .accessibilityIdentifier(AccessibilityID.Player.artistName)
+        } else {
+            CrossLink(state.nowPlaying.artist, action: canBrowseArtist ? navigateToArtist : nil)
+                .lineLimit(1)
+                .accessibilityIdentifier(AccessibilityID.Player.artistName)
+        }
+    }
+
+    /// The quality is the first thing the line gives up when the name needs the room.
+    @ViewBuilder private func followedByQuality<Line: View>(@ViewBuilder _ line: () -> Line) -> some View {
+        if let quality = state.trackMetadata?.qualityDescription {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.xs) {
+                    line()
+                    Text("·").typography(.footnote)
+                    qualityText(quality)
+                }
+                line()
+            }
+        } else {
+            line()
+        }
+    }
+
+    private func qualityText(_ quality: String) -> some View {
+        Text(quality)
+            .typography(.footnote)
+            .lineLimit(1)
+            .accessibilityIdentifier(AccessibilityID.Player.qualityBadge)
+    }
+
+    private func trailingControls(showsSpeakerName: Bool, inlineVolume: Bool) -> some View {
         HStack(spacing: DS.Spacing.md) {
             serviceOptionButtons
 
@@ -181,10 +212,6 @@ struct NowPlayingToolbar: View {
                 .accessibilityIdentifier(AccessibilityID.Player.speakerName)
             }
 
-            if showsQuality, let quality = state.trackMetadata?.qualityDescription {
-                qualityBadge(quality)
-            }
-
             VolumeControlView(state: state, viewModel: playerVM, style: inlineVolume ? .bottomBar : .bottomBarButton)
 
             HoverButton(action: { state.isQueuePanelOpen.toggle() }) { hovered in
@@ -199,19 +226,6 @@ struct NowPlayingToolbar: View {
             .accessibilityIdentifier(AccessibilityID.QueuePanel.toggleButton)
             .accessibilityLabel("Toggle queue panel")
         }
-    }
-
-    private func qualityBadge(_ quality: String) -> some View {
-        Text(quality)
-            .typography(.badge)
-            .fixedSize()
-            .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.sm)
-            .background(
-                RoundedRectangle(cornerRadius: DS.Radius.small)
-                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
-            )
-            .accessibilityIdentifier(AccessibilityID.Player.qualityBadge)
     }
 
     // MARK: - Background
@@ -274,12 +288,11 @@ struct NowPlayingToolbar: View {
                 }
                 .frame(maxWidth: 550)
 
-                // Right: what does not fit goes in this order: the speaker's name, the quality badge, the inline slider.
+                // Right: what does not fit goes in this order: the speaker's name, the inline slider.
                 ViewThatFits(in: .horizontal) {
-                    trailingControls(showsSpeakerName: true, showsQuality: true, inlineVolume: true)
-                    trailingControls(showsSpeakerName: false, showsQuality: true, inlineVolume: true)
-                    trailingControls(showsSpeakerName: false, showsQuality: false, inlineVolume: true)
-                    trailingControls(showsSpeakerName: false, showsQuality: false, inlineVolume: false)
+                    trailingControls(showsSpeakerName: true, inlineVolume: true)
+                    trailingControls(showsSpeakerName: false, inlineVolume: true)
+                    trailingControls(showsSpeakerName: false, inlineVolume: false)
                 }
                 // Animated, a switch back to the first variant stays drawn where the previous one stood.
                 .transaction(value: state.isNowPlayingCanvasOpen) { $0.animation = nil }

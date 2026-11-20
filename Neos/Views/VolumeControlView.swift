@@ -70,6 +70,7 @@ struct VolumeControlView: View {
             muteButton
             slider
                 .frame(minWidth: 56, idealWidth: 96, maxWidth: 96)
+            levelLabel
         }
     }
 
@@ -139,6 +140,17 @@ struct VolumeControlView: View {
             .typography(.secondary)
             .frame(width: 52, alignment: .trailing)
             .monospacedDigit()
+    }
+
+    /// Room for "100"; the mute icon already says muted, so the level only dims.
+    private var levelLabel: some View {
+        Text("\(Int(sliderVolume))")
+            .typography(.secondary)
+            .monospacedDigit()
+            .opacity(state.isMuted ? 0.4 : 1)
+            .fixedSize()
+            .frame(minWidth: 24, alignment: .leading)
+            .accessibilityHidden(true)
     }
 
     // MARK: - Volume Icon
