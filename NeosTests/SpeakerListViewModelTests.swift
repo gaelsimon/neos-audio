@@ -221,11 +221,26 @@ final class SpeakerListViewModelTests: XCTestCase {
         mock.failingConnectAttempts = 1
         let vm = SpeakerListViewModel(service: mock, state: state)
 
-        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelay: .milliseconds(10))
+        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelays: [.milliseconds(10), .milliseconds(10)])
 
         try? await Task.sleep(for: .milliseconds(120))
         XCTAssertEqual(mock.calls.filter { $0 == "connect" }.count, 2)
         XCTAssertNotNil(DeviceCache.load())
+    }
+
+    @MainActor
+    func testACachedConnectRefusedAtLaunchIsRetriedWithinASecond() async {
+        let device = DiscoveredDevice(host: "192.168.1.10", friendlyName: "Living Room")
+        DeviceCache.save(device: device, selectedPlayerID: 7)
+        defer { DeviceCache.clear() }
+        let mock = MockAudioService()
+        mock.failingConnectAttempts = 1
+        let vm = SpeakerListViewModel(service: mock, state: AppState())
+
+        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7))
+
+        try? await Task.sleep(for: .milliseconds(900))
+        XCTAssertEqual(mock.calls.filter { $0 == "connect" }.count, 2)
     }
 
     @MainActor
@@ -238,7 +253,7 @@ final class SpeakerListViewModelTests: XCTestCase {
         mock.connectError = NSError(domain: "test", code: 1)
         let vm = SpeakerListViewModel(service: mock, state: state)
 
-        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelay: .milliseconds(10))
+        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelays: [.milliseconds(10), .milliseconds(10)])
 
         try? await Task.sleep(for: .milliseconds(150))
         XCTAssertEqual(mock.calls.filter { $0 == "connect" }.count, 3)
@@ -259,7 +274,7 @@ final class SpeakerListViewModelTests: XCTestCase {
         mock.connectError = NSError(domain: "test", code: 1)
         let vm = SpeakerListViewModel(service: mock, state: state)
 
-        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelay: .milliseconds(10))
+        vm.connectToCachedDevice(CachedDevice(device: device, selectedPlayerID: 7), retryDelays: [.milliseconds(10), .milliseconds(10)])
 
         try? await Task.sleep(for: .milliseconds(150))
         XCTAssertEqual(state.connectionState, .disconnected)

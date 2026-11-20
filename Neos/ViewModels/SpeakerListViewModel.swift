@@ -93,13 +93,15 @@ final class SpeakerListViewModel {
         })
     }
 
+    /// A new build's first connect is refused while macOS checks local network access, so the first retry comes soon.
+    static let cachedConnectRetryDelays: [Duration] = [.milliseconds(500), .seconds(2), .seconds(2)]
+
     /// A booting speaker or a late Wi-Fi must not make the app forget it: keep the cache and retry.
-    func connectToCachedDevice(_ cached: CachedDevice, attempts: Int = 3, retryDelay: Duration = .seconds(2)) {
+    func connectToCachedDevice(_ cached: CachedDevice, retryDelays: [Duration] = SpeakerListViewModel.cachedConnectRetryDelays) {
         state.connectionState = .connecting
         state.connectedDevice = cached.device
-        let total = max(attempts, 1)
         connectTask.replace(with: Task {
-            for attempt in 1...total {
+            for attempt in 0...retryDelays.count {
                 do {
                     try await service.connect(
                         host: cached.device.host,
@@ -112,8 +114,8 @@ final class SpeakerListViewModel {
                     return
                 } catch {
                     guard !Task.isCancelled else { return }
-                    if attempt < total {
-                        try? await Task.sleep(for: retryDelay)
+                    if attempt < retryDelays.count {
+                        try? await Task.sleep(for: retryDelays[attempt])
                         guard !Task.isCancelled else { return }
                     }
                 }
