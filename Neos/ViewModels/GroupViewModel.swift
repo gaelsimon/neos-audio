@@ -163,8 +163,9 @@ final class GroupViewModel {
         })
     }
 
+    // maxVolume also holds the connected speaker's own limit, which says nothing of the other speakers.
     private func withinTheVolumeLimit(_ level: Int) -> Int {
-        min(level, state.maxVolume ?? 100)
+        min(level, state.playback.volumeLimit ?? 100)
     }
 
     /// Fetches each member's current volume for the sliders.

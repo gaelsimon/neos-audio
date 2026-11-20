@@ -159,14 +159,14 @@ struct AmpSettingsView: View {
                 iconColor: player.role == .leader ? DS.Colors.accent : DS.Colors.textSecondary,
                 level: state.playerVolumes[player.pid],
                 label: "Speaker volume",
-                maximum: state.maxVolume ?? 100,
+                maximum: state.playback.volumeLimit ?? 100,
                 onDragging: { groupVM.setAdjustingMemberVolume(pid: player.pid, $0) }
             ) { groupVM.setMemberVolume(pid: player.pid, level: $0) }
         }
 
         LevelRow(
             name: "All Speakers", icon: DS.Icons.speakerActive, iconColor: DS.Colors.textSecondary,
-            level: state.groupVolumes[group.gid], label: "Group volume", maximum: state.maxVolume ?? 100
+            level: state.groupVolumes[group.gid], label: "Group volume", maximum: state.playback.volumeLimit ?? 100
         ) { groupVM.setGroupVolume(gid: group.gid, level: $0) }
 
         Button(role: .destructive) {

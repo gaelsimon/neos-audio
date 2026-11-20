@@ -384,7 +384,7 @@ final class GroupViewModelTests: XCTestCase {
         let state = AppState()
         let mock = MockAudioService()
         let vm = GroupViewModel(service: mock, state: state)
-        state.setMaxVolume(40)
+        state.playback.volumeLimit = 40
 
         vm.setMemberVolume(pid: 5004, level: 90)
 
@@ -393,7 +393,33 @@ final class GroupViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testTheConnectedSpeakersOwnLimitLeavesAnotherMemberAlone() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+        state.setMaxVolume(40)
+
+        vm.setMemberVolume(pid: 5004, level: 90)
+
+        await waitUntil { mock.calls.contains { $0.hasPrefix("setVolume:5004") } }
+        XCTAssertEqual(mock.calls.filter { $0.hasPrefix("setVolume") }, ["setVolume:5004:90"])
+    }
+
+    @MainActor
     func testAGroupVolumeStaysWithinTheVolumeLimit() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        let vm = GroupViewModel(service: mock, state: state)
+        state.playback.volumeLimit = 40
+
+        vm.setGroupVolume(gid: 5003, level: 90)
+
+        await waitUntil { mock.calls.contains { $0.hasPrefix("setGroupVolume") } }
+        XCTAssertEqual(mock.calls.filter { $0.hasPrefix("setGroupVolume") }, ["setGroupVolume:5003:40"])
+    }
+
+    @MainActor
+    func testTheConnectedSpeakersOwnLimitLeavesTheGroupVolumeAlone() async {
         let state = AppState()
         let mock = MockAudioService()
         let vm = GroupViewModel(service: mock, state: state)
@@ -402,7 +428,7 @@ final class GroupViewModelTests: XCTestCase {
         vm.setGroupVolume(gid: 5003, level: 90)
 
         await waitUntil { mock.calls.contains { $0.hasPrefix("setGroupVolume") } }
-        XCTAssertEqual(mock.calls.filter { $0.hasPrefix("setGroupVolume") }, ["setGroupVolume:5003:40"])
+        XCTAssertEqual(mock.calls.filter { $0.hasPrefix("setGroupVolume") }, ["setGroupVolume:5003:90"])
     }
 
     @MainActor
