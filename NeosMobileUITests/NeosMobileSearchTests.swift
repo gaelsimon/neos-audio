@@ -65,12 +65,15 @@ final class NeosMobileSearchTests: MobileDemoTestCase {
         if clearText.exists { clearText.tap() }
         let clearRecents = app.buttons["Clear Recent Searches"].firstMatch
         if clearRecents.exists { clearRecents.tap() }
+        // iPadOS ends the search on the clear button, there being no Cancel, so typing again starts with a tap.
+        if isPad { field.tap() }
 
         field.typeText("pap")
         XCTAssertTrue(element(AccessibilityID.Search.resultsView).waitForExistence(timeout: 5), "The search never answered")
         clearText.tap()
         XCTAssertFalse(app.buttons["pap"].waitForExistence(timeout: 1), "Typing alone should not be remembered")
 
+        if isPad { field.tap() }
         field.typeText("paper\n")
         XCTAssertTrue(element(AccessibilityID.Search.resultsView).waitForExistence(timeout: 5), "The search never answered")
         clearText.tap()
