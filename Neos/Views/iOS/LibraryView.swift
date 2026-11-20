@@ -47,7 +47,8 @@ struct LibraryView: View {
                 ServiceBranding.serviceIcon(for: source, size: 28)
             }
         }
-        .disabled(!source.available)
+        // Signed out, the speaker marks every service unavailable, TuneIn included; the page says why.
+        .opacity(source.available ? 1 : 0.6)
     }
 
     /// Every row opens a page, so it carries the chevron a `NavigationLink` would draw.
