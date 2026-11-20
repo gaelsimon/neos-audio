@@ -65,6 +65,8 @@ final class QueuePanelViewModel {
     private(set) var recentSongs: [RecentItem] = []
     private(set) var recentStations: [BrowseItem] = []
     private(set) var isEmpty: Bool = true
+    /// Nothing for the Queue tab to list, though Recently Played may have entries.
+    private(set) var isQueueTabEmpty = true
 
     init(service: any AudioService, state: AppState) {
         self.service = service
@@ -76,30 +78,24 @@ final class QueuePanelViewModel {
     /// Recompute cached display data. Call when queue, nowPlaying, or history changes.
     func refreshDisplayData() {
         let nowMid = state.nowPlaying.mid
-        let nowQid = state.nowPlaying.qid
-        let isStation = state.nowPlaying.station != nil
-
-        // nowPlayingQueueItem
-        if !isStation, let qid = nowQid {
-            nowPlayingQueueItem = state.queue.first { $0.qid == qid }
-        } else {
-            nowPlayingQueueItem = nil
+        let isStation = state.nowPlaying.type == .station
+        // A speaker gives a station the queue id 1, which is no place in the queue.
+        let nowIndex = isStation ? nil : state.nowPlaying.qid.flatMap { qid in
+            state.queue.firstIndex { $0.qid == qid }
         }
 
-        // upNextItems
-        if let qid = nowQid,
-           let idx = state.queue.firstIndex(where: { $0.qid == qid }) {
-            upNextItems = Array(state.queue.suffix(from: idx + 1))
+        nowPlayingQueueItem = state.nowPlaying.station == nil ? nowIndex.map { state.queue[$0] } : nil
+
+        if let nowIndex {
+            upNextItems = Array(state.queue.suffix(from: nowIndex + 1))
         } else {
-            upNextItems = []
+            upNextItems = isStation ? state.queue : []
         }
 
-        // recentSongs
         let maxRecent = 10
         var played: [RecentItem] = []
-        if let qid = nowQid,
-           let idx = state.queue.firstIndex(where: { $0.qid == qid }) {
-            played = state.queue.prefix(upTo: idx).suffix(maxRecent).map { .queue($0) }
+        if let nowIndex {
+            played = state.queue.prefix(upTo: nowIndex).suffix(maxRecent).map { .queue($0) }
         }
         let remaining = maxRecent - played.count
         if remaining > 0 {
@@ -112,18 +108,13 @@ final class QueuePanelViewModel {
         }
         recentSongs = played
 
-        // recentStations
         recentStations = historyStations.filter { item in
             guard let mid = item.mid else { return true }
             return mid != nowMid
         }.reversed().suffix(10).reversed()
 
-        // isEmpty
-        isEmpty = recentSongs.isEmpty
-            && recentStations.isEmpty
-            && nowPlayingQueueItem == nil
-            && nowMid.isEmpty
-            && upNextItems.isEmpty
+        isQueueTabEmpty = nowPlayingQueueItem == nil && nowMid.isEmpty && upNextItems.isEmpty
+        isEmpty = recentSongs.isEmpty && recentStations.isEmpty && isQueueTabEmpty
     }
 
     // MARK: - History Loading
@@ -161,8 +152,10 @@ final class QueuePanelViewModel {
 
     // MARK: - Track Change Refresh
 
+    /// The history is refetched only while the panel shows it.
     func onTrackChanged() {
         refreshDisplayData()
+        guard state.isQueuePanelOpen else { return }
         loadHistory()
     }
 
@@ -170,25 +163,8 @@ final class QueuePanelViewModel {
 
     func playRecentItem(_ item: RecentItem) {
         switch item {
-        case .queue(let q):
-            playQueueItem(q)
-        case .history(let b):
-            let sid = b.sid ?? 1026
-            let cid = b.cid ?? ""
-            Task {
-                do {
-                    try await PlaybackRouter.play(
-                        b, sid: sid, cid: cid,
-                        service: service, state: state
-                    )
-                } catch {
-                    state.showToast(
-                        error.localizedDescription,
-                        icon: DS.Icons.warning,
-                        style: .error
-                    )
-                }
-            }
+        case .queue(let q): playQueueItem(q)
+        case .history(let b): playHistoryItem(b)
         }
     }
 
@@ -203,8 +179,8 @@ final class QueuePanelViewModel {
         }
     }
 
-    func playHistoryStation(_ item: BrowseItem) {
-        let sid = item.sid ?? 1026
+    func playHistoryItem(_ item: BrowseItem) {
+        let sid = item.sid ?? HEOSConstants.historySID
         let cid = item.cid ?? ""
         Task {
             do {
@@ -239,8 +215,6 @@ final class QueuePanelViewModel {
         }
     }
 
-    /// Loads history only if it hasn't been fetched yet. Called when switching to the
-    /// "Recently Played" tab; avoids redundant fetches if data is already present.
     func loadHistoryIfNeeded() {
         guard historyTracks.isEmpty, historyStations.isEmpty, !isLoadingHistory else { return }
         loadHistory()

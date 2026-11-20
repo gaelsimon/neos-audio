@@ -6,6 +6,9 @@ struct SearchResultsView: View {
     let searchVM: SearchViewModel
     let browseVM: BrowseViewModel
     let service: any AudioService
+    @Environment(\.groupInset) private var groupInset
+    @Environment(\.groupListInset) private var groupListInset
+    @Environment(\.groupSectionStyle) private var groupSectionStyle
 
     var body: some View {
         ScrollView {
@@ -13,11 +16,10 @@ struct SearchResultsView: View {
                 .padding(.top, DS.Spacing.xl)
                 .padding(.bottom, DS.Spacing.xxl)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
+        .stickyHeader {
             filterChipsSection
                 .padding(.top, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.md)
-                .stickyHeaderGlass()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DS.Colors.background)
@@ -59,14 +61,14 @@ struct SearchResultsView: View {
                 )
                 ForEach(searchVM.allCriteriaNames, id: \.scid) { criterion in
                     FilterChip(
-                        label: criterion.name,
+                        label: SearchCategoryName.plural(criterion.name),
                         isSelected: searchVM.selectedCategoryFilter == criterion.scid,
                         emphasis: .secondary,
                         action: { searchVM.selectCategoryFilter(criterion.scid) }
                     )
                 }
             }
-            .padding(.horizontal, DS.Spacing.xxl)
+            .pageMargins()
         }
     }
 
@@ -75,9 +77,9 @@ struct SearchResultsView: View {
     @ViewBuilder
     private var resultsContent: some View {
         if searchVM.isSearching && searchVM.serviceResults.isEmpty {
-            SearchShimmerView()
-        } else if !searchVM.isSearching && searchVM.serviceResults.isEmpty && !searchVM.query.isEmpty {
-            EmptyStateView(icon: DS.Icons.search, message: "No results found")
+            SearchPlaceholderView()
+        } else if !searchVM.isSearching && searchVM.filteredServiceSIDs.isEmpty && !searchVM.query.isEmpty {
+            ContentUnavailableView.search(text: searchVM.query)
                 .padding(.top, DS.Spacing.xxxl)
         } else {
             ForEach(searchVM.filteredServiceSIDs, id: \.self) { sid in
@@ -100,31 +102,27 @@ struct SearchResultsView: View {
             }
 
             if results.isEmpty && isLoading {
-                // No old results to template from; generic shimmer fallback
-                ShimmerCardRow(cardCount: 3)
+                // No old results to template from, so generic placeholders
+                PlaceholderCardRow(cardCount: 3, inset: groupInset)
                 VStack(spacing: 0) {
                     ForEach(0..<3, id: \.self) { _ in
-                        ShimmerListRow()
+                        PlaceholderRow()
                     }
                 }
+                .padding(.horizontal, groupListInset)
             } else {
                 ForEach(results, id: \.criteria.scid) { entry in
                     categorySection(
-                        criteriaName: entry.criteria.name,
+                        criteriaName: SearchCategoryName.plural(entry.criteria.name),
                         items: entry.items,
                         sid: sid,
                         scid: entry.criteria.scid,
-                        isServiceLoading: isLoading
+                        isPending: searchVM.isPending(ServiceCriteriaKey(sid: sid, scid: entry.criteria.scid))
                     )
                 }
             }
         }
-        .padding(.vertical, DS.Spacing.xl)
-        .background(
-            RoundedRectangle(cornerRadius: DS.Radius.large)
-                .fill(DS.Colors.surfaceContainer)
-        )
-        .padding(.horizontal, DS.Layout.pageMargin)
+        .serviceGroupSurface()
     }
 
     // MARK: - Service Header
@@ -142,7 +140,10 @@ struct SearchResultsView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, DS.Layout.surfaceInset)
+        .padding(.horizontal, groupInset)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier(AccessibilityID.Search.serviceHeader(source.sid))
     }
 
     // MARK: - Category Section
@@ -162,19 +163,19 @@ struct SearchResultsView: View {
         items: [BrowseItem],
         sid: Int,
         scid: Int,
-        isServiceLoading: Bool
+        isPending: Bool
     ) -> some View {
         let cardLayout = isCardLayout(items)
 
         let key = ServiceCriteriaKey(sid: sid, scid: scid)
-        let showSeeAll = !isServiceLoading
+        let showSeeAll = !isPending
             && items.count >= searchVM.previewCount
             && !searchVM.expandedCategories.contains(key)
 
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             HStack {
                 Text(criteriaName)
-                    .typography(.sectionHeader)
+                    .typography(groupSectionStyle)
 
                 Spacer()
 
@@ -184,17 +185,18 @@ struct SearchResultsView: View {
                     }
                 }
             }
-            .padding(.horizontal, DS.Layout.surfaceInset)
+            .padding(.horizontal, groupInset)
 
-            if isServiceLoading {
+            if isPending {
                 if cardLayout {
-                    ShimmerCardRow(cardCount: min(items.count, searchVM.previewCount))
+                    PlaceholderCardRow(cardCount: min(items.count, searchVM.previewCount), inset: groupInset)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(0..<min(items.count, searchVM.previewCount), id: \.self) { _ in
-                            ShimmerListRow()
+                            PlaceholderRow()
                         }
                     }
+                    .padding(.horizontal, groupListInset)
                 }
             } else if cardLayout {
                 categoryCardContent(items: items, circular: isArtistCategory(items), sid: sid)
@@ -230,7 +232,7 @@ struct SearchResultsView: View {
                     )
                 }
             }
-            .padding(.horizontal, DS.Layout.surfaceInset)
+            .padding(.horizontal, groupInset)
         }
     }
 
@@ -247,12 +249,14 @@ struct SearchResultsView: View {
                 )
             }
         }
+        .padding(.horizontal, groupListInset)
     }
 
     // MARK: - Actions
 
     private func seeAll(criteriaName: String, sid: Int, scid: Int) {
         guard let source = searchVM.musicSource(for: sid) else { return }
+        searchVM.commitQueryToHistory()
         browseVM.navigateToSearchResults(
             source: source,
             categoryName: criteriaName,
@@ -262,6 +266,7 @@ struct SearchResultsView: View {
     }
 
     private func handleItemTap(_ item: BrowseItem, sid: Int) {
+        searchVM.commitQueryToHistory()
         if item.browsable {
             browseInto(item, sid: sid)
         } else if item.playable {
@@ -289,7 +294,8 @@ struct SearchResultsView: View {
     }
 
     private func handleAddToQueue(_ item: BrowseItem, sid: Int) {
-        guard item.playable else { return }
+        guard item.canJoinQueue else { return }
+        searchVM.commitQueryToHistory()
         let effectiveSID = item.sid ?? sid
         let cid = item.cid ?? ""
         guard let pid = state.selectedPlayerID else {

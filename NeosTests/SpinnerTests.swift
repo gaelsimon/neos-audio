@@ -1,54 +1,96 @@
 import XCTest
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 @testable import Neos
 
 @MainActor
 final class SpinnerTests: XCTestCase {
 
-    private func spinnerInWindow() -> (SpinnerNSView, NSWindow) {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 40, height: 40), styleMask: [], backing: .buffered, defer: true)
-        window.isReleasedWhenClosed = false
-        let spinner = SpinnerNSView(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
-        window.contentView?.addSubview(spinner)
-        return (spinner, window)
+    private func makeSpinner() -> SpinnerView {
+        SpinnerView(frame: CGRect(x: 0, y: 0, width: 20, height: 20))
     }
 
-    func testTheArcTurnsInCoreAnimationOnceInAWindow() {
-        let (spinner, window) = spinnerInWindow()
-        defer { window.close() }
+    #if os(macOS)
+    private func makeWindow() -> NSWindow {
+        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 40, height: 40), styleMask: [], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        return window
+    }
 
-        XCTAssertNotNil(spinner.arc.animation(forKey: SpinnerNSView.rotationKey))
+    private func put(_ spinner: SpinnerView, in window: NSWindow) {
+        window.contentView?.addSubview(spinner)
+    }
+
+    private func layOut(_ spinner: SpinnerView) {
+        spinner.layout()
+    }
+    #else
+    private func makeWindow() -> UIWindow {
+        UIWindow(frame: CGRect(x: 0, y: 0, width: 40, height: 40))
+    }
+
+    private func put(_ spinner: SpinnerView, in window: UIWindow) {
+        window.addSubview(spinner)
+    }
+
+    private func layOut(_ spinner: SpinnerView) {
+        spinner.layoutIfNeeded()
+    }
+    #endif
+
+    func testTheArcTurnsInCoreAnimationOnceInAWindow() {
+        let window = makeWindow()
+        let spinner = makeSpinner()
+
+        put(spinner, in: window)
+
+        XCTAssertNotNil(spinner.arc.animation(forKey: SpinnerView.rotationKey))
     }
 
     func testNothingTurnsOutsideAWindow() {
-        let spinner = SpinnerNSView(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
+        let spinner = makeSpinner()
 
-        XCTAssertNil(spinner.arc.animation(forKey: SpinnerNSView.rotationKey))
+        XCTAssertNil(spinner.arc.animation(forKey: SpinnerView.rotationKey))
     }
 
     func testMovingBetweenWindowsKeepsASingleRotation() {
-        let (spinner, window) = spinnerInWindow()
-        defer { window.close() }
+        let window = makeWindow()
+        let spinner = makeSpinner()
+        put(spinner, in: window)
 
         spinner.removeFromSuperview()
-        window.contentView?.addSubview(spinner)
+        put(spinner, in: window)
 
-        XCTAssertEqual(spinner.arc.animationKeys(), [SpinnerNSView.rotationKey])
+        XCTAssertEqual(spinner.arc.animationKeys(), [SpinnerView.rotationKey])
+    }
+
+    func testTheRotationOutlivesTheAppGoingToTheBackground() {
+        let window = makeWindow()
+        let spinner = makeSpinner()
+
+        put(spinner, in: window)
+
+        XCTAssertEqual(spinner.arc.animation(forKey: SpinnerView.rotationKey)?.isRemovedOnCompletion, false)
     }
 
     func testTheStrokeSitsInsideTheBounds() {
-        let spinner = SpinnerNSView(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
+        let spinner = makeSpinner()
         spinner.lineWidth = 2
 
-        spinner.layout()
+        layOut(spinner)
 
-        XCTAssertEqual(spinner.arc.path?.boundingBox, NSRect(x: 1, y: 1, width: 18, height: 18))
+        XCTAssertEqual(spinner.arc.path?.boundingBox, CGRect(x: 1, y: 1, width: 18, height: 18))
     }
 
     func testTheColorReachesTheStroke() {
-        let spinner = SpinnerNSView(frame: .zero)
+        let spinner = SpinnerView(frame: .zero)
+        let white = CGColor(gray: 1, alpha: 1)
 
-        spinner.color = .white
+        spinner.color = white
 
-        XCTAssertEqual(spinner.arc.strokeColor, NSColor.white.cgColor)
+        XCTAssertEqual(spinner.arc.strokeColor, white)
     }
 }

@@ -27,6 +27,9 @@ extension AppState {
     }
 
     func cacheImageURLs(from items: [BrowseItem]) {
+        imageCache.rememberStations(from: items)
+        nameUnnamedStream()
+        nameUntitledStation()
         imageCache.cacheImageURLs(from: items)
     }
 

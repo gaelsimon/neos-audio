@@ -5,6 +5,13 @@ struct QueuePanelScreen: Screen {
 
     var view: XCUIElement { app.descendants(matching: .any)[AccessibilityID.QueuePanel.view] }
     var toggleButton: XCUIElement { app.descendants(matching: .any)[AccessibilityID.QueuePanel.toggleButton] }
+    var tabBar: XCUIElement { app.descendants(matching: .any).matching(identifier: AccessibilityID.QueuePanel.tabBar).firstMatch }
+    var closeButton: XCUIElement { app.descendants(matching: .any)[AccessibilityID.QueuePanel.closeButton] }
+    /// The section's identifier covers everything in it, its Clear button included.
+    var clearButton: XCUIElement {
+        app.buttons.matching(identifier: AccessibilityID.QueuePanel.upNextSection)
+            .matching(NSPredicate(format: "label == %@", "Clear")).firstMatch
+    }
     var emptyState: XCUIElement { app.descendants(matching: .any)[AccessibilityID.QueuePanel.emptyState] }
     var historySection: XCUIElement { app.descendants(matching: .any)[AccessibilityID.QueuePanel.historySection] }
     var nowPlayingSection: XCUIElement { app.descendants(matching: .any)[AccessibilityID.QueuePanel.nowPlayingSection] }

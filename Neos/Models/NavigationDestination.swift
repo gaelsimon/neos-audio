@@ -60,3 +60,24 @@ public struct BrowseTarget: Hashable, Sendable {
         "\(sid)\(cid ?? "")"
     }
 }
+
+/// Context for "See All" search results browsing (search API instead of container API).
+struct SearchResultsContext: Equatable {
+    let query: String
+    let scid: Int
+}
+
+/// A place in the app, as one page of the iPhone and iPad navigation shows it.
+struct BrowseLocation: Equatable {
+    let destination: NavigationDestination
+    let browseStack: [BrowseTarget]
+    let searchContext: SearchResultsContext?
+
+    static let queue = Self(destination: .queue, browseStack: [], searchContext: nil)
+
+    /// A source's first page.
+    static func root(of source: MusicSource) -> Self {
+        let target = BrowseTarget(sid: source.sid, name: source.name, imageURL: source.imageURL, serviceName: source.name)
+        return Self(destination: .browse(target), browseStack: [target], searchContext: nil)
+    }
+}

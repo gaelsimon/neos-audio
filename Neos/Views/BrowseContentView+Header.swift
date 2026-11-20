@@ -4,6 +4,7 @@ import NeosDomain
 extension BrowseContentView {
     // MARK: - Compact Sticky Header
 
+    #if os(macOS)
     func compactContainerHeader(_ target: BrowseTarget) -> some View {
         HStack(spacing: DS.Spacing.sm) {
             containerArtwork(target, size: 40, cornerRadius: DS.Radius.small)
@@ -30,11 +31,12 @@ extension BrowseContentView {
                 .help("Add to Queue")
             }
         }
-        .padding(.horizontal, DS.Spacing.xxl)
+        .pageMargins()
         .padding(.vertical, DS.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .stickyHeaderGlass()
     }
+    #endif
 
     // MARK: - Container Artwork (patchwork or single image)
 
@@ -103,23 +105,42 @@ extension BrowseContentView {
 
     func containerHeader(_ target: BrowseTarget, backdropURL: URL?) -> some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-            HStack(alignment: .top, spacing: DS.Spacing.xxl) {
-                containerArtwork(target, size: DS.ImageSize.containerArt, cornerRadius: DS.Radius.artworkLarge)
-                    .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 10)
-                    .accessibilityIdentifier(AccessibilityID.Browse.containerArt)
+            if isCompactLayout {
+                VStack(spacing: DS.Spacing.lg) {
+                    containerHeaderArtwork(target)
+                    containerHeaderMetadata(target, centered: true)
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                HStack(alignment: .top, spacing: DS.Spacing.xxl) {
+                    containerHeaderArtwork(target)
 
-                containerHeaderMetadata(target)
-                    .frame(maxHeight: DS.ImageSize.containerArt)
+                    containerHeaderMetadata(target)
+                        .frame(maxHeight: DS.ImageSize.containerArt)
+                }
             }
         }
-        .padding(.horizontal, DS.Layout.pageMargin)
-        .padding(.top, DS.Spacing.xl + DS.Spacing.lg)
+        .pageMargins()
+        .padding(.top, isCompactLayout ? DS.Spacing.lg : DS.Spacing.xl + DS.Spacing.lg)
         .padding(.bottom, backdropURL == nil ? DS.Spacing.xxl + DS.Spacing.lg : DS.Spacing.xxxl + DS.Spacing.lg)
-        .padding(.top, backdropURL == nil ? 0 : DS.TopBar.height)
+        .padding(.top, backdropURL == nil ? 0 : DS.Layout.topOverlay)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            if let backdropURL { headerBackdrop(backdropURL) }
+            if let backdropURL {
+                headerBackdrop(backdropURL)
+                    #if os(iOS)
+                    // The scroll view starts its content under the bars; reach back up behind them.
+                    .padding(.top, -scrollTopInset)
+                    #endif
+            }
         }
+    }
+
+    private func containerHeaderArtwork(_ target: BrowseTarget) -> some View {
+        containerArtwork(target, size: DS.ImageSize.containerArt, cornerRadius: DS.Radius.artworkLarge)
+            .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 10)
+            .accessibilityLabel("Artwork")
+            .accessibilityIdentifier(AccessibilityID.Browse.containerArt)
     }
 
     // Oversized before the blur, or its edges fade to a dark vignette.
@@ -133,6 +154,7 @@ extension BrowseContentView {
                     .opacity(0.5)
             }
             .clipped()
+            .accessibilityHidden(true)
             .overlay {
                 LinearGradient(
                     stops: [
@@ -150,52 +172,69 @@ extension BrowseContentView {
 
     // MARK: - Container Header Metadata
 
+    /// Centred when it sits under the artwork.
     @ViewBuilder
-    private func containerHeaderMetadata(_ target: BrowseTarget) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+    private func containerHeaderMetadata(_ target: BrowseTarget, centered: Bool = false) -> some View {
+        VStack(alignment: centered ? .center : .leading, spacing: DS.Spacing.sm) {
             Text(target.name)
                 .typography(.pageTitle)
                 .lineLimit(2)
-                .padding(.top, DS.Spacing.xl)
+                .multilineTextAlignment(centered ? .center : .leading)
+                .padding(.top, centered ? 0 : DS.Spacing.xl)
+                #if os(iOS)
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(Self.headerSpace)).maxY } action: {
+                    headerTitleBottom = $0
+                }
+                #endif
                 .accessibilityIdentifier(AccessibilityID.Browse.containerTitle)
 
             if !browseVM.items.isEmpty || !target.serviceName.isEmpty {
-                containerSubtitle(target)
+                containerSubtitle(target, centered: centered)
             }
 
             if browseVM.isLoading {
                 Spinner(size: 16, lineWidth: 2)
             }
 
-            Spacer(minLength: 0)
+            if !centered {
+                Spacer(minLength: 0)
+            }
 
             if hasPlayableItems {
                 containerActionButtons
+                    .padding(.top, centered ? DS.Spacing.sm : 0)
             }
         }
     }
 
     /// Subtitle: service branding first (available immediately), item count second (loads later).
     @ViewBuilder
-    private func containerSubtitle(_ target: BrowseTarget) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+    private func containerSubtitle(_ target: BrowseTarget, centered: Bool) -> some View {
+        VStack(alignment: centered ? .center : .leading, spacing: DS.Spacing.sm) {
             if let artist = sharedArtist {
-                HeaderArtistLink(artist: artist, onTap: trackRows.first.flatMap(artistViewHandler))
+                CrossLink(artist, typography: .sectionHeader, action: trackRows.first.flatMap(artistViewHandler))
+                    .accessibilityIdentifier(AccessibilityID.Browse.containerArtist)
             }
 
-            HStack(spacing: DS.Spacing.sm) {
+            if centered {
+                // The back button walks the path there; a scrolling breadcrumb cannot centre.
                 if let source = serviceSource(for: target) {
-                    ServiceBranding.serviceIcon(for: source, size: 20)
+                    ServiceBranding.serviceLabel(for: source, iconSize: 20, style: .secondary)
                 }
-                BreadcrumbBar(stack: browseVM.browseStack) { index in
-                    browseVM.navigateToBreadcrumb(at: index)
+            } else {
+                HStack(spacing: DS.Spacing.sm) {
+                    if let source = serviceSource(for: target) {
+                        ServiceBranding.serviceIcon(for: source, size: 20)
+                    }
+                    BreadcrumbBar(stack: browseVM.browseStack) { index in
+                        browseVM.navigateToBreadcrumb(at: index)
+                    }
                 }
             }
 
             if !browseVM.items.isEmpty {
                 Text("\(browseVM.items.count)\(browseVM.hasMore ? "+" : "") \(itemNoun)")
-                    .typography(.bodyMedium)
-                    .foregroundStyle(DS.Colors.textTertiary)
+                    .typography(.bodyMedium, color: DS.Colors.textTertiary)
             }
         }
         .padding(.top, DS.Spacing.xs)
@@ -245,17 +284,23 @@ extension BrowseContentView {
 
     // MARK: - Source Header (root level, scrolls)
 
+    #if os(macOS)
     var sourceHeader: some View {
         HStack(spacing: DS.Spacing.sm) {
             if browseVM.browseStack.count > 1,
                let current = browseVM.browseStack.last,
                let root = browseVM.browseStack.first,
                let source = state.musicSources.first(where: { $0.sid == root.sid }) {
-                // A sub-level with no cid: an amp input or a DLNA server. Name it, not its source.
+                // A folder, an amp input or a DLNA server: its own name, then the path back to its parents.
                 ServiceBranding.serviceIcon(for: source, size: DS.ImageSize.serviceIcon)
-                Text(current.name)
-                    .typography(.pageTitle)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                    Text(current.name)
+                        .typography(.pageTitle)
+                        .lineLimit(1)
+                    BreadcrumbBar(stack: browseVM.browseStack) { index in
+                        browseVM.navigateToBreadcrumb(at: index)
+                    }
+                }
             } else if let target = browseVM.browseStack.first,
                let source = state.musicSources.first(where: { $0.sid == target.sid }) {
                 ServiceBranding.serviceLabel(
@@ -289,7 +334,7 @@ extension BrowseContentView {
                 .help("Add Station")
             }
         }
-        .padding(.horizontal, DS.Spacing.xxl)
+        .pageMargins()
         .padding(.top, DS.Spacing.xxl)
         .padding(.bottom, DS.Spacing.xl)
     }
@@ -325,9 +370,42 @@ extension BrowseContentView {
             Spacer()
         }
         .frame(height: 40)
-        .padding(.horizontal, DS.Spacing.xxl)
+        .pageMargins()
         .padding(.vertical, DS.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .stickyHeaderGlass()
     }
+    #endif
+}
+
+// MARK: - Navigation Bar
+
+extension BrowseContentView {
+    static let headerSpace = "browse_header"
+
+    #if os(iOS)
+    @ToolbarContentBuilder
+    var navigationBarItems: some ToolbarContent {
+        if browseVM.opensOnArtwork, let current = browseVM.browseStack.last {
+            // Appears once the header carrying the same title has scrolled away.
+            ToolbarItem(placement: .principal) {
+                Text(current.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .opacity(showCompactHeader ? 1 : 0)
+                    .accessibilityHidden(!showCompactHeader)
+                    .animation(.easeInOut(duration: 0.15), value: showCompactHeader)
+            }
+        } else if browseVM.isLoading {
+            // The Mac shows this beside the page title, which the bar carries here.
+            ToolbarItem(placement: .topBarTrailing) { ProgressView() }
+        }
+        if browseVM.isFavoritesSource {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Add Station", systemImage: "plus") { showAddFavorite = true }
+                    .accessibilityIdentifier(AccessibilityID.Browse.addStation)
+            }
+        }
+    }
+    #endif
 }

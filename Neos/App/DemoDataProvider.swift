@@ -30,8 +30,15 @@ enum DemoDataProvider {
         }
     }
 
+    /// A group's level is the mean of its speakers'.
+    static func level(of group: SpeakerGroup, volumes: (Int) -> Int = volume(for:)) -> Int {
+        group.players.map { volumes($0.pid) }.reduce(0, +) / max(group.players.count, 1)
+    }
+
     /// The player that should be auto-selected (standalone speaker, lineout == 0).
     static let playerID = home150PID
+
+    static let account = "user@example.com"
 
     /// Demo groups: a stereo pair (Kitchen) and a multi-room group (Den + Bathroom).
     static let groups: [SpeakerGroup] = [
@@ -44,6 +51,9 @@ enum DemoDataProvider {
             GroupPlayer(name: "Bathroom", pid: bathPID, role: .member)
         ])
     ]
+
+    /// The groups that are one speaker to the listener, so the app shows them as one.
+    static let pairs = Array(groups.prefix(1))
 
     /// Demo players: both AVR zones, the Home 150 pair, and the Kitchen/Den members.
     static let players: [Player] = [
@@ -111,21 +121,18 @@ enum DemoDataProvider {
 
         // Kitchen is a stereo pair (collapses to one row); Den + Bathroom is multi-room (expanded).
         state.setGroups(groups)
-        state.setMultiRoomGroups([denPID])
+        state.setMultiRoomGroups(Set(groups.filter { !pairs.contains($0) }.map(\.gid)))
+        for group in groups {
+            state.setGroupVolume(gid: group.gid, level: level(of: group))
+        }
 
         state.setSelectedPlayerID(playerID)
 
         setupPlayback(state)
 
-        // Queue
-        state.setQueue(queue)
-
-        // Music sources; `--demo-services-unavailable` mimics a speaker that is signed in yet refuses every service.
+        // `--demo-services-unavailable` mimics a speaker that is signed in yet refuses every service.
         if CommandLine.arguments.contains("--demo-services-unavailable") {
-            state.setMusicSources(musicSources.map { source in
-                MusicSource(sid: source.sid, name: source.name, imageURL: source.imageURL, type: source.type,
-                            available: source.type != "music_service", serviceUsername: source.serviceUsername)
-            })
+            state.setMusicSources(sourcesWithServicesRefused(signedIn: true))
         } else {
             state.setMusicSources(musicSources)
         }
@@ -135,34 +142,16 @@ enum DemoDataProvider {
     }
 
     private static func setupPlayback(_ state: AppState) {
-        state.setPlayState(.play)
-        state.setNowPlaying(NowPlayingMedia(
-            type: .song,
-            song: "Paper Lanterns",
-            album: "Midnight Opera",
-            artist: "The Velvet Hours",
-            imageURL: DemoArtwork.url("abc123"),
-            albumID: "alb-67890",
-            mid: "dz-12345",
-            qid: 3,
-            sid: 2
-        ))
-
-        state.setTrackMetadata(TrackMetadata(
-            sampleRate: 96_000,
-            bitDepth: 24,
-            channels: 2,
-            codec: "FLAC",
-            genre: "Rock",
-            trackNumber: 11
-        ))
-
-        state.setVolume(45)
+        state.setPlayState(opening.playState)
+        state.setNowPlaying(opening.nowPlaying)
+        state.setTrackMetadata(trackQuality)
+        state.setVolume(volume(for: playerID))
         state.setMaxVolume(100)
         state.setMuted(false)
-        state.setRepeatMode(.off)
-        state.setShuffleMode(.off)
-        state.setProgress(position: 92_000, duration: 354_000)
+        state.setRepeatMode(opening.repeatMode)
+        state.setShuffleMode(opening.shuffleMode)
+        state.setProgress(position: opening.position, duration: opening.duration)
+        state.setQueue(opening.queue)
     }
 
     private static func setupSearchAndAccount(_ state: AppState) {
@@ -176,55 +165,43 @@ enum DemoDataProvider {
             state.browse.searchCriteria[sid] = criteria
             state.setServiceCapabilities(sid: sid, capabilities: ServiceCapabilities(from: criteria))
         }
-        state.setSignedInUser("user@example.com")
+        state.setSignedInUser(account)
     }
 
     // MARK: - Sample Data
 
-    static let queue: [QueueItem] = [
-        QueueItem(
-            qid: 1,
-            song: "Someone Like Summer",
-            album: "Daylight Races",
-            artist: "The Velvet Hours",
-            imageURL: DemoArtwork.url("races"),
-            mid: "dz-11111",
-            albumID: "alb-aaaaa"
+    static let openingTracks: [DemoTrack] = [
+        DemoTrack(
+            song: "Someone Like Summer", album: "Daylight Races", artist: "The Velvet Hours",
+            imageURL: DemoArtwork.url("races"), mid: "dz-11111", albumID: "alb-aaaaa", sid: 2
         ),
-        QueueItem(
-            qid: 2,
-            song: "Keep the Lights On",
-            album: "Jazz",
-            artist: "The Velvet Hours",
-            imageURL: DemoArtwork.url("jazz"),
-            mid: "dz-22222",
-            albumID: "alb-bbbbb"
+        DemoTrack(
+            song: "Keep the Lights On", album: "Jazz", artist: "The Velvet Hours",
+            imageURL: DemoArtwork.url("jazz"), mid: "dz-22222", albumID: "alb-bbbbb", sid: 2
         ),
-        QueueItem(
-            qid: 3,
-            song: "Paper Lanterns",
-            album: "Midnight Opera",
-            artist: "The Velvet Hours",
-            imageURL: DemoArtwork.url("opera"),
-            mid: "dz-12345",
-            albumID: "alb-67890"
-        ),
-        QueueItem(
-            qid: 4,
-            song: "Glass Weather",
-            album: "Warm Rooms",
-            artist: "The Velvet Hours & Nova Lane",
-            imageURL: DemoArtwork.url("hot"),
-            mid: "dz-33333",
-            albumID: "alb-ccccc"
+        DemoTrack(
+            song: "Paper Lanterns", album: "Midnight Opera", artist: "The Velvet Hours",
+            imageURL: DemoArtwork.url("abc123"), mid: "dz-12345", albumID: "alb-67890", sid: 2
+        ).lasting(354_000),
+        DemoTrack(
+            song: "Glass Weather", album: "Warm Rooms", artist: "The Velvet Hours & Nova Lane",
+            imageURL: DemoArtwork.url("hot"), mid: "dz-33333", albumID: "alb-ccccc", sid: 2
         )
     ]
+
+    /// The demo opens on the third track of its queue, a minute and a half in.
+    static let opening = DemoPlayback(tracks: openingTracks, current: 2, playState: .play, position: 92_000)
+
+    static let trackQuality = TrackMetadata(
+        sampleRate: 96_000, bitDepth: 24, channels: 2, codec: "FLAC", genre: "Rock", trackNumber: 11
+    )
+    static let stationQuality = TrackMetadata(bitrate: 128_000, codec: "MP3")
 
     // Demo sources omit imageURL; ServiceBranding falls back to bundled asset logos.
     static let musicSources: [MusicSource] = [
         MusicSource(
             sid: 2, name: "Deezer",
-            type: "music_service", available: true, serviceUsername: "user@example.com"
+            type: "music_service", available: true, serviceUsername: account
         ),
         MusicSource(
             sid: 3, name: "TuneIn",
@@ -232,17 +209,29 @@ enum DemoDataProvider {
         ),
         MusicSource(
             sid: 10, name: "TIDAL",
-            type: "music_service", available: true, serviceUsername: "user@example.com"
+            type: "music_service", available: true, serviceUsername: account
         ),
         MusicSource(
             sid: 13, name: "Amazon Music",
             type: "music_service", available: false
         ),
+        MusicSource(sid: 1024, name: "Local Music", type: "heos_server", available: true),
         MusicSource(sid: 1027, name: "AUX Input", type: "heos_server", available: true),
         MusicSource(sid: 1028, name: "Favorites", type: "heos_service", available: true),
         MusicSource(sid: 1025, name: "Playlists", type: "heos_service", available: true),
         MusicSource(sid: 1026, name: "History", type: "heos_service", available: true)
     ]
+
+    /// The sources as a speaker lists them when it refuses its services, signed in or not.
+    static func sourcesWithServicesRefused(signedIn: Bool) -> [MusicSource] {
+        musicSources.map { source in
+            guard source.type == "music_service" else { return source }
+            return MusicSource(
+                sid: source.sid, name: source.name, imageURL: source.imageURL, type: source.type,
+                available: false, serviceUsername: signedIn ? source.serviceUsername : nil
+            )
+        }
+    }
 
     /// Deezer (sid 2) browse tree, so demo mode can be driven past a source root.
     static let deezerCategories: [BrowseItem] = [

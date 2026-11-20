@@ -11,18 +11,17 @@ struct ReconnectingBanner: View {
             Spinner(size: 12, lineWidth: 2)
             Text("Reconnecting to \(deviceName)...")
                 .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
 
             if let onChooseAnother {
-                Button("Choose another speaker", action: onChooseAnother)
-                    .buttonStyle(.plain)
-                    .typography(.secondary)
-                    .foregroundStyle(DS.Colors.accent)
-                    .accessibilityIdentifier(AccessibilityID.Connection.chooseAnotherButton)
+                TextActionButton(
+                    title: "Choose another speaker",
+                    accessibilityID: AccessibilityID.Connection.chooseAnotherButton,
+                    action: onChooseAnother
+                )
             }
         }
         .padding(.horizontal, DS.Spacing.md)
-        .padding(.vertical, DS.Spacing.sm)
+        .frame(minHeight: 32)
         .background(DS.Colors.surfaceElevated, in: Capsule())
         .overlay(Capsule().stroke(DS.Colors.border, lineWidth: 1))
         .padding(.top, DS.Spacing.sm)

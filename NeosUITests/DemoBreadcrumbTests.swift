@@ -6,25 +6,14 @@ final class DemoBreadcrumbTests: DemoTestCase {
     private var sidebar: SidebarScreen { SidebarScreen(app: app) }
     private var browse: BrowseScreen { BrowseScreen(app: app) }
 
-    override func setUp() {
-        super.setUp()
-        resetToHome()
-    }
-
-    // Rows carry no identifier of their own, so they are reached through their icon.
-    private func clickFirstContainerRow() {
-        let folder = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier == 'folder'")).firstMatch
-        waitForElement(folder)
-        folder.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
-    }
-
+    // Rows and tiles carry no identifier of their own: each is one button labelled from its texts.
     private func clickRow(labelled label: String) {
         let row = app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
         waitForElement(row)
         row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
     }
 
+    /// From wherever the previous test stopped: a click on a source's row always lands on its first page.
     private func openDeezerRoot() {
         waitForElement(sidebar.sourceButton(sid: 2))
         sidebar.sourceButton(sid: 2).click()
@@ -33,7 +22,7 @@ final class DemoBreadcrumbTests: DemoTestCase {
 
     private func openFirstCategory() {
         openDeezerRoot()
-        clickFirstContainerRow()
+        clickRow(labelled: "Albums")
         waitForElement(browse.breadcrumb)
     }
 
@@ -54,6 +43,15 @@ final class DemoBreadcrumbTests: DemoTestCase {
         openFirstCategory()
 
         browse.breadcrumbItem(0).click()
+
+        waitForElementToDisappear(browse.breadcrumb)
+        XCTAssertTrue(browse.view.exists, "Source root listing should be back")
+    }
+
+    func testClickingTheSelectedSourceReturnsToItsRoot() {
+        openFirstCategory()
+
+        sidebar.sourceButton(sid: 2).click()
 
         waitForElementToDisappear(browse.breadcrumb)
         XCTAssertTrue(browse.view.exists, "Source root listing should be back")

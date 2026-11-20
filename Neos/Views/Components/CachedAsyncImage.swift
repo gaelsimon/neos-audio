@@ -6,15 +6,14 @@ struct CachedAsyncImage<Placeholder: View>: View {
     let highResURL: URL?
     let placeholder: () -> Placeholder
 
-    @State private var image: NSImage?
+    @State private var image: PlatformImage?
     @State private var loadedURL: URL?
 
     init(url: URL?, highResURL: URL? = nil, @ViewBuilder placeholder: @escaping () -> Placeholder) {
         self.url = url
         self.highResURL = highResURL
         self.placeholder = placeholder
-        // Memory only: `init` runs for every row that scrolls in, and reaching the disk here would
-        // stat, decode a full-size image and touch an mtime on the main thread.
+        // Memory only: `init` runs for every row scrolling in, and the disk would stall the main thread.
         if let highResURL, let cached = ImageCache.shared.memoryOnly(highResURL) {
             _image = State(initialValue: cached)
             _loadedURL = State(initialValue: highResURL)
@@ -27,7 +26,7 @@ struct CachedAsyncImage<Placeholder: View>: View {
     var body: some View {
         Group {
             if let image {
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
@@ -70,9 +69,9 @@ struct CachedAsyncImage<Placeholder: View>: View {
                 do {
                     let data = try await Self.fetch(url)
                     guard !Task.isCancelled else { return }
-                    if let nsImage = await ImageCache.shared.store(data, for: url, skipDisk: url.isFileURL) {
+                    if let decoded = await ImageCache.shared.store(data, for: url, skipDisk: url.isFileURL) {
                         guard !Task.isCancelled else { return }
-                        self.image = nsImage
+                        self.image = decoded
                         self.loadedURL = url
                     }
                 } catch {
@@ -85,11 +84,11 @@ struct CachedAsyncImage<Placeholder: View>: View {
                 do {
                     let data = try await Self.fetch(highResURL)
                     guard !Task.isCancelled else { return }
-                    if let nsImage = await ImageCache.shared.store(
+                    if let decoded = await ImageCache.shared.store(
                         data, for: highResURL, skipDisk: highResURL.isFileURL
                     ) {
                         guard !Task.isCancelled else { return }
-                        self.image = nsImage
+                        self.image = decoded
                         self.loadedURL = highResURL
                     }
                 } catch {
@@ -111,7 +110,7 @@ struct CachedAsyncImage<Placeholder: View>: View {
 final class ImageCache: @unchecked Sendable {
     static let shared = ImageCache()
 
-    private let memoryCache = NSCache<NSURL, NSImage>()
+    private let memoryCache = NSCache<NSURL, PlatformImage>()
     private let diskURL: URL
     private let maxDiskBytes: Int = 100 * 1024 * 1024 // 100 MB
     private let queue = DispatchQueue(label: "com.galela.neos.imagecache", qos: .utility)
@@ -123,17 +122,17 @@ final class ImageCache: @unchecked Sendable {
         memoryCache.countLimit = 200
         memoryCache.totalCostLimit = 50 * 1024 * 1024 // 50 MB
 
-        diskURL = URL.applicationSupportDirectory.appendingPathComponent("Neos/ImageCache", isDirectory: true)
+        diskURL = AppDefaults.supportDirectory.appendingPathComponent("ImageCache", isDirectory: true)
         try? FileManager.default.createDirectory(at: diskURL, withIntermediateDirectories: true)
     }
 
     /// Non-blocking lookup. The only variant safe to call while a list is scrolling.
-    func memoryOnly(_ url: URL) -> NSImage? {
+    func memoryOnly(_ url: URL) -> PlatformImage? {
         memoryCache.object(forKey: url as NSURL)
     }
 
     /// Memory, then disk. The disk read and the decode run off the caller's thread.
-    func load(_ url: URL) async -> NSImage? {
+    func load(_ url: URL) async -> PlatformImage? {
         if let cached = memoryOnly(url) { return cached }
         return await withCheckedContinuation { continuation in
             queue.async { [self] in
@@ -143,7 +142,7 @@ final class ImageCache: @unchecked Sendable {
     }
 
     /// Decodes downloaded bytes off the caller's thread, then caches them.
-    func store(_ data: Data, for url: URL, skipDisk: Bool = false) async -> NSImage? {
+    func store(_ data: Data, for url: URL, skipDisk: Bool = false) async -> PlatformImage? {
         await withCheckedContinuation { continuation in
             queue.async { [self] in
                 guard let image = Self.decodeImage(from: data) else {
@@ -159,12 +158,12 @@ final class ImageCache: @unchecked Sendable {
 
     // MARK: - Private
 
-    private func insertInMemory(_ image: NSImage, for url: URL) {
+    private func insertInMemory(_ image: PlatformImage, for url: URL) {
         let cost = Int(image.size.width * image.size.height * 4)
         memoryCache.setObject(image, forKey: url as NSURL, cost: cost)
     }
 
-    private func readFromDisk(_ url: URL) -> NSImage? {
+    private func readFromDisk(_ url: URL) -> PlatformImage? {
         let file = Self.diskPath(for: url, in: diskURL)
         guard let data = try? Data(contentsOf: file),
               let image = Self.decodeImage(from: data) else { return nil }
@@ -215,17 +214,13 @@ final class ImageCache: @unchecked Sendable {
 
     // MARK: - Decoding
 
-    /// Decodes image data into an NSImage, re-drawing into a 32-bpp RGBA bitmap
-    /// to work around a CoreGraphics bug where 24-bpp (3-channel) JPEGs trigger
-    /// `NULL _blockArray` crashes during rendering (rdar://143602439).
-    static func decodeImage(from data: Data) -> NSImage? {
-        guard let source = NSImage(data: data),
-              let cgImage = source.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+    /// Redrawn into 32-bpp RGBA: 24-bpp JPEGs crash CoreGraphics while rendering (rdar://143602439).
+    static func decodeImage(from data: Data) -> PlatformImage? {
+        guard let source = PlatformImage(data: data), let cgImage = source.cgImageValue else {
             return nil
         }
         let w = cgImage.width
         let h = cgImage.height
-        // Force 32-bpp RGBA so SwiftUI never hits the 24-bpp decode path
         guard let ctx = CGContext(
             data: nil, width: w, height: h,
             bitsPerComponent: 8, bytesPerRow: 0,
@@ -236,7 +231,7 @@ final class ImageCache: @unchecked Sendable {
         }
         ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
         guard let safe = ctx.makeImage() else { return source }
-        return NSImage(cgImage: safe, size: NSSize(width: w, height: h))
+        return PlatformImage(cgImage: safe, pixelSize: CGSize(width: w, height: h))
     }
 
     // MARK: - Disk Helpers

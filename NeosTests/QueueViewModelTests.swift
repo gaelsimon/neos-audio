@@ -15,8 +15,8 @@ final class QueueViewModelTests: XCTestCase {
         let viewModel = QueueViewModel(
             service: mock,
             state: state,
-            getQueue: { pid, range in
-                try await backend.getQueue(pid: pid, range: range)
+            getQueue: { pid in
+                try await backend.getQueue(pid: pid)
             }
         )
 
@@ -113,8 +113,8 @@ final class QueueViewModelTests: XCTestCase {
         let state = AppState()
         let mock = MockAudioService()
         let backend = MockQueueBackend()
-        let vm = QueueViewModel(service: mock, state: state, getQueue: { pid, range in
-            try await backend.getQueue(pid: pid, range: range)
+        let vm = QueueViewModel(service: mock, state: state, getQueue: { pid in
+            try await backend.getQueue(pid: pid)
         })
 
         state.selectedPlayerID = 42
@@ -129,51 +129,119 @@ final class QueueViewModelTests: XCTestCase {
         XCTAssertFalse(vm.isLoadingQueue)
     }
 
-    // MARK: - loadMoreQueue
-
     @MainActor
-    func testLoadMoreQueueAppendsItems() async {
+    func testLoadQueueAsksForTheWholeQueue() async {
         let state = AppState()
         let mock = MockAudioService()
-        // Simulate first page of exactly 100 items (hasMore = true)
-        let firstPage = (0..<100).map { QueueItem(qid: $0, song: "S\($0)") }
-        mock.queueItems = firstPage
         let vm = QueueViewModel(service: mock, state: state)
 
         state.selectedPlayerID = 42
         vm.loadQueue()
-        await waitUntil { state.queue.count == 100 }
+        await waitUntil { !vm.isLoadingQueue }
 
-        XCTAssertTrue(vm.hasMore)
+        XCTAssertEqual(mock.queueRangesAsked, [nil])
+    }
 
-        // Enqueue second page
-        mock.queueItems = [QueueItem(qid: 200, song: "Extra")]
-        vm.loadMoreQueue()
-        await waitUntil { state.queue.count == 101 }
+    // MARK: - Stream entries left behind
 
-        XCTAssertEqual(state.queue.count, 101)
-        XCTAssertEqual(state.queue.last?.song, "Extra")
+    private static let stream = "Url Stream"
+
+    @MainActor
+    private func sweeping(
+        _ queue: [QueueItem], playing: NowPlayingMedia, before answer: (AppState) -> Void = { _ in }
+    ) async -> [String] {
+        let state = AppState()
+        let mock = MockAudioService()
+        let backend = MockQueueBackend()
+        let vm = QueueViewModel(service: mock, state: state, getQueue: { try await backend.getQueue(pid: $0) })
+        state.selectedPlayerID = 42
+        state.setNowPlaying(playing)
+
+        let sweep = vm.removeLeftoverStreams()
+        await waitUntil(timeout: 1.0) { await backend.hasPendingRequest(for: 42) }
+        answer(state)
+        await backend.resume(pid: 42, with: queue)
+        await sweep?.value
+
+        return mock.calls.filter { $0.hasPrefix("removeFromQueue") }
+    }
+
+    private func streamEntry(_ qid: Int) -> QueueItem {
+        QueueItem(qid: qid, song: Self.stream, album: Self.stream, artist: Self.stream)
+    }
+
+    private func playingStream(qid: Int) -> NowPlayingMedia {
+        NowPlayingMedia(song: Self.stream, albumID: "1", mid: "1", qid: qid, sid: 1024)
     }
 
     @MainActor
-    func testLoadMoreQueueGuardsWhenNotHasMore() async {
-        let state = AppState()
-        let mock = MockAudioService()
-        mock.queueItems = [QueueItem(qid: 1)]
-        let vm = QueueViewModel(service: mock, state: state)
+    func testTheStreamsLeftByEarlierRadiosAreRemoved() async {
+        let queue = [streamEntry(1), QueueItem(qid: 2, song: "A", mid: "m2"), streamEntry(3), streamEntry(4)]
 
-        state.selectedPlayerID = 42
-        vm.loadQueue()
-        await yieldForTask()
+        let removals = await sweeping(queue, playing: playingStream(qid: 3))
 
-        // hasMore is false since we got < pageSize items
-        XCTAssertFalse(vm.hasMore)
+        XCTAssertEqual(removals, ["removeFromQueue:42:[1, 4]"])
+    }
 
-        let callsBefore = mock.calls.count
-        vm.loadMoreQueue()
-        await Task.yield()
+    @MainActor
+    func testTheStreamThatPlaysKeepsItsEntry() async {
+        let removals = await sweeping([streamEntry(1), QueueItem(qid: 2, song: "A", mid: "m2")], playing: playingStream(qid: 1))
 
-        XCTAssertEqual(mock.calls.count, callsBefore)
+        XCTAssertEqual(removals, [])
+    }
+
+    @MainActor
+    func testAStationPlayingLeavesNoStreamEntry() async {
+        let station = NowPlayingMedia(type: .station, song: "Amen", albumID: "s17439", mid: "http://example.com/live", qid: 1, sid: 3, station: "Funk")
+
+        let removals = await sweeping([streamEntry(1), QueueItem(qid: 2, song: "A", mid: "m2")], playing: station)
+
+        XCTAssertEqual(removals, ["removeFromQueue:42:[1]"])
+    }
+
+    @MainActor
+    func testAQueueOfTracksIsLeftAlone() async {
+        let queue = [QueueItem(qid: 1, song: "A", mid: "m1"), QueueItem(qid: 2, song: "B", mid: "m2")]
+
+        let removals = await sweeping(queue, playing: NowPlayingMedia(song: "A", mid: "m1", qid: 1, sid: 10))
+
+        XCTAssertEqual(removals, [])
+    }
+
+    @MainActor
+    func testATrackNamedLikeTheSpeakersPlaceholderIsKept() async {
+        let queue = [QueueItem(qid: 1, song: Self.stream, mid: "m1"), QueueItem(qid: 2, song: "B", mid: "m2")]
+
+        let removals = await sweeping(queue, playing: NowPlayingMedia(song: "B", mid: "m2", qid: 2, sid: 10))
+
+        XCTAssertEqual(removals, [])
+    }
+
+    @MainActor
+    func testNothingIsRemovedWhenTheQueueDoesNotHoldTheStreamThatPlays() async {
+        let queue = [streamEntry(1), QueueItem(qid: 2, song: "A", mid: "m2")]
+
+        let removals = await sweeping(queue, playing: playingStream(qid: 2))
+
+        XCTAssertEqual(removals, [])
+    }
+
+    @MainActor
+    func testNothingIsRemovedOnceAnotherPlayHasStarted() async {
+        let removals = await sweeping([streamEntry(1), streamEntry(2)], playing: playingStream(qid: 2)) { state in
+            _ = state.beginTrackLoad()
+        }
+
+        XCTAssertEqual(removals, [])
+    }
+
+    @MainActor
+    func testNothingIsRemovedOnceAnotherRadioWasAskedFor() async {
+        let removals = await sweeping([streamEntry(1), streamEntry(2)], playing: playingStream(qid: 2)) { state in
+            state.playback.awaitsRadioStart = true
+        }
+
+        XCTAssertEqual(removals, [])
     }
 
     // MARK: - playItem
@@ -339,9 +407,8 @@ final class QueueViewModelTests: XCTestCase {
 private actor MockQueueBackend {
     private var continuations: [Int: CheckedContinuation<[QueueItem], Error>] = [:]
 
-    func getQueue(pid: Int, range: ClosedRange<Int>?) async throws -> [QueueItem] {
-        _ = range
-        return try await withCheckedThrowingContinuation { continuation in
+    func getQueue(pid: Int) async throws -> [QueueItem] {
+        try await withCheckedThrowingContinuation { continuation in
             continuations[pid] = continuation
         }
     }

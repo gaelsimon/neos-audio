@@ -91,6 +91,134 @@ final class BrowseViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.canGoForward)
     }
 
+    // MARK: - Pages
+
+    @MainActor
+    func testAPageHandsANewPlaceOverInsteadOfLoadingIt() async {
+        let state = AppState()
+        var containerFetches = 0
+        let viewModel = BrowseViewModel(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            browseSource: { _ in BrowseResult(items: [BrowseItem(name: "Album", cid: "c1", browsable: true)]) },
+            browseContainer: { _, _, _ in
+                containerFetches += 1
+                return BrowseResult(items: [])
+            }
+        )
+        viewModel.selectSource(MusicSource(sid: 1, name: "TIDAL"))
+        await waitUntil { viewModel.items.map(\.name) == ["Album"] }
+        var opened: [BrowseLocation] = []
+        viewModel.openPage = { opened.append($0) }
+
+        viewModel.browseItem(BrowseItem(name: "Album", cid: "c1", browsable: true))
+        await yieldForTask()
+
+        XCTAssertEqual(opened.map { $0.browseStack.map(\.cid) }, [[nil, "c1"]])
+        XCTAssertEqual(viewModel.browseStack.count, 1)
+        XCTAssertEqual(viewModel.items.map(\.name), ["Album"])
+        XCTAssertEqual(containerFetches, 0)
+    }
+
+    @MainActor
+    func testAPageHandsSettingsOverAndStaysWhereItIs() {
+        let state = AppState()
+        let viewModel = BrowseViewModel(service: HEOSService(stateUpdater: state), state: state)
+        var opened: [BrowseLocation] = []
+        viewModel.openPage = { opened.append($0) }
+
+        viewModel.navigateToSettings()
+
+        XCTAssertEqual(opened.map(\.destination), [.settings])
+        XCTAssertEqual(viewModel.currentDestination, .home)
+    }
+
+    @MainActor
+    func testStartingAPageLoadsItsPlace() async {
+        let state = AppState()
+        let viewModel = BrowseViewModel(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, cid, _ in BrowseResult(items: [BrowseItem(name: "Track in \(cid)", mid: "m1", playable: true)]) }
+        )
+        let root = BrowseTarget(sid: 1, name: "TIDAL", serviceName: "TIDAL")
+        let album = BrowseTarget(sid: 1, cid: "c1", name: "Album", mediaType: .album, serviceName: "TIDAL")
+
+        viewModel.start(at: BrowseLocation(destination: .browse(root), browseStack: [root, album], searchContext: nil))
+        await waitUntil { viewModel.items.map(\.name) == ["Track in c1"] }
+
+        XCTAssertEqual(viewModel.browseStack, [root, album])
+        XCTAssertFalse(viewModel.canGoBack)
+    }
+
+    @MainActor
+    func testAPageStartedOnASourceLoadsItsFirstPage() async {
+        let state = AppState()
+        var askedFor: [Int] = []
+        let viewModel = BrowseViewModel(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            browseSource: { sid in
+                askedFor.append(sid)
+                return BrowseResult(items: [BrowseItem(name: "Albums", cid: "albums", browsable: true)])
+            }
+        )
+        let source = MusicSource(sid: 5, name: "Deezer")
+
+        viewModel.start(at: .root(of: source))
+        await waitUntil { viewModel.items.map(\.name) == ["Albums"] }
+
+        XCTAssertEqual(askedFor, [5])
+        XCTAssertEqual(viewModel.currentLocationName, "Deezer")
+        XCTAssertFalse(viewModel.canGoBack)
+    }
+
+    @MainActor
+    func testSelectingASourceOpensTheSamePlaceATabStartsOn() {
+        let state = AppState()
+        let viewModel = BrowseViewModel(service: HEOSService(stateUpdater: state), state: state)
+        var opened: [BrowseLocation] = []
+        viewModel.openPage = { opened.append($0) }
+        let source = MusicSource(sid: 5, name: "Deezer")
+
+        viewModel.selectSource(source)
+
+        XCTAssertEqual(opened, [.root(of: source)])
+    }
+
+    @MainActor
+    func testTheQueueIsAPlaceWithoutAPath() {
+        XCTAssertEqual(BrowseLocation.queue.destination, .queue)
+        XCTAssertTrue(BrowseLocation.queue.browseStack.isEmpty)
+    }
+
+    @MainActor
+    func testAnAlbumPageOpensOnItsArtwork() async {
+        let state = AppState()
+        let viewModel = BrowseViewModel(
+            service: HEOSService(stateUpdater: state),
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, _, _ in BrowseResult(items: [BrowseItem(name: "Track", mid: "m1", playable: true)]) }
+        )
+        let root = BrowseTarget(sid: 1, name: "TIDAL", serviceName: "TIDAL")
+        let album = BrowseTarget(sid: 1, cid: "c1", name: "Album", mediaType: .album, serviceName: "TIDAL")
+
+        viewModel.start(at: BrowseLocation(destination: .browse(root), browseStack: [root, album], searchContext: nil))
+        await waitUntil { !viewModel.items.isEmpty }
+
+        XCTAssertTrue(viewModel.opensOnArtwork)
+    }
+
+    @MainActor
+    func testAPageOutsideAContainerOpensOnItsTitle() {
+        let state = AppState()
+        let viewModel = BrowseViewModel(service: HEOSService(stateUpdater: state), state: state)
+
+        XCTAssertFalse(viewModel.opensOnArtwork)
+    }
+
     // MARK: - Scroll Restoration
 
     @MainActor
@@ -932,6 +1060,28 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testAFolderRowAddsTheWholeFolder() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        state.selectedPlayerID = 123
+        let vm = BrowseViewModel(
+            service: mock,
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, _, _ in BrowseResult(items: []) }
+        )
+        vm.selectSource(MusicSource(sid: 1, name: "TIDAL"))
+        await yieldForTask()
+        let album = BrowseItem(name: "Album", type: .album, cid: "album-7", mid: "album-mid", playable: true, browsable: true)
+
+        vm.addToQueue(album)
+        await yieldForTask()
+
+        XCTAssertEqual(mock.lastAddedToQueue?.cid, "album-7")
+        XCTAssertNil(mock.lastAddedToQueue?.mid, "A mid would ask the speaker for one track of the folder")
+    }
+
+    @MainActor
     func testPlayContainerRequiresPlayerSelected() async {
         let state = AppState()
         let mock = MockAudioService()
@@ -1346,6 +1496,29 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testARefusedBrowseKeepsTheAccountTheSpeakerStillHolds() async {
+        let state = AppState()
+        state.signedInUser = "user"
+        var reported: [String?] = []
+        state.onAccountReported = { reported.append($0) }
+        let mock = MockAudioService()
+        mock.accountUser = "user"
+        let viewModel = BrowseViewModel(
+            service: mock,
+            state: state,
+            browseSource: { _ in
+                throw NSError(domain: "heos", code: 8, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+            },
+            browseContainer: { _, _, _ in MockData.deezerRoot }
+        )
+
+        viewModel.selectSource(MusicSource(sid: 9, name: "SoundCloud", type: "music_service", available: true))
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(reported.count, 0, "Reporting a lost account sends a sign-in")
+    }
+
+    @MainActor
     func testAuthErrorsAreRecognisedByTheirWording() {
         XCTAssertTrue(BrowseViewModel.isAuthError("User not logged in"))
         XCTAssertTrue(BrowseViewModel.isAuthError("Not signed in"))
@@ -1353,15 +1526,143 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
-    func testReportedBrowseErrorKeepsTheAccountWhenItIsNotAboutAuth() {
+    func testReportedBrowseErrorKeepsTheAccountWhenItIsNotAboutAuth() async {
         let state = AppState()
         state.signedInUser = "user"
         let viewModel = BrowseViewModel(service: MockAudioService(), state: state)
 
-        viewModel.reportBrowseError(NSError(domain: "heos", code: 12, userInfo: [NSLocalizedDescriptionKey: "System error"]))
+        await viewModel.reportBrowseError(
+            NSError(domain: "heos", code: 12, userInfo: [NSLocalizedDescriptionKey: "System error"]),
+            requestID: viewModel.beginBrowseRequest()
+        )
 
         XCTAssertEqual(viewModel.errorMessage, "System error")
         XCTAssertEqual(state.signedInUser, "user")
+    }
+
+    @MainActor
+    private func refusedViewModel(signedInUser: String?, service: MockAudioService) -> BrowseViewModel {
+        let state = AppState()
+        state.signedInUser = signedInUser
+        return BrowseViewModel(
+            service: service,
+            state: state,
+            browseSource: { _ in
+                throw NSError(domain: "heos", code: 8, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+            },
+            browseContainer: { _, _, _ in MockData.deezerRoot }
+        )
+    }
+
+    private let soundCloud = MusicSource(sid: 9, name: "SoundCloud", type: "music_service", available: true)
+
+    @MainActor
+    func testARefusalOnAnAccountTheSpeakerHoldsBlamesTheServiceLink() async {
+        let mock = MockAudioService()
+        mock.accountUser = "user"
+        let viewModel = refusedViewModel(signedInUser: "user", service: mock)
+
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(viewModel.refusedAccess, .serviceLinkExpired)
+    }
+
+    @MainActor
+    func testARefusalAfterTheSpeakerDroppedItsAccountAsksToSignIn() async {
+        let viewModel = refusedViewModel(signedInUser: "user", service: MockAudioService())
+
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(viewModel.refusedAccess, .accountSignedOut)
+    }
+
+    @MainActor
+    func testARefusalWhileSignedOutAsksToSignInWithoutAskingTheSpeaker() async {
+        let mock = MockAudioService()
+        let viewModel = refusedViewModel(signedInUser: nil, service: mock)
+
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(viewModel.refusedAccess, .accountSignedOut)
+        XCTAssertFalse(mock.calls.contains("checkAccount"))
+    }
+
+    @MainActor
+    func testARefusalShowsWhyTheSpeakerCouldNotBeAsked() async {
+        let mock = MockAudioService()
+        mock.checkAccountError = NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Timed out"])
+        let viewModel = refusedViewModel(signedInUser: "user", service: mock)
+
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        XCTAssertEqual(viewModel.errorMessage, "Timed out")
+        XCTAssertNil(viewModel.refusedAccess)
+    }
+
+    @MainActor
+    func testARefusalWhileSignedOutStillAsksToSignInOnceTheAccountIsBack() async {
+        let viewModel = refusedViewModel(signedInUser: nil, service: MockAudioService())
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        viewModel.state.signedInUser = "user"
+
+        XCTAssertEqual(viewModel.refusedAccess, .accountSignedOut)
+    }
+
+    @MainActor
+    func testAPageRefusedWhileSignedOutLoadsAgainOnceTheAccountIsBack() async {
+        var refusals = 1
+        let state = AppState()
+        let viewModel = BrowseViewModel(
+            service: MockAudioService(),
+            state: state,
+            browseSource: { _ in
+                if refusals > 0 {
+                    refusals -= 1
+                    throw NSError(domain: "heos", code: 8, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+                }
+                return MockData.deezerRoot
+            },
+            browseContainer: { _, _, _ in MockData.deezerRoot }
+        )
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+        state.signedInUser = "user"
+
+        viewModel.accountChanged(signedIn: true)
+        await waitUntil { !viewModel.items.isEmpty }
+
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    @MainActor
+    func testAnExpiredServiceLinkDoesNotReloadWhenTheAccountIsReported() async {
+        let mock = MockAudioService()
+        mock.accountUser = "user"
+        let viewModel = refusedViewModel(signedInUser: "user", service: mock)
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        viewModel.accountChanged(signedIn: true)
+
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    @MainActor
+    func testAnErrorThatIsNotARefusalHasNoRefusedAccess() async {
+        let viewModel = BrowseViewModel(service: MockAudioService(), state: AppState())
+
+        await viewModel.reportBrowseError(
+            NSError(domain: "heos", code: 12, userInfo: [NSLocalizedDescriptionKey: "System error"]),
+            requestID: viewModel.beginBrowseRequest()
+        )
+
+        XCTAssertNil(viewModel.refusedAccess)
     }
 }
 

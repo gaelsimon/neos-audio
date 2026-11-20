@@ -9,59 +9,39 @@ struct AccountSettingsView: View {
     let localServersVM: LocalServersViewModel
 
     @State private var showSignOutConfirmation = false
+    @FocusState private var focusedField: SignInField?
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-                Text("Settings")
-                    .typography(.pageTitle)
-                    .padding(.bottom, DS.Spacing.sm)
-
-                accountSection
-                servicesSection
-                localServersSection
-                playbackSection
-                cacheSection
-                aboutSection
-                diagnosticsSection
-            }
-            .padding(.horizontal, DS.Spacing.xxl)
-            .padding(.top, DS.Spacing.xxl)
-            .padding(.bottom, DS.Spacing.xxxl)
-            .frame(maxWidth: 640, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .accessibilityIdentifier(AccessibilityID.Settings.view)
+    private enum SignInField {
+        case email
+        case password
     }
 
-    // MARK: - Section Card
-
-    private func sectionCard<Content: View>(
-        header: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            Text(header)
-                .typography(.sectionHeader)
-
-            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                content()
-            }
-            .padding(DS.Spacing.xl)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.large))
+    var body: some View {
+        Form {
+            accountSection
+            servicesSection
+            localServersSection
+            playbackSection
+            cacheSection
+            aboutSection
+            diagnosticsSection
         }
+        .settingsForm()
+        .pageHeading("Settings")
+        .task { await localServersVM.load() }
+        .accessibilityIdentifier(AccessibilityID.Settings.view)
     }
 
     // MARK: - Account Section
 
+    @ViewBuilder
     private var accountSection: some View {
-        sectionCard(header: "Account") {
-            if let user = state.signedInUser {
+        if let user = state.signedInUser {
+            Section("Account") {
                 signedInView(user: user)
-            } else {
-                signInForm
             }
+        } else {
+            signInSection
         }
     }
 
@@ -98,38 +78,32 @@ struct AccountSettingsView: View {
         }
     }
 
-    private var signInForm: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-            Text("Sign in with your HEOS account to access favorites and playlists across devices.")
-                .typography(.secondary)
+    private var signInSection: some View {
+        Section {
+            TextField("Email", text: $accountVM.username)
+                .textContentType(.username)
+                .literalTextInput(.email)
+                .focused($focusedField, equals: .email)
+                .submitLabel(.next)
+                .onSubmit { focusedField = .password }
+                .accessibilityIdentifier(AccessibilityID.Settings.emailField)
 
-            VStack(spacing: DS.Spacing.md) {
-                TextField("Email", text: $accountVM.username)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.emailAddress)
-                    .accessibilityIdentifier(AccessibilityID.Settings.emailField)
-
-                SecureField("Password", text: $accountVM.password)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier(AccessibilityID.Settings.passwordField)
-            }
-            .frame(maxWidth: 360)
+            SecureField("Password", text: $accountVM.password)
+                .textContentType(.password)
+                .focused($focusedField, equals: .password)
+                .submitLabel(.go)
+                .onSubmit { accountVM.signIn() }
+                .accessibilityIdentifier(AccessibilityID.Settings.passwordField)
 
             Toggle("Remember me", isOn: $accountVM.rememberMe)
                 .toggleStyle(.switch)
                 .tint(DS.Colors.accent)
                 .accessibilityIdentifier(AccessibilityID.Settings.rememberMeToggle)
-                .frame(maxWidth: 360)
 
             if let error = accountVM.signInError {
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: error.icon)
-                        .foregroundStyle(errorColor(for: error))
-                    Text(error.message)
-                        .typography(.secondary)
-                        .foregroundStyle(errorColor(for: error))
-                }
-                .accessibilityIdentifier(AccessibilityID.Settings.signInError)
+                Label(error.message, systemImage: error.icon)
+                    .typography(.secondary, color: errorColor(for: error))
+                    .accessibilityIdentifier(AccessibilityID.Settings.signInError)
             }
 
             Button(action: { accountVM.signIn() }) {
@@ -140,9 +114,12 @@ struct AccountSettingsView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
             .disabled(accountVM.username.isEmpty || accountVM.password.isEmpty || accountVM.isSigningIn)
             .accessibilityIdentifier(AccessibilityID.Settings.signInButton)
+        } header: {
+            Text("Account")
+        } footer: {
+            Text("Sign in with your HEOS account to access favorites and playlists across devices.")
         }
     }
 
@@ -159,7 +136,7 @@ struct AccountSettingsView: View {
 
     private var servicesSection: some View {
         let services = MusicSource.listed(homeVM.streamingSources, signedIn: state.signedInUser != nil)
-        return sectionCard(header: "Services") {
+        return Section("Services") {
             if services.isEmpty {
                 Text("No services available. Connect to a speaker to see your music services.")
                     .typography(.secondary)
@@ -176,7 +153,7 @@ struct AccountSettingsView: View {
     // MARK: - Local Music Servers Section
 
     private var localServersSection: some View {
-        sectionCard(header: "Local Music Servers") {
+        Section("Local Music Servers") {
             if localServersVM.servers.isEmpty {
                 if localServersVM.hasLoaded {
                     Text("No local music servers found.")
@@ -186,32 +163,22 @@ struct AccountSettingsView: View {
                 LocalServerSettingsView(servers: localServersVM.servers, preferences: localServersVM.preferences)
             }
         }
-        .task { await localServersVM.load() }
     }
 
     // MARK: - Playback Section
 
     private var playbackSection: some View {
-        sectionCard(header: "Playback") {
-            HStack {
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text("Volume Limit")
-                        .typography(.bodyMedium)
-                    Text("Set a maximum volume to prevent accidentally playing too loud.")
-                        .typography(.secondary)
-                }
-
-                Spacer()
-
-                Toggle("", isOn: Binding(
-                    get: { settingsVM.volumeLimitEnabled },
-                    set: { settingsVM.volumeLimitEnabled = $0 }
-                ))
-                .toggleStyle(.switch)
-                .tint(DS.Colors.accent)
-                .labelsHidden()
-                .accessibilityIdentifier(AccessibilityID.Settings.volumeLimitToggle)
+        Section("Playback") {
+            Toggle(isOn: Binding(
+                get: { settingsVM.volumeLimitEnabled },
+                set: { settingsVM.volumeLimitEnabled = $0 }
+            )) {
+                Text("Volume Limit")
+                Text("Set a maximum volume to prevent accidentally playing too loud.")
             }
+            .toggleStyle(.switch)
+            .tint(DS.Colors.accent)
+            .accessibilityIdentifier(AccessibilityID.Settings.volumeLimitToggle)
 
             if settingsVM.volumeLimitEnabled {
                 HStack(spacing: DS.Spacing.md) {
@@ -238,34 +205,25 @@ struct AccountSettingsView: View {
     // MARK: - Cache Section
 
     private var cacheSection: some View {
-        sectionCard(header: "Cache") {
-            HStack {
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text("Cached Data")
-                        .typography(.bodyMedium)
-                    Text(settingsVM.estimatedCacheSize)
-                        .typography(.secondary)
-                        .accessibilityIdentifier(AccessibilityID.Settings.cacheSizeLabel)
-                }
+        Section("Cache") {
+            LabeledContent("Cached Data") {
+                Text(settingsVM.estimatedCacheSize)
+                    .accessibilityIdentifier(AccessibilityID.Settings.cacheSizeLabel)
+            }
 
-                Spacer()
-
-                Button("Clear Cache") {
-                    settingsVM.showClearCacheConfirmation = true
+            Button("Clear Cache") {
+                settingsVM.showClearCacheConfirmation = true
+            }
+            .accessibilityIdentifier(AccessibilityID.Settings.clearCacheButton)
+            .confirmationDialog("Clear Cache", isPresented: Binding(
+                get: { settingsVM.showClearCacheConfirmation },
+                set: { settingsVM.showClearCacheConfirmation = $0 }
+            )) {
+                Button("Clear Cache", role: .destructive) {
+                    settingsVM.clearCache()
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .accessibilityIdentifier(AccessibilityID.Settings.clearCacheButton)
-                .confirmationDialog("Clear Cache", isPresented: Binding(
-                    get: { settingsVM.showClearCacheConfirmation },
-                    set: { settingsVM.showClearCacheConfirmation = $0 }
-                )) {
-                    Button("Clear Cache", role: .destructive) {
-                        settingsVM.clearCache()
-                    }
-                } message: {
-                    Text("This will clear all cached metadata and diagnostics. This cannot be undone.")
-                }
+            } message: {
+                Text("This will clear all cached metadata and diagnostics. This cannot be undone.")
             }
         }
     }
@@ -273,90 +231,68 @@ struct AccountSettingsView: View {
     // MARK: - About Section
 
     private var aboutSection: some View {
-        sectionCard(header: "About") {
-            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                Image("NeosLogo")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 24)
+        Section {
+            Image("NeosLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 24)
+                .accessibilityLabel("Neos")
 
-                VStack(spacing: DS.Spacing.md) {
-                    aboutRow(label: "Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
-                        .accessibilityIdentifier(AccessibilityID.Settings.aboutVersion)
+            LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+                .accessibilityIdentifier(AccessibilityID.Settings.aboutVersion)
 
-                    Divider().opacity(0.3)
+            LabeledContent("Build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
+                .accessibilityIdentifier(AccessibilityID.Settings.aboutBuild)
 
-                    aboutRow(label: "Build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
-                        .accessibilityIdentifier(AccessibilityID.Settings.aboutBuild)
-
-                    if let update = state.availableUpdate {
-                        Divider().opacity(0.3)
-
-                        aboutLink(
-                            "Neos \(update.version) is available", icon: Image(systemName: DS.Icons.update), tint: DS.Colors.accent,
-                            url: update.url.absoluteString, accessibilityID: AccessibilityID.Settings.updateLink
-                        )
-                    }
-                }
-
-                if let copyright = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String, !copyright.isEmpty {
-                    Text(copyright)
-                        .typography(.footnote)
-                        .accessibilityIdentifier(AccessibilityID.Settings.aboutCopyright)
-                }
-
-                Divider().opacity(0.3)
-
-                // App Review rejects links to outside payment, tips included, and a repo page with a Sponsor button counts.
-                #if APP_STORE
+            if let update = state.availableUpdate {
                 aboutLink(
-                    "Neos Support", icon: Image(systemName: "questionmark.circle"), tint: DS.Colors.textSecondary,
-                    url: "https://gaelsimon.github.io/neos-audio/support.html", accessibilityID: AccessibilityID.Settings.helpButton
+                    "Neos \(update.version) is available", systemImage: DS.Icons.update, tint: DS.Colors.accent,
+                    url: update.url.absoluteString, accessibilityID: AccessibilityID.Settings.updateLink
                 )
-                #else
-                aboutLink(
-                    "Support Neos on Ko-fi", icon: Image(systemName: DS.Icons.heartFill), tint: .pink,
-                    url: "https://ko-fi.com/galela", accessibilityID: AccessibilityID.Settings.supportButton
-                )
-                #endif
+            }
+
+            // App Review rejects links to outside payment, tips included, and a repo page with a Sponsor button counts.
+            #if APP_STORE
+            aboutLink(
+                "Neos Support", systemImage: "questionmark.circle", tint: DS.Colors.textSecondary,
+                url: "https://gaelsimon.github.io/neos-audio/support.html", accessibilityID: AccessibilityID.Settings.helpButton
+            )
+            #else
+            aboutLink(
+                "Support Neos on Ko-fi", systemImage: DS.Icons.heartFill, tint: .pink,
+                url: "https://ko-fi.com/galela", accessibilityID: AccessibilityID.Settings.supportButton
+            )
+            #endif
+        } header: {
+            Text("About")
+        } footer: {
+            if let copyright = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String, !copyright.isEmpty {
+                Text(copyright)
+                    .accessibilityIdentifier(AccessibilityID.Settings.aboutCopyright)
             }
         }
     }
 
-    private func aboutRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .typography(.secondary)
-            Spacer()
-            Text(value)
-                .typography(.bodyPrimary)
-        }
-    }
-
-    private func aboutLink(_ title: String, icon: Image, tint: Color, url: String, accessibilityID: String) -> some View {
-        Button(action: {
-            if let url = URL(string: url) {
-                NSWorkspace.shared.open(url)
+    @ViewBuilder
+    private func aboutLink(_ title: String, systemImage: String, tint: Color, url: String, accessibilityID: String) -> some View {
+        if let url = URL(string: url) {
+            Link(destination: url) {
+                Label {
+                    Text(title)
+                        .foregroundStyle(.primary)
+                } icon: {
+                    Image(systemName: systemImage)
+                        .foregroundStyle(tint)
+                }
             }
-        }) {
-            HStack(spacing: DS.Spacing.sm) {
-                icon
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(tint)
-                Text(title)
-                    .typography(.bodyMedium)
-            }
+            .accessibilityIdentifier(accessibilityID)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(accessibilityID)
     }
 
     // MARK: - Diagnostics Section
 
     private var diagnosticsSection: some View {
-        sectionCard(header: "Diagnostics") {
+        Section("Diagnostics") {
             if state.diagnostics.isEmpty {
                 Text("No diagnostic events recorded.")
                     .typography(.secondary)
@@ -369,8 +305,7 @@ struct AccountSettingsView: View {
                                     Text(event.date, format: .dateTime.hour().minute().second())
                                         .typography(.footnote)
                                     Text(event.source)
-                                        .typography(.secondaryEmphasis)
-                                        .foregroundStyle(DS.Colors.accent)
+                                        .typography(.secondaryEmphasis, color: DS.Colors.accent)
                                 }
                                 Text(event.message)
                                     .typography(.secondary)

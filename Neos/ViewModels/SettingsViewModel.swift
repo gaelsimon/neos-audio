@@ -1,22 +1,26 @@
 import Foundation
-import AppKit
 import NeosDomain
 
 @Observable
 @MainActor
 final class SettingsViewModel {
     private let state: AppState
+    private let defaults: UserDefaults
+    /// The image cache and the clipboard are the app's own; tests hand in their stand-ins.
+    private let imageCacheBytes: () -> Int
+    private let clearImageCache: () -> Void
+    private let copyText: @MainActor (String) -> Void
 
     // MARK: - Volume Limit
 
     var volumeLimitEnabled: Bool {
         didSet {
             if volumeLimitEnabled {
-                state.playback.maxVolume = volumeLimitValue
+                state.playback.volumeLimit = volumeLimitValue
             } else {
-                state.playback.maxVolume = nil
+                state.playback.volumeLimit = nil
             }
-            UserDefaults.standard.set(volumeLimitEnabled, forKey: "settings.volumeLimitEnabled")
+            defaults.set(volumeLimitEnabled, forKey: "settings.volumeLimitEnabled")
         }
     }
 
@@ -25,9 +29,9 @@ final class SettingsViewModel {
             let clamped = max(1, min(100, volumeLimitValue))
             if clamped != volumeLimitValue { volumeLimitValue = clamped }
             if volumeLimitEnabled {
-                state.playback.maxVolume = clamped
+                state.playback.volumeLimit = clamped
             }
-            UserDefaults.standard.set(clamped, forKey: "settings.volumeLimitValue")
+            defaults.set(clamped, forKey: "settings.volumeLimitValue")
         }
     }
 
@@ -47,7 +51,7 @@ final class SettingsViewModel {
         if !state.diagnostics.isEmpty {
             parts.append("\(state.diagnostics.count) diagnostic events")
         }
-        let imageDiskBytes = ImageCache.shared.diskSizeBytes()
+        let imageDiskBytes = imageCacheBytes()
         if imageDiskBytes > 0 {
             parts.append("\(ByteCountFormatter.string(fromByteCount: Int64(imageDiskBytes), countStyle: .file)) images")
         }
@@ -62,7 +66,7 @@ final class SettingsViewModel {
         state.serviceCapabilities = [:]
         state.searchCriteria = [:]
         state.diagnostics = []
-        ImageCache.shared.clearAll()
+        clearImageCache()
     }
 
     // MARK: - Diagnostics
@@ -74,21 +78,30 @@ final class SettingsViewModel {
             "[\(formatter.string(from: event.date))] [\(event.source)] \(event.message)"
         }
         let text = lines.joined(separator: "\n")
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text.isEmpty ? "No diagnostic events" : text, forType: .string)
+        copyText(text.isEmpty ? "No diagnostic events" : text)
     }
 
     // MARK: - Init
 
-    init(state: AppState) {
+    init(
+        state: AppState,
+        defaults: UserDefaults = AppDefaults.store,
+        imageCacheBytes: @escaping () -> Int = { ImageCache.shared.diskSizeBytes() },
+        clearImageCache: @escaping () -> Void = { ImageCache.shared.clearAll() },
+        copyText: @escaping @MainActor (String) -> Void = { Clipboard.copy($0) }
+    ) {
         self.state = state
-        self.volumeLimitEnabled = UserDefaults.standard.bool(forKey: "settings.volumeLimitEnabled")
-        let savedValue = UserDefaults.standard.integer(forKey: "settings.volumeLimitValue")
+        self.defaults = defaults
+        self.imageCacheBytes = imageCacheBytes
+        self.clearImageCache = clearImageCache
+        self.copyText = copyText
+        self.volumeLimitEnabled = defaults.bool(forKey: "settings.volumeLimitEnabled")
+        let savedValue = defaults.integer(forKey: "settings.volumeLimitValue")
         self.volumeLimitValue = savedValue > 0 ? savedValue : 80
 
         // Apply persisted limit on launch
         if volumeLimitEnabled {
-            state.playback.maxVolume = volumeLimitValue
+            state.playback.volumeLimit = volumeLimitValue
         }
     }
 }

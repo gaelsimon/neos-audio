@@ -9,69 +9,54 @@ struct AmpSettingsView: View {
     @State private var selectedLeaderPID: Int?
     @State private var renamingGroupID: Int?
     @State private var groupNameDraft = ""
+    @FocusState private var isGroupNameFocused: Bool
+    @State private var ungroupConfirmationID: Int?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
-                Text("Amp Settings")
-                    .typography(.pageTitle)
-                    .padding(.bottom, DS.Spacing.sm)
-
-                playersSection
-                groupsSection
-                connectionSection
-            }
-            .padding(.horizontal, DS.Spacing.xxl)
-            .padding(.top, DS.Spacing.xxl)
-            .padding(.bottom, DS.Spacing.xxxl)
-            .frame(maxWidth: 640, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
+        Form {
+            playersSection
+            groupSections
+            newGroupSection
+            connectionSection
         }
+        .settingsForm()
+        .pageHeading("Speakers")
         .accessibilityIdentifier(AccessibilityID.AmpSettings.view)
         .task {
             groupVM.loadGroups()
         }
     }
 
-    // MARK: - Section Card
+    // MARK: - Section
 
-    private func sectionCard<Content: View, Accessory: View>(
-        header: String,
+    private func formSection<Content: View, Accessory: View>(
+        header: String?,
         @ViewBuilder accessory: () -> Accessory = { EmptyView() },
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            HStack {
-                Text(header)
-                    .typography(.sectionHeader)
-                Spacer()
-                accessory()
+        Section {
+            content()
+        } header: {
+            if let header {
+                HStack {
+                    Text(header)
+                    Spacer()
+                    accessory()
+                }
             }
-
-            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                content()
-            }
-            .padding(DS.Spacing.xl)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.large))
         }
     }
 
     // MARK: - Players Section
 
     private var playersSection: some View {
-        sectionCard(header: "Players") {
+        formSection(header: nil) {
             if state.players.isEmpty {
-                Text("No players found.")
+                Text("No speakers found.")
                     .typography(.secondary)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(state.displayPlayers) { player in
-                        playerRow(player)
-                        if player.id != state.displayPlayers.last?.id {
-                            Divider().opacity(0.2)
-                        }
-                    }
+                ForEach(state.displayPlayers) { player in
+                    playerRow(player)
                 }
             }
         }
@@ -118,7 +103,8 @@ struct AmpSettingsView: View {
                 .help(state.isPoweredOn ? "Turn Off" : "Turn On")
             }
         }
-        .padding(.vertical, DS.Spacing.md)
+        // As tall as the power button's target, so rows with and without one line up.
+        .frame(minHeight: DS.HitTarget.button)
         .accessibilityIdentifier(AccessibilityID.AmpSettings.playerRow(player.pid))
         .accessibilityValue(player.pid == state.selectedPlayerID ? "selected" : "unselected")
     }
@@ -130,82 +116,91 @@ struct AmpSettingsView: View {
         return isGrouped ? DS.Icons.speakerGrouped : DS.Icons.speaker
     }
 
-    // MARK: - Groups Section
+    // MARK: - Groups
 
-    private var groupsSection: some View {
-        sectionCard(header: "Speaker Groups", accessory: { refreshButton }) {
-            existingGroupsList
-            createGroupForm
+    /// One section per group; the first carries the heading, as does the note when there is none.
+    @ViewBuilder
+    private var groupSections: some View {
+        if state.groups.isEmpty {
+            formSection(header: "Speaker Groups", accessory: { refreshButton }) {
+                Text("No active groups.")
+                    .typography(.secondary)
+            }
+        } else {
+            ForEach(state.groups) { group in
+                formSection(
+                    header: group.id == state.groups.first?.id ? "Speaker Groups" : nil,
+                    accessory: { refreshButton }
+                ) {
+                    groupRows(group)
+                }
+            }
         }
     }
 
     private var refreshButton: some View {
         HoverButton(action: { groupVM.refresh() }) { hovered in
             Image(systemName: DS.Icons.refresh)
-                .typography(.bodyPrimary)
-                .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                .typography(.bodyPrimary, color: hovered ? .white : DS.Colors.textSecondary)
         }
         .disabled(groupVM.isLoadingGroups)
         .help("Re-read players and groups from the device")
+        .accessibilityLabel("Refresh")
         .accessibilityIdentifier(AccessibilityID.Group.refreshButton)
     }
 
     @ViewBuilder
-    private var existingGroupsList: some View {
-        if state.groups.isEmpty {
-            Text("No active groups.")
-                .typography(.secondary)
-        } else {
-            ForEach(state.groups) { group in
-                groupCard(group)
+    private func groupRows(_ group: SpeakerGroup) -> some View {
+        groupTitle(group)
+            .onAppear { groupVM.loadMemberVolumes(for: group) }
+
+        ForEach(group.players, id: \.pid) { player in
+            LevelRow(
+                name: state.displayName(for: player),
+                icon: player.role == .leader ? DS.Icons.star : DS.Icons.speaker,
+                iconColor: player.role == .leader ? DS.Colors.accent : DS.Colors.textSecondary,
+                level: state.playerVolumes[player.pid],
+                label: "Speaker volume",
+                maximum: state.playback.volumeLimit ?? 100,
+                onDragging: { groupVM.setAdjustingMemberVolume(pid: player.pid, $0) }
+            ) { groupVM.setMemberVolume(pid: player.pid, level: $0) }
+        }
+
+        LevelRow(
+            name: "All Speakers", icon: DS.Icons.speakerActive, iconColor: DS.Colors.textSecondary,
+            level: state.groupVolumes[group.gid], label: "Group volume", maximum: state.playback.volumeLimit ?? 100
+        ) { groupVM.setGroupVolume(gid: group.gid, level: $0) }
+
+        Button(role: .destructive) {
+            ungroupConfirmationID = group.gid
+        } label: {
+            if groupVM.isUngrouping {
+                Spinner(size: 16, lineWidth: 2)
+            } else {
+                Text("Ungroup")
             }
+        }
+        .disabled(groupVM.isUngrouping)
+        .accessibilityIdentifier(AccessibilityID.Group.ungroupButton(group.gid))
+        .confirmationDialog(
+            "Ungroup \(state.displayName(for: group))?",
+            isPresented: Binding(
+                get: { ungroupConfirmationID == group.gid },
+                set: { if !$0 { ungroupConfirmationID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Ungroup", role: .destructive) { groupVM.ungroup(pid: group.gid) }
+        } message: {
+            Text("Each speaker goes back to playing on its own.")
         }
     }
 
-    private func groupCard(_ group: SpeakerGroup) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            groupTitle(group)
-
-            ForEach(group.players, id: \.pid) { player in
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: player.role == .leader ? DS.Icons.star : DS.Icons.speaker)
-                        .font(DS.IconFont.sm)
-                        .foregroundStyle(player.role == .leader ? DS.Colors.accent : DS.Colors.textSecondary)
-                    Text(state.displayName(for: player))
-                        .typography(.secondary)
-                        .lineLimit(1)
-                        .frame(width: 88, alignment: .leading)
-                    LevelSlider(
-                        level: state.playerVolumes[player.pid],
-                        label: "Speaker volume",
-                        onDragging: { groupVM.setAdjustingMemberVolume(pid: player.pid, $0) }
-                    ) { groupVM.setMemberVolume(pid: player.pid, level: $0) }
-                }
-            }
-
-            HStack(spacing: DS.Spacing.sm) {
-                Image(systemName: DS.Icons.speakerActive)
-                    .font(DS.IconFont.sm)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                LevelSlider(level: state.groupVolumes[group.gid], label: "Group volume") {
-                    groupVM.setGroupVolume(gid: group.gid, level: $0)
-                }
-            }
-
-            HStack {
-                Spacer()
-                TextActionButton(
-                    title: "Ungroup",
-                    role: .destructive,
-                    isBusy: groupVM.isUngrouping,
-                    accessibilityID: AccessibilityID.Group.ungroupButton(group.gid)
-                ) { groupVM.ungroup(pid: group.gid) }
-                .disabled(groupVM.isUngrouping)
-            }
-        }
-        .padding(DS.Spacing.md)
-        .background(DS.Colors.surfaceContainer, in: RoundedRectangle(cornerRadius: DS.Radius.medium))
-        .onAppear { groupVM.loadMemberVolumes(for: group) }
+    private func finishRenaming(_ group: SpeakerGroup) {
+        guard renamingGroupID == group.gid else { return }
+        renamingGroupID = nil
+        guard groupNameDraft != state.displayName(for: group) else { return }
+        groupVM.renameGroup(group, to: groupNameDraft)
     }
 
     @ViewBuilder
@@ -217,11 +212,17 @@ struct AmpSettingsView: View {
                 .onChange(of: groupNameDraft) { _, draft in
                     groupNameDraft = String(draft.prefix(GroupViewModel.maxGroupNameLength))
                 }
-                .onSubmit {
-                    groupVM.renameGroup(group, to: groupNameDraft)
-                    renamingGroupID = nil
+                .focused($isGroupNameFocused)
+                .submitLabel(.done)
+                .onSubmit { finishRenaming(group) }
+                .onAppear { isGroupNameFocused = true }
+                // Tapping elsewhere keeps the name typed, as Return does; Escape on the Mac drops it.
+                .onChange(of: isGroupNameFocused) { _, isFocused in
+                    if !isFocused { finishRenaming(group) }
                 }
+                #if os(macOS)
                 .onExitCommand { renamingGroupID = nil }
+                #endif
                 .accessibilityIdentifier(AccessibilityID.Group.nameField(group.gid))
         } else {
             HStack(spacing: DS.Spacing.sm) {
@@ -242,101 +243,74 @@ struct AmpSettingsView: View {
         }
     }
 
-    // MARK: - Create Group
+    // MARK: - New Group
 
     @ViewBuilder
-    private var createGroupForm: some View {
+    private var newGroupSection: some View {
         if state.players.count >= 2 {
-            Divider().opacity(0.3)
-
-            VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                Text("Create Group")
-                    .typography(.bodyMedium)
-
-                HStack {
-                    Text("Music from:")
-                        .typography(.secondary)
-                    Picker("", selection: leaderBinding) {
-                        ForEach(state.players) { player in
-                            Text(state.displayName(for: player)).tag(player.pid)
-                        }
+            Section {
+                Picker("Music from", selection: leaderBinding) {
+                    ForEach(state.players) { player in
+                        Text(state.displayName(for: player)).tag(player.pid)
                     }
-                    .labelsHidden()
-                    .accessibilityIdentifier(AccessibilityID.Group.leaderPicker)
                 }
-
-                Text("Also play on:")
-                    .typography(.secondary)
+                .accessibilityIdentifier(AccessibilityID.Group.leaderPicker)
 
                 ForEach(state.players) { player in
                     if player.pid != leaderPID {
-                        Toggle(isOn: memberBinding(for: player.pid)) {
-                            HStack(spacing: DS.Spacing.sm) {
-                                Image(systemName: DS.Icons.speaker)
-                                    .font(DS.IconFont.md)
-                                    .foregroundStyle(DS.Colors.textSecondary)
-                                Text(state.displayName(for: player))
-                                    .typography(.bodyPrimary)
-                            }
-                        }
-                        .toggleStyle(.checkbox)
-                        .accessibilityIdentifier(AccessibilityID.Group.memberToggle(player.pid))
+                        Toggle(state.displayName(for: player), isOn: memberBinding(for: player.pid))
+                            #if os(macOS)
+                            .toggleStyle(.checkbox)
+                            #endif
+                            .tint(DS.Colors.accent)
+                            .accessibilityIdentifier(AccessibilityID.Group.memberToggle(player.pid))
                     }
                 }
 
-                HStack {
-                    Spacer()
-                    Button {
-                        guard let leaderPID else { return }
-                        groupVM.createGroup(leaderPID: leaderPID)
-                    } label: {
-                        if groupVM.isCreatingGroup {
-                            Spinner(size: 16, lineWidth: 2)
-                        } else {
-                            Text("Create Group")
-                        }
+                Button {
+                    guard let leaderPID else { return }
+                    groupVM.createGroup(leaderPID: leaderPID)
+                } label: {
+                    if groupVM.isCreatingGroup {
+                        Spinner(size: 16, lineWidth: 2)
+                    } else {
+                        Text("Create Group")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .disabled(!canCreate || groupVM.isCreatingGroup)
-                    .accessibilityIdentifier(AccessibilityID.Group.createButton)
                 }
+                .disabled(!canCreate || groupVM.isCreatingGroup)
+                .accessibilityIdentifier(AccessibilityID.Group.createButton)
+            } header: {
+                Text("New Group")
+            } footer: {
+                Text("Choose where the music comes from, then the speakers that play it too.")
             }
         } else {
-            Text("Need 2+ speakers to create groups.")
-                .typography(.secondary)
-                .foregroundStyle(DS.Colors.textTertiary)
-                .accessibilityIdentifier(AccessibilityID.Group.emptyState)
+            Section("New Group") {
+                Text("Need 2+ speakers to create groups.")
+                    .typography(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.Group.emptyState)
+            }
         }
     }
 
     // MARK: - Connection Section
 
     private var connectionSection: some View {
-        sectionCard(header: "Connection") {
+        formSection(header: "Connection") {
             if let device = state.connectedDevice {
-                HStack(spacing: DS.Spacing.md) {
-                    Image(systemName: DS.Icons.speakerFill)
-                        .font(DS.IconFont.xxxl)
-                        .foregroundStyle(DS.Colors.accent)
-
-                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                LabeledContent {
+                    Text(device.host)
+                } label: {
+                    Label {
                         Text(connectionDisplayName(device))
-                            .typography(.bodyMedium)
-                        Text(device.host)
-                            .typography(.secondary)
-                            .foregroundStyle(DS.Colors.textTertiary)
+                    } icon: {
+                        Image(systemName: DS.Icons.speakerFill)
+                            .foregroundStyle(DS.Colors.accent)
                     }
-
-                    Spacer()
-
-                    Button(action: { speakerVM.disconnect() }) {
-                        Text("Disconnect")
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .accessibilityIdentifier(AccessibilityID.Sidebar.disconnectButton)
                 }
+
+                Button("Disconnect") { speakerVM.disconnect() }
+                    .accessibilityIdentifier(AccessibilityID.Sidebar.disconnectButton)
             } else {
                 Text("Not connected to any device.")
                     .typography(.secondary)
@@ -388,59 +362,73 @@ struct AmpSettingsView: View {
     }
 }
 
-/// A capsule level slider that follows the amp's `level` whenever the user is not dragging.
-private struct LevelSlider: View {
+/// A speaker's or a group's volume as a form row. It follows the amp's `level` whenever the user is not dragging.
+private struct LevelRow: View {
+    let name: String
+    let icon: String
+    let iconColor: Color
     let level: Int?
     let label: String
+    var maximum = 100
     var onDragging: (Bool) -> Void = { _ in }
     let onChange: (Int) -> Void
 
     @State private var value: Double = 0
     @State private var isDragging = false
+    @Environment(\.isCompactLayout) private var isCompact
 
     var body: some View {
-        HStack(spacing: DS.Spacing.sm) {
-            GeometryReader { geo in
-                let width = geo.size.width
-
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.15))
-                        .frame(height: 4)
-                    Capsule()
-                        .fill(DS.Colors.accent)
-                        .frame(width: max(0, value / 100 * width), height: 4)
+        Group {
+            if isCompact {
+                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                    title
+                    slider
                 }
-                .frame(height: geo.size.height)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { drag in
-                            if !isDragging {
-                                isDragging = true
-                                onDragging(true)
-                            }
-                            value = max(0, min(1, drag.location.x / width)) * 100
-                            onChange(Int(value))
-                        }
-                        .onEnded { _ in
-                            isDragging = false
-                            onDragging(false)
-                        }
-                )
+            } else {
+                HStack(spacing: DS.Spacing.md) {
+                    title
+                        .frame(width: 160, alignment: .leading)
+                    slider
+                }
             }
-            .frame(height: 14)
-
-            Text("\(Int(value))")
-                .typography(.secondary)
-                .monospacedDigit()
-                .frame(width: 24, alignment: .trailing)
         }
         .onAppear { sync() }
         .onChange(of: level) { sync() }
-        .accessibilityElement()
-        .accessibilityLabel(label)
-        .accessibilityValue("\(Int(value)) percent")
+    }
+
+    private var title: some View {
+        Label {
+            Text(name)
+                .lineLimit(1)
+        } icon: {
+            Image(systemName: icon)
+                .foregroundStyle(iconColor)
+        }
+    }
+
+    private var slider: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Slider(
+                value: Binding(get: { value }, set: { newValue in
+                    value = newValue
+                    onChange(Int(newValue.rounded()))
+                }),
+                in: 0...Double(maximum)
+            ) {
+                Text(label)
+            } onEditingChanged: { editing in
+                isDragging = editing
+                onDragging(editing)
+            }
+            .labelsHidden()
+            .tint(DS.Colors.accent)
+
+            Text("\(Int(value.rounded()))")
+                .typography(.secondary)
+                .monospacedDigit()
+                .frame(width: 32, alignment: .trailing)
+                .accessibilityHidden(true)
+        }
     }
 
     private func sync() {

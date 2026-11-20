@@ -29,6 +29,10 @@ final class SearchViewModel {
     var serviceResults: [ServiceCriteriaKey: [BrowseItem]] = [:]
     /// Which services are still loading
     var loadingServiceSIDs: Set<Int> = []
+    /// Categories whose answer to the current query has not arrived yet.
+    private(set) var pendingKeys: Set<ServiceCriteriaKey> = []
+    /// Services whose every category answered the current query; the others may still show an earlier query's results.
+    private var answeredSIDs: Set<Int> = []
     /// Lifecycle phase of the search overlay
     var overlayPhase: SearchOverlayPhase = .inactive
     /// Categories expanded via "More" -- shows all fetched items instead of preview
@@ -54,6 +58,24 @@ final class SearchViewModel {
     func clearHistory() {
         SearchHistoryStore.clearAll()
         recentQueries = []
+    }
+
+    /// Keeps the query once it is submitted or one of its results is used, not at every pause in typing.
+    func commitQueryToHistory() {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        SearchHistoryStore.addQuery(trimmed)
+        recentQueries = SearchHistoryStore.recentQueries()
+    }
+
+    /// A past query picked from the list runs again and moves to the top.
+    func searchAgain(_ pastQuery: String) {
+        onQueryChanged(pastQuery)
+        commitQueryToHistory()
+    }
+
+    func isPending(_ key: ServiceCriteriaKey) -> Bool {
+        pendingKeys.contains(key)
     }
 
     // MARK: - Search Execution
@@ -187,9 +209,9 @@ final class SearchViewModel {
         return sorted
     }
 
-    /// SIDs that have results or are loading, ordered by source list position.
+    /// SIDs with something to show under the current filters or still loading, ordered by source list position.
     var filteredServiceSIDs: [Int] {
-        let resultSIDs = Set(serviceResults.keys.map(\.sid))
+        let resultSIDs = Set(serviceResults.keys.map(\.sid)).filter { !filteredResults(for: $0).isEmpty }
         let activeSIDs = resultSIDs.union(loadingServiceSIDs)
 
         if let selected = selectedServiceFilter {
@@ -233,6 +255,9 @@ final class SearchViewModel {
             _ = searchTracker.next()
             isSearching = false
             serviceResults = [:]
+            answeredSIDs = []
+            pendingKeys = []
+            loadingServiceSIDs = []
             expandedCategories = []
             loadingMoreCategories = []
             // Results are gone, so a suspension could never be restored; it would only
@@ -257,6 +282,9 @@ final class SearchViewModel {
         overlayPhase = .inactive
         isSearching = false
         serviceResults = [:]
+        answeredSIDs = []
+        pendingKeys = []
+        loadingServiceSIDs = []
         expandedCategories = []
         loadingMoreCategories = []
         selectedCategoryFilter = nil
@@ -266,21 +294,23 @@ final class SearchViewModel {
     // MARK: - Search Execution
 
     /// Runs the search for `query`. Pass `reusingCache: true` for a filter change
-    /// (same query): it only searches target services with no cached results and
+    /// (same query): it only searches target services that have not answered it and
     /// keeps results for services outside the current filter.
     private func executeSearch(query: String, reusingCache: Bool = false) async {
-        SearchHistoryStore.addQuery(query)
-        recentQueries = SearchHistoryStore.recentQueries()
         let requestID = searchTracker.next()
 
         isSearching = true
-        // Keep old serviceResults as shimmer layout template; don't clear.
+        if !reusingCache {
+            answeredSIDs = []
+        }
+        // Keep old serviceResults as the placeholder layout template; don't clear.
         expandedCategories = []
         loadingMoreCategories = []
         loadingServiceSIDs = []
+        pendingKeys = []
 
         await loadMissingSearchCriteria()
-        guard searchTracker.isCurrent(requestID) else { return }
+        guard isCurrent(requestID) else { return }
 
         // Target services: the filtered one, or all when no filter is set.
         // Includes top-level services and discovered sub-sources.
@@ -299,23 +329,15 @@ final class SearchViewModel {
 
         // Filter change: only fetch target services we don't already have.
         if reusingCache {
-            let cachedSIDs = Set(serviceResults.keys.map(\.sid))
-            searchable = searchable.filter { !cachedSIDs.contains($0.key) }
+            searchable = searchable.filter { !answeredSIDs.contains($0.key) }
         }
 
-        for sid in searchable.keys {
-            loadingServiceSIDs.insert(sid)
-        }
+        let keys = searchOrder(searchable)
+        pendingKeys = Set(keys)
+        loadingServiceSIDs = Set(keys.map(\.sid))
+        await runSearches(keys, query: query, requestID: requestID)
 
-        // Search sequentially; the HEOS device processes browse/search commands
-        // single-threaded, so concurrent dispatch causes "command under process"
-        // responses and misrouting. Results stream in as each service completes.
-        for (sid, criteria) in searchable {
-            guard searchTracker.isCurrent(requestID) else { return }
-            await searchService(sid: sid, criteria: criteria, query: query, requestID: requestID)
-        }
-
-        guard searchTracker.isCurrent(requestID) else { return }
+        guard isCurrent(requestID) else { return }
 
         // Fresh query only: drop results from services not part of this search.
         // A filter change keeps them, so switching back to "All" is instant.
@@ -327,45 +349,62 @@ final class SearchViewModel {
         }
 
         loadingServiceSIDs = []
+        pendingKeys = []
         isSearching = false
     }
 
-    /// Searches a single service across all its criteria, collecting batch results
-    /// and updating `serviceResults` and `loadingServiceSIDs` when complete.
-    private func searchService(
-        sid: Int,
-        criteria: [SearchCriteria],
-        query: String,
-        requestID: Int
-    ) async {
-        var batchResults: [(Int, [BrowseItem])] = []
-        for criterion in criteria {
-            guard searchTracker.isCurrent(requestID) else { return }
-            do {
-                let result = try await service.search(
-                    sid: sid, query: query, scid: criterion.scid,
-                    range: 0...(previewCount - 1)
-                )
-                batchResults.append((criterion.scid, result.items))
-            } catch {
-                // Non-fatal; skip this criteria for this search, retry next time
+    /// Local servers first: they answer at once, and the speaker takes only so many searches together.
+    func searchOrder(_ searchable: [Int: [SearchCriteria]]) -> [ServiceCriteriaKey] {
+        let services = allSearchableServices
+        let ordered = services.filter { $0.type == "heos_server" } + services.filter { $0.type != "heos_server" }
+        return ordered.flatMap { source in
+            (searchable[source.sid] ?? []).map { ServiceCriteriaKey(sid: source.sid, scid: $0.scid) }
+        }
+    }
+
+    /// Every category at once; each one shows as soon as its answer arrives.
+    private func runSearches(_ keys: [ServiceCriteriaKey], query: String, requestID: Int) async {
+        let service = service
+        let range = 0...(previewCount - 1)
+        await withTaskGroup(of: (ServiceCriteriaKey, [BrowseItem]?).self) { group in
+            for key in keys {
+                group.addTask {
+                    let result = try? await service.search(sid: key.sid, query: query, scid: key.scid, range: range)
+                    return (key, result?.items)
+                }
+            }
+            for await (key, items) in group {
+                guard isCurrent(requestID) else {
+                    group.cancelAll()
+                    return
+                }
+                record(items, for: key)
             }
         }
+    }
 
-        guard searchTracker.isCurrent(requestID) else { return }
+    /// A cancelled search's requests come back empty, so it must stop before it records them as no results.
+    private func isCurrent(_ requestID: Int) -> Bool {
+        searchTracker.isCurrent(requestID) && !Task.isCancelled
+    }
 
-        // Remove stale categories for this SID before writing fresh ones
-        let newScids = Set(batchResults.map(\.0))
-        for key in Array(serviceResults.keys)
-            where key.sid == sid && !newScids.contains(key.scid) {
+    /// A failed category is left out until the next search asks it again.
+    private func record(_ items: [BrowseItem]?, for key: ServiceCriteriaKey) {
+        if let items {
+            serviceResults[key] = items
+        } else {
             serviceResults.removeValue(forKey: key)
         }
-
-        for (scid, items) in batchResults {
-            let key = ServiceCriteriaKey(sid: sid, scid: scid)
-            serviceResults[key] = items
+        pendingKeys.remove(key)
+        guard !pendingKeys.contains(where: { $0.sid == key.sid }) else { return }
+        loadingServiceSIDs.remove(key.sid)
+        let current = Set(state.searchCriteria[key.sid]?.map(\.scid) ?? [])
+        for stale in Array(serviceResults.keys) where stale.sid == key.sid && !current.contains(stale.scid) {
+            serviceResults.removeValue(forKey: stale)
         }
-        loadingServiceSIDs.remove(sid)
+        if serviceResults.keys.contains(where: { $0.sid == key.sid }) {
+            answeredSIDs.insert(key.sid)
+        }
     }
 
     // MARK: - Criteria Loading
@@ -475,12 +514,14 @@ final class SearchViewModel {
         return loadedSIDs
     }
 
-    private func registerSubSource(_ item: BrowseItem, sid: Int) {
+    func registerSubSource(_ item: BrowseItem, sid: Int) {
         discoveredSubSources[sid] = MusicSource(sid: sid, name: item.name, imageURL: item.imageURL, type: "heos_server")
     }
+}
 
-    // MARK: - Filter Actions
+// MARK: - Filter Actions
 
+extension SearchViewModel {
     func selectCategoryFilter(_ scid: Int?) {
         if selectedCategoryFilter == scid {
             selectedCategoryFilter = nil
@@ -500,7 +541,7 @@ final class SearchViewModel {
     }
 
     /// Re-runs the search after a filter change (same query, no typing debounce).
-    /// No-op when every targeted service already has results -- switching is then
+    /// No-op when every targeted service already answered the query -- switching is then
     /// a pure display filter handled by `filteredServiceSIDs`.
     private func rerunSearchForCurrentQuery() {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -512,12 +553,11 @@ final class SearchViewModel {
         })
     }
 
-    /// True when the current service filter targets a service with no cached results.
+    /// True when the current service filter targets a service that has not answered the current query.
     private var hasUnloadedTargetServices: Bool {
-        let cachedSIDs = Set(serviceResults.keys.map(\.sid))
         if let sid = selectedServiceFilter {
-            return !cachedSIDs.contains(sid)
+            return !answeredSIDs.contains(sid)
         }
-        return allSearchableServices.contains { !cachedSIDs.contains($0.sid) }
+        return allSearchableServices.contains { !answeredSIDs.contains($0.sid) }
     }
 }

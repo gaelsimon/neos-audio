@@ -186,6 +186,30 @@ final class AccountViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testAFailedAccountCheckLeavesTheUserUnknown() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.checkAccountError = NSError(domain: "test", code: 1)
+        let vm = AccountViewModel(service: mock, state: state)
+
+        vm.checkAccount()
+        await waitUntil { mock.calls.contains("checkAccount") }
+
+        XCTAssertNil(state.signedInUser)
+    }
+
+    @MainActor
+    func testTurningRememberMeOffForgetsTheTypedLogin() {
+        let vm = AccountViewModel(service: MockAudioService(), state: AppState())
+        vm.username = "user"
+        vm.password = "pass"
+
+        vm.rememberMe = false
+
+        XCTAssertEqual([vm.username, vm.password], ["", ""])
+    }
+
+    @MainActor
     func testCheckAccountNilDoesNotSetUser() async {
         let state = AppState()
         let mock = MockAudioService()

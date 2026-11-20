@@ -14,8 +14,7 @@ struct DiscoveredDeviceCard: View {
         Button(action: onConnect) {
             HStack(spacing: DS.Spacing.md) {
                 Image(systemName: DS.Icons.speaker)
-                    .typography(.pageTitle)
-                    .foregroundStyle(DS.Colors.textSecondary)
+                    .typography(.pageTitle, color: DS.Colors.textSecondary)
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     Text(displayName.isEmpty || displayName == device.host
@@ -25,7 +24,6 @@ struct DiscoveredDeviceCard: View {
                     if !displayName.isEmpty, displayName != device.host {
                         Text(device.host)
                             .typography(.secondary)
-                            .foregroundStyle(DS.Colors.textTertiary)
                     }
                 }
 

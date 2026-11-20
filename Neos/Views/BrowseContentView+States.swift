@@ -11,7 +11,7 @@ extension BrowseContentView {
             Text(source.name)
                 .typography(.pageTitle)
             Text("This service requires a HEOS account.")
-                .typography(.bodyPrimary).foregroundStyle(DS.Colors.textSecondary)
+                .typography(.bodyPrimary, color: DS.Colors.textSecondary)
 
             Button(action: { browseVM.navigateToSettings() }) {
                 Text("Sign In")
@@ -26,19 +26,28 @@ extension BrowseContentView {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Sign In Prompt (browse error)
+    // MARK: - Expired Service Link
 
-    func isAuthError(_ error: String) -> Bool {
-        BrowseViewModel.isAuthError(error)
+    var expiredServiceLinkView: some View {
+        let name = browseVM.selectedSource?.name ?? "This service"
+        return ContentUnavailableView {
+            Label("Service Sign-In Expired", systemImage: DS.Icons.signIn)
+        } description: {
+            Text("\(name) is no longer linked to your HEOS account. Sign in to it again in the HEOS app, under Music Sources.")
+        } actions: {
+            Button("Retry") { browseVM.retry() }
+        }
     }
 
     // MARK: - Error View
 
     func errorView(_ error: String) -> some View {
-        ErrorStateView(
-            message: error,
-            actionLabel: "Retry",
-            action: { browseVM.retry() }
-        )
+        ContentUnavailableView {
+            Label("Couldn't Load", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(error)
+        } actions: {
+            Button("Retry") { browseVM.retry() }
+        }
     }
 }

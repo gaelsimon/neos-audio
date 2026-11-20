@@ -14,7 +14,7 @@ Thanks for your interest in contributing. Neos is a small, focused project and c
 ### Requirements
 
 - macOS 14.0 (Sonoma) or later
-- Xcode 16.0 or later
+- Xcode 16.0 or later for the Mac app, Xcode 26 or later for the iPhone and iPad app
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 - [SwiftLint](https://github.com/realm/SwiftLint) (`brew install swiftlint`)
 
@@ -29,13 +29,26 @@ open Neos.xcodeproj
 
 # Or build from the command line
 xcodebuild -project Neos.xcodeproj -scheme Neos -configuration Release build
+
+# The iPhone and iPad app, built from the same sources
+xcodebuild -project Neos.xcodeproj -scheme NeosMobile -destination 'generic/platform=iOS Simulator' build
 ```
 
 ### Running tests
 
 ```bash
-# App + UI tests
+# Mac unit tests only; the Neos scheme also runs the Mac UI tests, which need an unlocked screen
+# and the automation-mode authorisation
+xcodebuild test -project Neos.xcodeproj -scheme Neos -destination 'platform=macOS' -only-testing:NeosTests
+
+# Mac app + UI tests
 xcodebuild test -project Neos.xcodeproj -scheme Neos -destination 'platform=macOS'
+
+# The shared unit tests on iOS
+xcodebuild test -project Neos.xcodeproj -scheme NeosMobile -destination 'platform=iOS Simulator,name=<an iPhone simulator>'
+
+# The iPhone and iPad UI tests, in demo mode; a simulator needs no authorisation
+xcodebuild test -project Neos.xcodeproj -scheme NeosMobileUITests -destination 'platform=iOS Simulator,name=<an iPhone or iPad simulator>'
 
 # The HEOS protocol layer has its own tests, in its own repository
 git clone https://github.com/gaelsimon/swift-heos && cd swift-heos && swift test
@@ -51,7 +64,7 @@ With no credentials in the environment this produces an ad-hoc signed DMG in `bu
 the Gatekeeper warning on first launch. Set `CODE_SIGN_IDENTITY`, `DEVELOPMENT_TEAM` and the
 `NOTARY_*` variables to get a signed, notarised one.
 
-### Uploading to the Mac App Store
+### Uploading to the App Store
 
 ```bash
 DEVELOPMENT_TEAM=XXXXXXXXXX \
@@ -69,6 +82,11 @@ installer package with identities from the keychain, and uploads with `altool`. 
 cloud-managed signing is not used: when the certificate name has an accented letter, its export
 writes a designated requirement the signature does not satisfy, and App Store Connect rejects the
 build (ITMS-90238). `DESTINATION=export` keeps the package local instead of uploading it.
+
+`PLATFORM=ios` builds the iPhone and iPad app the same way, with an iOS App Store profile
+(`.mobileprovision`) and no installer identity. The device archive is left unsigned, and the script
+signs it and zips it into an `.ipa`. The iOS app shares the Mac app's bundle identifier and its App
+Store Connect record, so a purchase covers both.
 
 ### Signing and notarisation in CI
 
@@ -140,7 +158,16 @@ Sample HEOS CLI responses live in `docs/samples/` and are useful test fixtures.
 
 - SwiftLint enforces the project style; `swiftlint` must pass before a PR can land.
 - Match existing patterns. Small focused files, MVVM, no force unwraps (`!`) outside test code.
-- Tests for new behaviour. The app has over 400 unit tests and the protocol package has its own, keep that bar.
+- Code only the Mac app needs goes in a `macOS` folder, which the iPhone and iPad target leaves out; code only the iPhone and iPad app needs goes in an `iOS` folder, which the Mac target leaves out. A component that differs per platform keeps both versions in one file, behind `#if os(macOS)`.
+- Pages pad their sides with `pageMargins()`, or `listMargins()` for rows that pad their own content, so everything lines up with the page title. On iPhone and iPad that title lives in the navigation bar, never in the page.
+- On iPhone and iPad the app's tint is white, so bars, buttons and links stay neutral. Anything that marks a state, such as the playing track, a selection or a switch, sets `DS.Colors.accent` itself.
+- Where the platforms differ, decide in one place. A capability of the platform, such as hover or swipe to remove, is a `DS` constant (`DS.revealsControlsOnHover`, `DS.removesRowsBySwiping`). A layout decision follows the size class through an environment value in `PageLayout.swift`. The device itself comes from `DeviceIdiom`. A rule about the app's state, such as when to name the speaker, belongs on `AppState` with a test, not in a view. A rule of the iPhone and iPad shell, such as which tab shows or what opening a place does to a stack of pages, is a type of its own in `Utilities/iOS`, with its tests in `NeosTests/iOS`.
+- A button drawn as a bare glyph takes `hitTarget()`. A frame alone leaves the tap to the glyph, so a finger aiming at the square around it misses.
+- Prefer the platform's own controls: `Form` for settings, labelled `Toggle`, `Picker` and `TextField`, `.keyboardShortcut` for Return and Escape in sheets. A custom control needs a reason the native one cannot meet, written next to it.
+- Text takes its font and colour from `typography()`. A colour other than the role's goes through `typography(_:color:)`: a `foregroundStyle` chained after it never shows for most roles, and SwiftLint rejects it.
+- A form shown as a sheet goes through `FormSheet`, and a page shown as a sheet through `DoneSheet`. Both cap the text size, which a sheet on iPhone and iPad does not inherit from the page behind it; a sheet built another way calls `cappedTextSize()` itself. A field for an address, an e-mail or a URL takes `literalTextInput`.
+- Settings are read and written through `AppDefaults.store`, and files go under `AppDefaults.supportDirectory`. Demo mode swaps both for its own, emptied at each launch, so a demo or a UI test run neither shows nor changes what the app saved for a real speaker; SwiftLint rejects `UserDefaults.standard` and `URL.applicationSupportDirectory`.
+- Tests for new behaviour. The app and the protocol package each have their suite, keep that bar.
 
 ## Pull request process
 
@@ -148,7 +175,7 @@ Sample HEOS CLI responses live in `docs/samples/` and are useful test fixtures.
 2. Make your changes. Keep commits focused.
 3. Run `swiftlint` and the test suite locally; both must pass.
 4. Open a PR with a clear description: what changed, why, and what speaker(s) you tested against.
-5. CI will run lint, tests, and the SonarCloud quality gate.
+5. CI will run lint, the Mac and iPhone tests, and the SonarCloud quality gate, which reads the coverage of both.
 
 ## Questions
 

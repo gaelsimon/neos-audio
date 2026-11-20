@@ -5,9 +5,16 @@ struct BrowseContentView: View {
     let state: AppState
     let browseVM: BrowseViewModel
 
-    @State private var showCompactHeader = false
+    @State var showCompactHeader = false
     @State private var stationImageTarget: BrowseItem?
     @State var showAddFavorite = false
+    @Environment(\.isCompactLayout) var isCompactLayout
+    #if os(iOS)
+    /// How far down the content the header's title ends: once scrolled past, the bar shows it.
+    @State var headerTitleBottom: CGFloat = .greatestFiniteMagnitude
+    /// The bars' height, which the scroll view turns into a content inset the header's backdrop reaches up through.
+    @State var scrollTopInset: CGFloat = 0
+    #endif
 
     // MARK: - External Links
 
@@ -28,23 +35,13 @@ struct BrowseContentView: View {
     // MARK: - Track List Detection
 
     /// True when the current browse result should render as a track list (column layout).
-    /// Uses MediaType-driven detection with heuristic fallback for .container type.
     private var isTrackList: Bool {
-        if let target = browseVM.browseStack.last {
-            switch target.mediaType {
-            case .album, .playlist:
-                return true
-            case .artist, .genre:
-                return false
-            default:
-                break  // fall through to heuristic for .container and others
-            }
-        }
-        // Heuristic fallback for .container type and when browseStack is empty
-        guard !browseVM.items.isEmpty else { return false }
-        let playableNonBrowsable = browseVM.items.filter { $0.playable && !$0.browsable }
-        return !playableNonBrowsable.isEmpty
-            && playableNonBrowsable.count >= browseVM.items.count / 2
+        TrackListPresentation.isTrackList(target: browseVM.browseStack.last, items: browseVM.items)
+    }
+
+    /// Only a page about one thing gets the artwork header; a folder is named like a source.
+    private var showsContainerHeader: Bool {
+        browseVM.opensOnArtwork
     }
 
     private var showArtistColumn: Bool {
@@ -77,23 +74,30 @@ struct BrowseContentView: View {
                !MusicSource.listed(state.musicSources, signedIn: state.signedInUser != nil).contains(where: { $0.sid == source.sid }) {
                 unavailableServiceView(source)
             } else if let error = browseVM.errorMessage {
-                if isAuthError(error) {
+                switch browseVM.refusedAccess {
+                case .accountSignedOut:
                     SignInPromptView(
                         title: "Sign in to access this service",
                         message: "Connect your HEOS account to browse and play from streaming services.",
                         style: .centered,
                         onSignIn: { browseVM.navigateToSettings() }
                     )
-                } else {
+                case .serviceLinkExpired:
+                    expiredServiceLinkView
+                case nil:
                     errorView(error)
                 }
             } else if browseVM.items.isEmpty && !browseVM.isLoading {
-                EmptyStateView(icon: DS.Icons.musicNote, message: "No items")
+                ContentUnavailableView("No Items", systemImage: DS.Icons.musicNote)
             } else {
                 scrollableContent
             }
         }
         .accessibilityIdentifier(AccessibilityID.Browse.view)
+        .onChange(of: state.signedInUser != nil) { _, signedIn in browseVM.accountChanged(signedIn: signedIn) }
+        #if os(iOS)
+        .toolbar { navigationBarItems }
+        #endif
         // Sheets, not popovers: the image picker becomes the key window, which dismisses a
         // transient popover before either form can be finished.
         .sheet(isPresented: $showAddFavorite) {
@@ -102,6 +106,7 @@ struct BrowseContentView: View {
                 state: state,
                 onDismiss: { showAddFavorite = false }
             )
+            .toastOnTop(state)
         }
         .sheet(item: $stationImageTarget) { item in
             StationImageEditor(
@@ -111,28 +116,37 @@ struct BrowseContentView: View {
                 state: state,
                 onDismiss: { stationImageTarget = nil }
             )
+            .toastOnTop(state)
         }
     }
 
     // MARK: - Scrollable Content
 
+    #if os(macOS)
     private var visibleTopID: Binding<String?> {
         Binding(get: { browseVM.visibleTopID }, set: { browseVM.visibleTopID = $0 })
     }
+    #endif
 
     private var scrollableContent: some View {
         // Read here, not inside .background: @Observable only tracks browseVM.items from the body.
-        let backdropURL = browseVM.isInContainer ? browseVM.browseStack.last.flatMap(headerBackgroundURL) : nil
+        let backdropURL = showsContainerHeader ? browseVM.browseStack.last.flatMap(headerBackgroundURL) : nil
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Header (not lazy; GeometryReader stays active during scroll)
                 Group {
-                    if browseVM.isInContainer, let current = browseVM.browseStack.last {
+                    if showsContainerHeader, let current = browseVM.browseStack.last {
                         containerHeader(current, backdropURL: backdropURL)
                     } else {
+                        // On iPhone and iPad the navigation bar's large title names a source or a folder.
+                        #if os(macOS)
                         sourceHeader
+                        #endif
                     }
                 }
+                #if os(iOS)
+                .coordinateSpace(name: Self.headerSpace)
+                #else
                 .overlay(
                     GeometryReader { geo in
                         let maxY = geo.frame(in: .named("browse_scroll")).maxY
@@ -140,9 +154,10 @@ struct BrowseContentView: View {
                     }
                 )
                 .onPreferenceChange(ScrollOffsetKey.self) { maxY in
-                    showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.TopBar.height) + 20
+                    showCompactHeader = maxY < (backdropURL == nil ? 0 : DS.Layout.topOverlay) + 20
                     browseVM.isHeaderScrolledAway = showCompactHeader
                 }
+                #endif
 
                 if isInputSource {
                     // Input source: render card grid, skip track list header and column layout
@@ -162,19 +177,34 @@ struct BrowseContentView: View {
                 }
             }
         }
-        // Back seeds the binding from history, and a new scroll view opens on that row.
+        #if os(macOS)
+        // Back seeds the binding from history; iOS keeps each page alive, and there it stopped flicks on the first row.
         .scrollPosition(id: visibleTopID, anchor: .top)
+        #endif
         .coordinateSpace(name: "browse_scroll")
+        #if os(macOS)
         .ignoresSafeArea(edges: backdropURL == nil ? [] : .top)
+        // The navigation bar plays this part on iPhone and iPad.
         .overlay(alignment: .top) {
             if showCompactHeader {
-                if browseVM.isInContainer, let current = browseVM.browseStack.last {
+                if showsContainerHeader, let current = browseVM.browseStack.last {
                     compactContainerHeader(current)
                 } else {
                     compactSourceHeader
                 }
             }
         }
+        #else
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > headerTitleBottom
+        } action: { _, isPast in
+            showCompactHeader = isPast
+            browseVM.isHeaderScrolledAway = isPast
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentInsets.top } action: { _, inset in
+            scrollTopInset = inset
+        }
+        #endif
         .animation(.easeInOut(duration: 0.15), value: showCompactHeader)
         .id(browseVM.browseStack.map(\.stableID).joined(separator: "/"))
     }
@@ -186,12 +216,12 @@ struct BrowseContentView: View {
     }
 
     private func playNextHandler(for item: BrowseItem) -> (() -> Void)? {
-        guard item.playable else { return nil }
+        guard item.canJoinQueue else { return nil }
         return { browseVM.addToQueue(item, criteria: .playNext) }
     }
 
     private func addToQueueHandler(for item: BrowseItem) -> (() -> Void)? {
-        guard item.playable else { return nil }
+        guard item.canJoinQueue else { return nil }
         return { browseVM.addToQueue(item, criteria: .addToEnd) }
     }
 
@@ -238,8 +268,13 @@ struct BrowseContentView: View {
         GridItem(.adaptive(minimum: 140), spacing: DS.Spacing.xl)
     ]
 
-    /// Human-friendly noun for the dominant item type in the current container.
+    /// Human-friendly noun for the dominant item type in the current container, singular for a single item.
     var itemNoun: String {
+        let isSingle = browseVM.items.count == 1 && !browseVM.hasMore
+        return isSingle ? String(pluralItemNoun.dropLast()) : pluralItemNoun
+    }
+
+    private var pluralItemNoun: String {
         let items = browseVM.items
         guard !items.isEmpty else { return "items" }
         let dominant = items.first?.type ?? .container
@@ -280,7 +315,7 @@ struct BrowseContentView: View {
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, DS.Spacing.xxl)
+                .pageMargins()
                 .padding(.bottom, DS.Spacing.lg)
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -299,7 +334,9 @@ struct BrowseContentView: View {
                             } else if item.isSubSource {
                                 browseVM.browseSubSource(item)
                             }
-                        } onAddToQueue: {}
+                        } onAddToQueue: {
+                            browseVM.addToQueue(item)
+                        }
                         .onAppear {
                             if let globalIndex = browseVM.items.firstIndex(where: { $0.id == item.id }),
                                browseVM.shouldLoadMore(at: globalIndex) {
@@ -313,18 +350,18 @@ struct BrowseContentView: View {
                     }
                 }
                 .scrollTargetLayout()
-                .padding(.horizontal, DS.Spacing.xxl)
+                .listMargins()
             }
         }
 
-        // Track list header (only when there are playable items in track-list mode)
-        if isTrackList && !playableItems.isEmpty {
+        // Track list header (only when there are playable items in track-list mode; an iPhone row has no columns)
+        if isTrackList && !playableItems.isEmpty && !isCompactLayout {
             TrackListHeader(showArtist: showArtistColumn, showAlbum: showAlbumColumn)
                 .padding(.top, DS.Spacing.md)
-                .padding(.horizontal, DS.Spacing.xxl)
+                .listMargins()
             Divider()
                 .foregroundStyle(DS.Colors.border)
-                .padding(.horizontal, DS.Spacing.xxl)
+                .listMargins()
         }
 
         // List of playable items (songs, stations)
@@ -358,7 +395,7 @@ struct BrowseContentView: View {
                 }
             }
             .scrollTargetLayout()
-            .padding(.horizontal, DS.Spacing.xxl)
+            .listMargins()
         } else if browseVM.isLoadingMore {
             HStack {
                 Spacer()
@@ -391,7 +428,8 @@ struct BrowseContentView: View {
             externalLink: externalLink(for: item),
             state: state,
             imageKey: item.imageKey,
-            onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil
+            onSetCustomImage: item.imageKey != nil ? { stationImageTarget = item } : nil,
+            numbersRow: TrackListPresentation.numbersRows(target: browseVM.browseStack.last)
         ) {
             browseVM.playItem(item)
         }

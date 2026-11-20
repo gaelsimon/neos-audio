@@ -6,29 +6,51 @@ struct QueueView: View {
     let viewModel: QueueViewModel
     let browseVM: BrowseViewModel
     @State private var showClearConfirmation = false
+    @Environment(\.listMargin) private var listMargin
+    /// Compact rows have no columns to label.
+    @Environment(\.isCompactLayout) private var isCompactLayout
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            #if os(macOS)
             queueHeader
 
             Divider()
+            #endif
 
             if state.queue.isEmpty && !viewModel.isLoadingQueue {
-                EmptyStateView(icon: DS.Icons.playlists, message: "Queue is empty")
-                    .padding(20)
+                ContentUnavailableView("Queue Is Empty", systemImage: DS.Icons.playlists)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 // MARK: - Column Header
 
-                TrackListHeader(showArtist: true, showAlbum: true, trailingSlots: 2)
-                    .padding(.horizontal, DS.Spacing.xxl)
-                Divider()
-                    .foregroundStyle(DS.Colors.border)
-                    .padding(.horizontal, DS.Spacing.xxl)
+                if !isCompactLayout {
+                    TrackListHeader(showArtist: true, showAlbum: true, trailingSlots: 2)
+                        .listMargins()
+                    Divider()
+                        .foregroundStyle(DS.Colors.border)
+                        .listMargins()
+                }
 
                 queueList
-                    .contentMargins(.horizontal, DS.Spacing.xxl, for: .scrollContent)
+                    .contentMargins(.horizontal, listMargin, for: .scrollContent)
             }
         }
+        #if os(iOS)
+        .toolbar {
+            if viewModel.isLoadingQueue {
+                ToolbarItem(placement: .topBarTrailing) { ProgressView() }
+            }
+            if !state.queue.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Clear", role: .destructive) { showClearConfirmation = true }
+                        .disabled(viewModel.isClearing)
+                        .accessibilityIdentifier(AccessibilityID.Queue.clearButton)
+                        .modifier(clearConfirmation)
+                }
+            }
+        }
+        #endif
         .task(id: state.selectedPlayerID) {
             // EventRouter keeps a loaded queue current, unless an edit's fetch was lost on the way.
             if state.queue.isEmpty || state.playback.queueNeedsReload {
@@ -41,6 +63,8 @@ struct QueueView: View {
 
     // MARK: - Header
 
+    #if os(macOS)
+    /// The navigation bar carries the title and these actions on iPhone and iPad.
     private var queueHeader: some View {
         HStack {
             Text("Queue")
@@ -60,58 +84,72 @@ struct QueueView: View {
                     accessibilityID: AccessibilityID.Queue.clearButton
                 ) { showClearConfirmation = true }
                 .disabled(viewModel.isClearing)
-                .confirmationDialog("Clear Queue", isPresented: $showClearConfirmation) {
-                    Button("Clear Queue", role: .destructive) { viewModel.clearQueue() }
-                } message: {
-                    Text("This removes every track from the queue.")
-                }
+                .modifier(clearConfirmation)
             }
         }
-        .padding(.horizontal, DS.Spacing.xxl)
-        .padding(.top, DS.Spacing.xxl)
+        .pageMargins()
+        .padding(.top, DS.Layout.pageTop)
         .padding(.bottom, DS.Spacing.md)
+    }
+    #endif
+
+    /// On the Clear button itself, so an iPad popover points at it.
+    private var clearConfirmation: ClearQueueConfirmation {
+        ClearQueueConfirmation(isPresented: $showClearConfirmation) { viewModel.clearQueue() }
     }
 
     // MARK: - Queue Items
 
+    @ViewBuilder
     private var queueList: some View {
-        ScrollView {
-            VStack(spacing: DS.TrackList.rowSpacing) {
-                ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
-                    TrackListRow(
-                        index: index + 1,
-                        name: item.song,
-                        artist: item.artist,
-                        album: item.album,
-                        imageURL: item.imageURL,
-                        isNowPlaying: state.nowPlaying.station == nil && item.qid == state.nowPlaying.qid,
-                        showArtist: true,
-                        showAlbum: true,
-                        onAlbumTap: albumTapHandler(for: item),
-                        onArtistTap: artistTapHandler(for: item),
-                        isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
-                        externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
-                        state: state,
-                        onRemove: { viewModel.removeItem(item) }
-                    ) {
-                        viewModel.playItem(item)
-                    }
-                    .onAppear {
-                        if index >= state.queue.count - 5 {
-                            viewModel.loadMoreQueue()
+        #if os(iOS)
+        // A list, for the swipe that removes a row on iPhone and iPad.
+        List {
+            ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
+                queueRow(index: index, item: item)
+                    .bareListRow()
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) { viewModel.removeItem(item) } label: {
+                            Label("Remove", systemImage: "trash")
                         }
                     }
-                }
-
-                if viewModel.isLoadingMore {
-                    HStack {
-                        Spacer()
-                        Spinner(size: 16, lineWidth: 2)
-                            .padding()
-                        Spacer()
-                    }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        #else
+        ScrollView {
+            LazyVStack(spacing: DS.TrackList.rowSpacing) {
+                ForEach(Array(state.queue.enumerated()), id: \.element.id) { index, item in
+                    queueRow(index: index, item: item)
                 }
             }
+        }
+        #endif
+    }
+
+    private func queueRow(index: Int, item: QueueItem) -> some View {
+        TrackListRow(
+            index: index + 1,
+            name: item.song,
+            artist: item.artist,
+            album: item.album,
+            imageURL: item.imageURL,
+            isNowPlaying: state.nowPlaying.playsFromQueue && item.qid == state.nowPlaying.qid,
+            showArtist: true,
+            showAlbum: true,
+            onAlbumTap: albumTapHandler(for: item),
+            onArtistTap: artistTapHandler(for: item),
+            isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
+            // In the menu too: a phone has no room for the artist and album columns.
+            onArtistView: artistTapHandler(for: item),
+            onAlbumView: albumTapHandler(for: item),
+            externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
+            state: state,
+            onRemove: { viewModel.removeItem(item) },
+            showsRemoveButton: !DS.removesRowsBySwiping
+        ) {
+            viewModel.playItem(item)
         }
     }
 

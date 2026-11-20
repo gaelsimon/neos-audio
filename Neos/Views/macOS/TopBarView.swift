@@ -1,0 +1,192 @@
+import SwiftUI
+import NeosDomain
+
+struct TopBarView: View {
+    let state: AppState
+    let container: ViewModelContainer
+
+    private var browseVM: BrowseViewModel { container.browseVM }
+    private var searchVM: SearchViewModel { container.searchVM }
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.md) {
+            HStack(spacing: 0) {
+                navArrowButton(
+                    icon: DS.Icons.back,
+                    label: "Back",
+                    enabled: container.canGoBack,
+                    accessibilityID: AccessibilityID.TopBar.backButton,
+                    action: { container.goBack() }
+                )
+
+                navArrowButton(
+                    icon: DS.Icons.forward,
+                    label: "Forward",
+                    enabled: container.canGoForward,
+                    accessibilityID: AccessibilityID.TopBar.forwardButton,
+                    action: { container.goForward() }
+                )
+            }
+            .background { GlassCapsule() }
+
+            Spacer(minLength: DS.Spacing.sm)
+
+            // Narrow windows give up the spacer, then search width, then the speaker name.
+            searchField
+                .layoutPriority(1)
+
+            speakerIndicator
+                .layoutPriority(2)
+
+            profileButton
+        }
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.top, DS.Spacing.sm)
+        .frame(maxWidth: .infinity)
+        .frame(height: DS.TopBar.height)
+    }
+
+    // MARK: - Search Field
+
+    private var searchField: some View {
+        TopBarSearchField(
+            text: Binding(
+                get: { searchVM.query },
+                set: { searchVM.onQueryChanged($0) }
+            ),
+            isFocused: Binding(
+                get: { state.isSearchFieldFocused },
+                set: { state.isSearchFieldFocused = $0 }
+            ),
+            onClear: { searchVM.clearSearch() },
+            onSubmit: { searchVM.commitQueryToHistory() }
+        )
+        .padding(.horizontal, DS.Spacing.md)
+        .frame(minWidth: DS.TopBar.searchMinWidth, maxWidth: DS.TopBar.searchWidth)
+        .frame(height: DS.TopBar.controlHeight)
+        .contentShape(Capsule())
+        // A click on the padding focuses the field too; simultaneous, so a click in the field still places the cursor.
+        .simultaneousGesture(TapGesture().onEnded { state.isSearchFieldFocused = true })
+        .background { GlassCapsule(tint: state.isSearchFieldFocused ? .white.opacity(0.08) : .clear) }
+        .overlay(
+            Capsule()
+                .strokeBorder(Color.white.opacity(state.isSearchFieldFocused ? 0.9 : 0), lineWidth: 1)
+                .allowsHitTesting(false)
+        )
+        .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
+        .onChange(of: state.isSearchFieldFocused) { _, focused in
+            if focused && !searchVM.query.isEmpty && !searchVM.serviceResults.isEmpty {
+                searchVM.activateOverlay()
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if state.isSearchFieldFocused && searchVM.query.isEmpty && !searchVM.recentQueries.isEmpty {
+                SearchHistoryOverlay(
+                    queries: searchVM.recentQueries,
+                    onSelect: { query in
+                        state.isSearchFieldFocused = false
+                        searchVM.searchAgain(query)
+                    },
+                    onClear: {
+                        searchVM.clearHistory()
+                    }
+                )
+                .frame(width: DS.TopBar.searchWidth)
+                .offset(y: 48)
+                .zIndex(10)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .animation(.easeInOut(duration: DS.Animation.quick), value: state.isSearchFieldFocused)
+            }
+        }
+    }
+
+    // MARK: - Speaker Indicator
+
+    private var speakerIndicator: some View {
+        let isActive = browseVM.currentDestination == .ampSettings
+        return HoverButton(action: {
+            if isActive {
+                browseVM.goBack()
+            } else {
+                if browseVM.currentDestination == .settings { browseVM.goBack() }
+                browseVM.navigateToAmpSettings()
+            }
+        }) { hovered in
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: DS.Spacing.sm) {
+                    statusDot
+                    Text(playerName)
+                        .typography(.secondary, color: Self.highlight(isActive: isActive, hovered: hovered))
+                        .lineLimit(1)
+                        .frame(maxWidth: 160)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                statusDot
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .frame(height: DS.TopBar.controlHeight)
+            .background { GlassCapsule(tint: isActive ? DS.Colors.accent.opacity(0.15) : .clear) }
+        }
+        .help(playerName)
+        .accessibilityLabel(playerName)
+        .accessibilityIdentifier(AccessibilityID.Sidebar.ampCard)
+    }
+
+    /// The accent on the page it opens, white under the pointer.
+    private static func highlight(isActive: Bool, hovered: Bool) -> Color? {
+        if isActive { return DS.Colors.accent }
+        return hovered ? .white : nil
+    }
+
+    private var playerName: String {
+        state.selectedPlayerDisplayName ?? "No Player"
+    }
+
+    private var statusDot: some View {
+        Circle()
+            .fill(state.connectionState == .connected ? Color.green : DS.Colors.textTertiary)
+            .frame(width: 7, height: 7)
+    }
+
+    private var profileButton: some View {
+        let isActive = browseVM.currentDestination == .settings
+        return HoverButton(action: {
+            if isActive {
+                browseVM.goBack()
+            } else {
+                if browseVM.currentDestination == .ampSettings { browseVM.goBack() }
+                browseVM.navigateToSettings()
+            }
+        }) { hovered in
+            Image(systemName: DS.Icons.person)
+                .font(DS.IconFont.lgEmphasis)
+                .foregroundStyle(Self.highlight(isActive: isActive, hovered: hovered) ?? Color.white.opacity(0.7))
+                .frame(width: DS.TopBar.controlHeight, height: DS.TopBar.controlHeight)
+                .background { GlassCapsule() }
+        }
+        .accessibilityLabel("Settings")
+        .accessibilityIdentifier(AccessibilityID.TopBar.profileButton)
+    }
+
+    // MARK: - Navigation Arrow
+
+    private func navArrowButton(
+        icon: String, label: String, enabled: Bool, accessibilityID: String, action: @escaping () -> Void
+    ) -> some View {
+        HoverButton(action: action) { hovered in
+            Image(systemName: icon)
+                .font(DS.TopBar.arrowFont)
+                .foregroundStyle(!enabled ? Color.white.opacity(0.25) : .white)
+                .frame(width: DS.TopBar.controlHeight, height: DS.TopBar.controlHeight)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(enabled && hovered ? 0.15 : 0))
+                        .padding(2)
+                )
+        }
+        .disabled(!enabled)
+        .accessibilityLabel(label)
+        .help(label)
+        .accessibilityIdentifier(accessibilityID)
+    }
+}

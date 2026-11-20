@@ -44,15 +44,14 @@ struct BrowseGridTile: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.displayTitle)
-                        .typography(.secondaryEmphasis)
+                        .typography(.cardTitle)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     if let artist = item.artist, !artist.isEmpty {
                         Text(artist)
-                            .typography(.secondary)
-                            .foregroundStyle(DS.Colors.textSecondary)
+                            .typography(.cardSubtitle)
                             .lineLimit(1)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }

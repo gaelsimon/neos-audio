@@ -11,6 +11,21 @@ enum SignInErrorType {
     case timeout
     case unknown(String)
 
+    init(_ error: any Error) {
+        let message = error.localizedDescription.lowercased()
+        let authKeywords = ["user not found", "invalid", "credentials", "sign in", "password"]
+        let networkKeywords = ["network", "connection", "offline", "not connected"]
+        if authKeywords.contains(where: { message.contains($0) }) {
+            self = .authFailed
+        } else if message.contains("timeout") || message.contains("timed out") {
+            self = .timeout
+        } else if networkKeywords.contains(where: { message.contains($0) }) || error is URLError {
+            self = .networkError
+        } else {
+            self = .unknown(error.localizedDescription)
+        }
+    }
+
     var message: String {
         switch self {
         case .authFailed:
@@ -49,8 +64,8 @@ final class AccountViewModel {
     var signInError: SignInErrorType?
     var rememberMe: Bool {
         didSet {
-            if !Self.isUnitTestHost {
-                UserDefaults.standard.set(rememberMe, forKey: "settings.rememberMe")
+            if !Self.isTestHost {
+                AppDefaults.store.set(rememberMe, forKey: "settings.rememberMe")
             }
             if !rememberMe {
                 deleteCredentials()
@@ -69,7 +84,7 @@ final class AccountViewModel {
     init(service: any AudioService, state: AppState) {
         self.service = service
         self.state = state
-        self.rememberMe = Self.isUnitTestHost ? true : UserDefaults.standard.object(forKey: "settings.rememberMe") as? Bool ?? true
+        self.rememberMe = Self.isTestHost ? true : AppDefaults.store.object(forKey: "settings.rememberMe") as? Bool ?? true
         loadCredentials()
     }
 
@@ -92,7 +107,7 @@ final class AccountViewModel {
                 return
             } catch {
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                signInError = Self.categorizeError(error)
+                signInError = SignInErrorType(error)
                 if case .authFailed = signInError { failedCredentials = "\(username)\n\(password)" }
             }
             guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
@@ -158,8 +173,8 @@ final class AccountViewModel {
 
     // MARK: - Keychain
 
-    /// Unit tests must neither prompt for the keychain password nor overwrite the developer's saved login.
-    private static let isUnitTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    /// Tests, UI tests included, must neither prompt for the keychain password nor overwrite the developer's saved login.
+    private static let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || CommandLine.arguments.contains("--uitesting")
 
     private static let keychainService = "com.galela.neos.heos-account"
     private static let legacyKeychainService = "com.neos.heos-account"
@@ -179,7 +194,7 @@ final class AccountViewModel {
     }()
 
     private func saveCredentials() {
-        guard !DemoSession.isActive, !Self.isUnitTestHost, storedCredentials != "\(username)\n\(password)" else { return }
+        guard !DemoSession.isActive, !Self.isTestHost, storedCredentials != "\(username)\n\(password)" else { return }
         let payload = ["u": username, "p": password]
         guard let data = try? JSONEncoder().encode(payload) else { return }
         let query: [String: Any] = [
@@ -198,7 +213,7 @@ final class AccountViewModel {
     }
 
     private func loadCredentials() {
-        guard rememberMe, !Self.isUnitTestHost else { return }
+        guard rememberMe, !DemoSession.isActive, !Self.isTestHost else { return }
         migrateLegacyKeychainIfNeeded()
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -236,7 +251,7 @@ final class AccountViewModel {
             password = ""
             storedCredentials = nil
         }
-        guard !Self.isUnitTestHost else { return }
+        guard !Self.isTestHost else { return }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.keychainService,
@@ -278,23 +293,5 @@ final class AccountViewModel {
             kSecAttrService as String: Self.legacyKeychainService,
         ].merging(Self.keychainScope) { $1 }
         SecItemDelete(deleteLegacy as CFDictionary)
-    }
-
-    // MARK: - Error Categorization
-
-    private static func categorizeError(_ error: Error) -> SignInErrorType {
-        let message = error.localizedDescription.lowercased()
-        let authKeywords = ["user not found", "invalid", "credentials", "sign in", "password"]
-        if authKeywords.contains(where: { message.contains($0) }) {
-            return .authFailed
-        }
-        if message.contains("timeout") || message.contains("timed out") {
-            return .timeout
-        }
-        let networkKeywords = ["network", "connection", "offline", "not connected"]
-        if networkKeywords.contains(where: { message.contains($0) }) || (error as? URLError) != nil {
-            return .networkError
-        }
-        return .unknown(error.localizedDescription)
     }
 }

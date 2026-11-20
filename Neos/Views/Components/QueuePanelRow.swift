@@ -29,6 +29,9 @@ struct QueuePanelRow: View {
         .frame(height: 54)
         .background(rowBackground, in: RoundedRectangle(cornerRadius: DS.Radius.small))
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(onTap == nil ? [] : .isButton)
+        .accessibilityAction { onTap?() }
         .onTapGesture { onTap?() }
         .onHover { isHovered = $0 }
         .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
@@ -104,8 +107,7 @@ struct QueuePanelRow: View {
     private var textContent: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xs) {
             Text(name.displayTitle)
-                .typography(.bodyPrimary)
-                .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
+                .typography(.bodyPrimary, color: isNowPlaying ? DS.Colors.accent : nil)
                 .lineLimit(1)
             if !artist.isEmpty {
                 Text(artist)

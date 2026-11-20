@@ -27,14 +27,14 @@ enum DeviceCache {
         let cached = CachedDevice(device: device, selectedPlayerID: selectedPlayerID)
         do {
             let data = try JSONEncoder().encode(cached)
-            UserDefaults.standard.set(data, forKey: key)
+            AppDefaults.store.set(data, forKey: key)
         } catch {
             cacheLogger.warning("Failed to encode device cache: \(error.localizedDescription)")
         }
     }
 
     static func load() -> CachedDevice? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        guard let data = AppDefaults.store.data(forKey: key) else { return nil }
         do {
             return try JSONDecoder().decode(CachedDevice.self, from: data)
         } catch {
@@ -44,6 +44,6 @@ enum DeviceCache {
     }
 
     static func clear() {
-        UserDefaults.standard.removeObject(forKey: key)
+        AppDefaults.store.removeObject(forKey: key)
     }
 }

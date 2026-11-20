@@ -9,18 +9,16 @@ final class DemoSettingsTests: DemoTestCase {
     private var topBar: TopBarScreen { TopBarScreen(app: app) }
     private var sidebar: SidebarScreen { SidebarScreen(app: app) }
 
-    override func setUp() {
-        super.setUp()
-        resetToHome()
-    }
-
+    /// Both helpers stay on the page when it is already showing, so a run of tests on one page opens it once.
     private func navigateToSettings() {
+        if settings.view.exists { return }
         waitForElement(topBar.profileButton)
         topBar.profileButton.click()
         waitForElement(settings.view)
     }
 
     private func navigateToAmpSettings() {
+        if ampSettings.view.exists { return }
         waitForElement(sidebar.ampCard)
         sidebar.ampCard.click()
         waitForElement(ampSettings.view)
@@ -237,21 +235,21 @@ final class DemoSettingsTests: DemoTestCase {
         )
     }
 
-    func testAllMemberTogglesExist() {
+    func testMemberTogglesListEverySpeakerButTheLeader() {
         navigateToAmpSettings()
         waitForElement(ampSettings.leaderPicker)
-        // Before leader is explicitly chosen, all player toggles are shown
+        // The leader defaults to the playing speaker, Home 150.
         let avrToggle = ampSettings.memberToggle(avrMainPID)
         let zone2Toggle = ampSettings.memberToggle(avrZone2PID)
         let home150Toggle = ampSettings.memberToggle(home150PID)
         XCTAssertTrue(avrToggle.exists, "AVR main zone should have a member toggle")
         XCTAssertTrue(zone2Toggle.exists, "Zone 2 should have a member toggle")
-        XCTAssertTrue(home150Toggle.exists, "Home 150 should have a member toggle")
+        XCTAssertFalse(home150Toggle.exists, "The leader should have no member toggle")
     }
 
     func testMemberToggleIsClickable() {
         navigateToAmpSettings()
-        let memberToggle = ampSettings.memberToggle(home150PID)
+        let memberToggle = ampSettings.memberToggle(avrMainPID)
         waitForElement(memberToggle)
 
         // Toggle on and verify value changes

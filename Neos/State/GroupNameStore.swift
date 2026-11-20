@@ -13,7 +13,7 @@ enum GroupNameStore {
         group.players.map(\.pid).sorted().map(String.init).joined(separator: ",")
     }
 
-    static func save(_ aliases: [String: String], in defaults: UserDefaults = .standard) {
+    static func save(_ aliases: [String: String], in defaults: UserDefaults = AppDefaults.store) {
         do {
             let data = try JSONEncoder().encode(aliases)
             defaults.set(data, forKey: defaultsKey)
@@ -22,7 +22,7 @@ enum GroupNameStore {
         }
     }
 
-    static func load(from defaults: UserDefaults = .standard) -> [String: String] {
+    static func load(from defaults: UserDefaults = AppDefaults.store) -> [String: String] {
         guard let data = defaults.data(forKey: defaultsKey) else { return [:] }
         do {
             return try JSONDecoder().decode([String: String].self, from: data)

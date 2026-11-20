@@ -3,7 +3,9 @@ import Foundation
 /// Well-known HEOS music source IDs used as library sections.
 enum HEOSConstants {
     /// SIDs for built-in library sources (Playlists, History, Favorites).
-    static let librarySIDs: Set<Int> = [1025, 1026, 1028]
+    static let librarySIDs: Set<Int> = [playlistsSID, historySID, favoritesSID]
+
+    static let playlistsSID = 1025
 
     /// HEOS History source ID.
     static let historySID = 1026
@@ -16,4 +18,10 @@ enum HEOSConstants {
 
     /// Local Music source ID: USB drives and DLNA servers.
     static let localMusicSID = 1024
+
+    /// The mid and album id a speaker reports for every raw URL stream, and SoundCloud as its tracks' album id.
+    static let urlStreamPlaceholderID = "1"
+
+    /// What a speaker gives as the song, the artist and the album of every raw URL stream.
+    static let urlStreamTitle = "Url Stream"
 }

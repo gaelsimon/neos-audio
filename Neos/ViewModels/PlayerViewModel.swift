@@ -40,6 +40,7 @@ final class PlayerViewModel {
                 await withCheckedContinuation { continuation in
                     withObservationTracking {
                         _ = self.state.nowPlaying
+                        _ = self.state.playback.trackMetadataIsStale
                     } onChange: {
                         continuation.resume()
                     }
@@ -63,9 +64,11 @@ final class PlayerViewModel {
         let startTrack = state.nowPlaying
         for gap in metadataAttemptGaps {
             guard !Task.isCancelled else { return false }
-            guard !state.nowPlaying.mid.isEmpty else { return false }
+            // A stopped raw stream has no id at all, and its address is still the only way to name it.
+            guard !state.nowPlaying.mid.isEmpty || state.nowPlaying.isUnnamedStream else { return false }
             guard !state.nowPlaying.isDifferentTrack(from: startTrack) else { return true }
             let needsFetch = state.trackMetadata == nil || state.trackMetadata?.qualityDescription == nil
+                || state.playback.trackMetadataIsStale
             guard needsFetch else { return false }
             // Jittered, so grouped players do not all ask on the same beat.
             let delay = gap + gap * Double.random(in: -0.25...0.25)
@@ -80,7 +83,7 @@ final class PlayerViewModel {
         do {
             let metadata = try await service.fetchTrackMetadata()
             guard !Task.isCancelled else { return }
-            state.playback.trackMetadata = metadata
+            state.setTrackMetadata(metadata)
         } catch {
             playerLogger.debug("Metadata fetch failed (non-fatal): \(error.localizedDescription)")
         }
@@ -100,6 +103,7 @@ final class PlayerViewModel {
         let wasPlaying = state.isPlaying
         // Optimistic
         state.setPlayStateOptimistically(wasPlaying ? .pause : .play)
+        if !wasPlaying { state.awaitAmp(.resume) }
         playPauseTask.replace(with: Task {
             do {
                 if wasPlaying {
@@ -158,6 +162,19 @@ final class PlayerViewModel {
         })
     }
 
+    func stepVolume(by delta: Int) {
+        setVolume(max(0, state.volume + delta))
+    }
+
+    static let volumeButtonStep = 2
+
+    /// Held like a slider drag, so the speaker's answers to earlier presses do not pull the level back.
+    func pressVolumeButtons(_ presses: Int) {
+        setAdjustingVolume(true)
+        stepVolume(by: presses * Self.volumeButtonStep)
+        setAdjustingVolume(false)
+    }
+
     func setAdjustingVolume(_ adjusting: Bool) {
         if adjusting {
             volumeGraceTask.cancel()
@@ -211,14 +228,14 @@ final class PlayerViewModel {
 
     func seek(to position: TimeInterval) {
         guard let pid = state.selectedPlayerID else { return }
-        // Optimistic: update position and reset interpolation anchor
-        state.setProgress(position: Int(position * 1000), duration: state.playbackDuration)
+        state.beginSeek(toMillis: Int(position * 1000))
         seekTask.replace(with: Task {
             do {
                 try await service.seek(target: position)
             } catch {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 // Let the next HEOS progress event self-correct
+                state.endAmpWait()
                 state.error = .playbackFailed(error.localizedDescription)
             }
         })

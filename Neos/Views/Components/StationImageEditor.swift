@@ -1,10 +1,7 @@
 import SwiftUI
-import AppKit
 import CommonCrypto
-import UniformTypeIdentifiers
 
-/// Editor for setting a custom artwork image on a station/track.
-/// The chosen image is copied to Application Support on save, for offline use.
+/// The chosen image is copied to Application Support on save, so it shows offline.
 struct StationImageEditor: View {
     let mid: String
     let name: String
@@ -12,78 +9,33 @@ struct StationImageEditor: View {
     let state: AppState
     let onDismiss: () -> Void
 
-    @State private var previewImage: NSImage?
+    @State private var previewImage: PlatformImage?
     /// Set once the user picks or fetches an image, and copied to disk only on save.
-    @State private var pendingImage: NSImage?
-    @State private var showURLField = false
-    @State private var urlText = ""
-    @State private var isDownloading = false
+    @State private var pendingImage: PlatformImage?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-            Text("Custom Artwork")
-                .typography(.sectionHeader)
-
-            Text(name)
-                .typography(.secondary)
-                .lineLimit(1)
-
-            // Preview
-            imagePreview
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
-                .frame(maxWidth: .infinity)
-
-            // Choose image button
-            Button {
-                chooseLocalImage()
-            } label: {
-                Label("Choose Image…", systemImage: "folder")
+        FormSheet(
+            title: "Custom Artwork", confirmTitle: "Save", canConfirm: pendingImage != nil,
+            onCancel: onDismiss, onConfirm: save
+        ) {
+            Section(name) {
+                imagePreview
+                    .frame(width: 120, height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.medium))
                     .frame(maxWidth: .infinity)
-            }
-            .controlSize(.large)
 
-            // Optional URL input
-            if showURLField {
-                HStack(spacing: DS.Spacing.sm) {
-                    TextField("https://example.com/image.png", text: $urlText)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { downloadFromURL() }
-                    if isDownloading {
-                        Spinner(size: 14, lineWidth: 1.5)
-                    } else {
-                        Button("Fetch") { downloadFromURL() }
-                            .disabled(urlText.isEmpty)
-                    }
+                ArtworkChooser { image in
+                    previewImage = image
+                    pendingImage = image
                 }
-            } else {
-                Button("Or paste a URL…") { showURLField = true }
-                    .buttonStyle(.plain)
-                    .typography(.secondary)
-                    .foregroundStyle(DS.Colors.accent)
             }
 
-            // Actions
-            HStack {
-                if state.hasCustomStationImage(forMID: mid) {
-                    Button("Remove") {
-                        removeArtwork()
-                    }
-                    .foregroundStyle(.red)
+            if state.hasCustomStationImage(forMID: mid) {
+                Section {
+                    Button("Remove Artwork", role: .destructive, action: removeArtwork)
                 }
-
-                Spacer()
-
-                Button("Cancel", action: onDismiss)
-
-                Button("Save") { save() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(DS.Colors.accent)
-                    .disabled(pendingImage == nil)
             }
         }
-        .padding(DS.Spacing.xl)
-        .frame(width: 280)
         .onAppear { loadExisting() }
     }
 
@@ -92,7 +44,7 @@ struct StationImageEditor: View {
     @ViewBuilder
     private var imagePreview: some View {
         if let previewImage {
-            Image(nsImage: previewImage)
+            Image(platformImage: previewImage)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
         } else {
@@ -113,43 +65,7 @@ struct StationImageEditor: View {
         guard let existing = state.customStationImages[mid],
               let url = URL(string: existing),
               url.isFileURL else { return }
-        previewImage = NSImage(contentsOf: url)
-    }
-
-    private func chooseLocalImage() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.message = "Choose an artwork image"
-
-        guard panel.runModal() == .OK, let sourceURL = panel.url else { return }
-        guard let image = NSImage(contentsOf: sourceURL) else { return }
-        previewImage = image
-        pendingImage = image
-    }
-
-    private func downloadFromURL() {
-        let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed),
-              let scheme = url.scheme,
-              scheme == "http" || scheme == "https" else { return }
-
-        isDownloading = true
-        Task {
-            do {
-                let (data, _) = try await NeosURLSession.shared.data(from: url)
-                guard let image = NSImage(data: data) else {
-                    isDownloading = false
-                    return
-                }
-                previewImage = image
-                pendingImage = image
-            } catch {
-                // Download failed; user can retry
-            }
-            isDownloading = false
-        }
+        previewImage = PlatformImage.load(contentsOf: url)
     }
 
     private func save() {
@@ -174,15 +90,11 @@ struct StationImageEditor: View {
 
     // MARK: - File Helpers
 
-    /// The file name mixes the media id with the image bytes, so a replacement lands on a new URL.
-    /// Reusing one name per station would leave the previous bitmap in the image cache, which is
-    /// keyed by URL, and the row would keep showing the artwork the user just replaced.
-    static func copyToAppSupport(image: NSImage, forMID mid: String) -> URL? {
-        guard let tiff = image.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return nil }
+    /// Named from the media id and the image bytes: the URL-keyed image cache would keep a replaced artwork.
+    static func copyToAppSupport(image: PlatformImage, forMID mid: String) -> URL? {
+        guard let png = image.pngRepresentation() else { return nil }
 
-        let dir = URL.applicationSupportDirectory.appendingPathComponent("Neos/CustomArtwork", isDirectory: true)
+        let dir = AppDefaults.supportDirectory.appendingPathComponent("CustomArtwork", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let name = "\(sha256Hex(mid))-\(sha256Hex(png).prefix(16)).png"

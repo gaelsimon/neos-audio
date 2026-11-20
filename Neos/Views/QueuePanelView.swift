@@ -10,79 +10,93 @@ struct QueuePanelView: View {
 
     let state: AppState
     let viewModel: QueuePanelViewModel
+    /// The Mac's card closes itself; a sheet or an iPad column has its own way out.
+    var onClose: (() -> Void)?
+    var onClear: (() -> Void)?
 
     @State private var selectedTab: Tab = .queue
+    @State private var showClearConfirmation = false
 
-    /// Solid background color for canvas mode, derived from the most vibrant dominant artwork color.
-    private var canvasPanelColor: Color {
-        state.canvasDominantColors
-            .max { lhs, rhs in
-                let ls = NSColor(lhs).saturationComponent
-                let rs = NSColor(rhs).saturationComponent
-                return ls < rs
-            } ?? Color(white: 0.06)
-    }
+    private var isEmptyState: Bool { viewModel.isEmpty && !viewModel.isLoadingHistory }
 
     var body: some View {
-        Group {
-            if viewModel.isEmpty && !viewModel.isLoadingHistory {
-                EmptyStateView(icon: DS.Icons.playlists, message: "Nothing playing")
-                    .accessibilityIdentifier(AccessibilityID.QueuePanel.emptyState)
-            } else {
-                VStack(spacing: 0) {
-                    SegmentedTab(selection: $selectedTab, tabs: [.queue, .recentlyPlayed]) { tab in
-                        switch tab {
-                        case .queue: "Queue"
-                        case .recentlyPlayed: "Recently Played"
-                        }
-                    }
-                    .accessibilityIdentifier(AccessibilityID.QueuePanel.tabBar)
+        VStack(spacing: 0) {
+            header
 
-                    if selectedTab == .queue {
-                        queueTabContent
-                    } else {
-                        recentlyPlayedTabContent
-                    }
-                }
-                .onChange(of: state.nowPlaying) { _, _ in
-                    if state.isQueuePanelOpen {
-                        viewModel.onTrackChanged()
-                    }
-                }
-                .onChange(of: state.queue) { _, _ in
-                    viewModel.refreshDisplayData()
-                }
-                .onChange(of: selectedTab) { _, tab in
-                    if tab == .recentlyPlayed {
-                        viewModel.loadHistoryIfNeeded()
-                    }
-                }
+            if isEmptyState || (selectedTab == .queue && viewModel.isQueueTabEmpty) {
+                ContentUnavailableView("Nothing Playing", systemImage: DS.Icons.playlists)
+                    .frame(maxHeight: .infinity)
+                    .accessibilityIdentifier(AccessibilityID.QueuePanel.emptyState)
+            } else if selectedTab == .queue {
+                queueTabContent
+            } else {
+                recentlyPlayedTabContent
             }
         }
+        .onChange(of: selectedTab) { _, tab in
+            if tab == .recentlyPlayed {
+                viewModel.loadHistoryIfNeeded()
+            }
+        }
+        // On the panel, which outlives the Up Next header the button sits in.
+        .modifier(ClearQueueConfirmation(isPresented: $showClearConfirmation) { onClear?() })
         .frame(maxHeight: .infinity)
         .background {
-            if state.isNowPlayingCanvasOpen {
-                ZStack {
-                    RoundedRectangle(cornerRadius: DS.Radius.xl)
-                        .fill(canvasPanelColor)
-                    RoundedRectangle(cornerRadius: DS.Radius.xl)
-                        .fill(.black.opacity(0.5))
-                }
-            } else {
-                UnevenRoundedRectangle(topLeadingRadius: DS.Radius.large, bottomLeadingRadius: DS.Radius.large)
-                    .fill(DS.Colors.surfaceElevated)
-            }
+            QueuePanelFill(state: state)
+                .ignoresSafeArea()
         }
-        .clipShape(state.isNowPlayingCanvasOpen
-            ? AnyShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-            : AnyShape(UnevenRoundedRectangle(topLeadingRadius: DS.Radius.large, bottomLeadingRadius: DS.Radius.large)))
-        .padding(state.isNowPlayingCanvasOpen ? DS.Spacing.md : 0)
-        .shadow(color: .black.opacity(0.3), radius: 8, x: -4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.QueuePanel.view)
         .accessibilityLabel("Queue and history panel")
         .task {
             viewModel.onPanelOpen()
+        }
+        // An inspector builds this once, with its window and before the speaker answers: every refresh comes from the state.
+        .onChange(of: state.isQueuePanelOpen) { _, isOpen in
+            if isOpen {
+                viewModel.onPanelOpen()
+            }
+        }
+        .onChange(of: state.nowPlaying) { _, _ in
+            viewModel.onTrackChanged()
+        }
+        .onChange(of: state.queue) { _, _ in
+            viewModel.refreshDisplayData()
+        }
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(spacing: 0) {
+            if isEmptyState {
+                Spacer()
+            } else {
+                SegmentedTab(selection: $selectedTab, tabs: [.queue, .recentlyPlayed]) { tab in
+                    switch tab {
+                    case .queue: "Queue"
+                    case .recentlyPlayed: "Recently Played"
+                    }
+                }
+                .accessibilityIdentifier(AccessibilityID.QueuePanel.tabBar)
+            }
+
+            if let onClose {
+                HoverButton(action: onClose, accessibilityID: AccessibilityID.QueuePanel.closeButton) { hovered in
+                    Image(systemName: DS.Icons.close)
+                        .font(DS.IconFont.smEmphasis)
+                        .foregroundStyle(hovered ? .primary : DS.Colors.textTertiary)
+                }
+                .accessibilityLabel("Close")
+                .padding(.trailing, DS.Spacing.lg)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var clearButton: some View {
+        if onClear != nil {
+            TextActionButton(title: "Clear") { showClearConfirmation = true }
         }
     }
 
@@ -132,7 +146,7 @@ struct QueuePanelView: View {
                             isStation: true,
                             isNowPlaying: false,
                             showRemoveButton: false,
-                            onTap: { viewModel.playHistoryStation(item) },
+                            onTap: { viewModel.playHistoryItem(item) },
                             externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
                             state: state
                         )
@@ -162,12 +176,12 @@ struct QueuePanelView: View {
                         externalLink: ExternalLinkMenu.make(for: queueItem, sourceName: nil),
                         state: state
                     )
-                    .id("now-playing")
+                    .bareListRow()
                 } else {
                     // Standalone now playing (station or not in queue)
                     QueuePanelRow(
-                        name: state.nowPlaying.song,
-                        artist: state.nowPlaying.station ?? state.nowPlaying.artist,
+                        name: state.nowPlaying.standaloneRowTitle,
+                        artist: state.nowPlaying.standaloneRowSubtitle,
                         imageURL: state.resolvedImageURL(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL),
                         isStation: state.nowPlaying.station != nil,
                         isNowPlaying: true,
@@ -176,7 +190,7 @@ struct QueuePanelView: View {
                         externalLink: ExternalLinkMenu.make(for: state.nowPlaying, sources: state.musicSources),
                         state: state
                     )
-                    .id("now-playing")
+                    .bareListRow()
                 }
             }
             .accessibilityIdentifier(AccessibilityID.QueuePanel.nowPlayingSection)
@@ -188,7 +202,7 @@ struct QueuePanelView: View {
     @ViewBuilder
     private var upNextSection: some View {
         if !viewModel.upNextItems.isEmpty {
-            Section(header: sectionHeader("Up Next")) {
+            Section(header: sectionHeader("Up Next") { clearButton }) {
                 ForEach(viewModel.upNextItems) { item in
                     QueuePanelRow(
                         name: item.song,
@@ -196,7 +210,7 @@ struct QueuePanelView: View {
                         imageURL: item.imageURL,
                         isStation: false,
                         isNowPlaying: false,
-                        showRemoveButton: true,
+                        showRemoveButton: !DS.removesRowsBySwiping,
                         onTap: { viewModel.playQueueItem(item) },
                         onRemove: { viewModel.removeQueueItem(item) },
                         externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
@@ -204,6 +218,12 @@ struct QueuePanelView: View {
                     )
                     .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextRow(item.qid))
                     .accessibilityLabel("\(item.song) by \(item.artist), up next")
+                    .bareListRow()
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) { viewModel.removeQueueItem(item) } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                    }
                 }
             }
             .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextSection)
@@ -214,20 +234,33 @@ struct QueuePanelView: View {
                     .typography(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.lg)
+                    .bareListRow()
             }
         }
     }
 
     // MARK: - Tab Content
 
+    @ViewBuilder
     private var queueTabContent: some View {
+        #if os(iOS)
+        // A list, for the swipe that removes a track from Up Next on iPhone and iPad.
+        List {
+            nowPlayingSection
+            upNextSection
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        #else
         ScrollView {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                 nowPlayingSection
                 upNextSection
             }
         }
+        #endif
     }
+
 
     private var recentlyPlayedTabContent: some View {
         ScrollView {
@@ -239,27 +272,48 @@ struct QueuePanelView: View {
 
     // MARK: - Helpers
 
-    private func sectionHeader(_ title: String) -> some View {
+    private func sectionHeader(_ title: String, @ViewBuilder accessory: () -> some View = { EmptyView() }) -> some View {
         VStack(spacing: 0) {
             Spacer().frame(height: DS.Spacing.xxl)
             HStack(spacing: DS.Spacing.sm) {
                 Text(title)
                     .typography(.bodyEmphasis)
                 Spacer()
+                accessory()
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.bottom, DS.Spacing.sm)
         }
         .frame(maxWidth: .infinity)
-        .background(
+        .listRowInsets(EdgeInsets())
+        .background(QueuePanelFill(state: state))
+    }
+}
+
+/// What the panel is painted with: the raised surface, or the artwork's most vibrant colour beside the full-screen player.
+struct QueuePanelFill: View {
+    let state: AppState
+
+    var body: some View {
+        if state.isNowPlayingCanvasOpen {
             ZStack {
-                if state.isNowPlayingCanvasOpen {
-                    canvasPanelColor
-                    Color.black.opacity(0.5)
-                } else {
-                    DS.Colors.surfaceElevated
-                }
+                vibrantColor
+                Color.black.opacity(0.5)
             }
-        )
+        } else {
+            DS.Colors.surfaceElevated
+        }
+    }
+
+    private var vibrantColor: Color {
+        state.canvasDominantColors
+            .max { Self.saturation(of: $0) < Self.saturation(of: $1) } ?? Color(white: 0.06)
+    }
+
+    private static func saturation(of color: Color) -> Float {
+        let rgb = color.resolve(in: EnvironmentValues())
+        let brightest = max(rgb.red, rgb.green, rgb.blue)
+        guard brightest > 0 else { return 0 }
+        return (brightest - min(rgb.red, rgb.green, rgb.blue)) / brightest
     }
 }

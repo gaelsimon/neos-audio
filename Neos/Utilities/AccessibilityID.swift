@@ -10,7 +10,7 @@ enum AccessibilityID {
     enum Sidebar {
         static let home = "sidebar.home"
         static let queue = "sidebar.queue"
-        static let scrollView = "sidebar.scrollView"
+        static let list = "sidebar.list"
         static let ampCard = "sidebar.ampCard"
         static let powerButton = "sidebar.powerButton"
         static let scanButton = "sidebar.scanButton"
@@ -41,6 +41,7 @@ enum AccessibilityID {
         static let albumArt = "player.albumArt"
         static let qualityBadge = "player.qualityBadge"
         static let speakerName = "player.speakerName"
+        static let bar = "player.bar"
     }
 
     // MARK: - Home
@@ -85,6 +86,7 @@ enum AccessibilityID {
         static let resultsView = "search.resultsView"
         static let historyOverlay = "search.historyOverlay"
         static let clearHistoryButton = "search.clearHistoryButton"
+        static func serviceHeader(_ sid: Int) -> String { "search.serviceHeader.\(sid)" }
     }
 
     // MARK: - Settings
@@ -147,6 +149,8 @@ enum AccessibilityID {
         static let manualConnectSection = "discovery.manualConnectSection"
         static let manualConnectToggle = "discovery.manualConnectToggle"
         static let progressIndicator = "discovery.progressIndicator"
+        static let localNetworkDenied = "discovery.localNetworkDenied"
+        static let openSettingsButton = "discovery.openSettingsButton"
 
         static func deviceCard(_ host: String) -> String {
             "discovery.deviceCard.\(host)"
@@ -174,6 +178,7 @@ enum AccessibilityID {
         static let nowPlayingSection = "queuePanel.nowPlayingSection"
         static let upNextSection = "queuePanel.upNextSection"
         static let emptyState = "queuePanel.emptyState"
+        static let closeButton = "queuePanel.closeButton"
 
         static func historyRow(_ index: Int) -> String {
             "queuePanel.historyRow.\(index)"
