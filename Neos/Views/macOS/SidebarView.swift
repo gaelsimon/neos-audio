@@ -70,7 +70,7 @@ struct SidebarView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-            .tint(DS.Colors.accent)
+            .background(SystemSelectionHighlightOff(selection: shownSelection))
             .accessibilityIdentifier(AccessibilityID.Sidebar.list)
         }
         .background(DS.Colors.background)
@@ -111,14 +111,21 @@ struct SidebarView: View {
         @ViewBuilder icon: () -> some View,
         @ViewBuilder trailing: () -> some View = { EmptyView() }
     ) -> some View {
-        HStack(spacing: DS.Spacing.sm) {
+        let isSelected = item == shownSelection
+        return HStack(spacing: DS.Spacing.sm) {
             icon()
             Text(title)
-                .typography(.bodyPrimary)
+                .typography(.bodyPrimary, color: isSelected ? nil : DS.Colors.textSecondary)
                 .lineLimit(1)
             Spacer(minLength: 0)
             trailing()
         }
+        // Neutral, since orange marks what plays.
+        .listRowBackground(
+            RoundedRectangle(cornerRadius: DS.Radius.medium)
+                .fill(isSelected ? Color.white.opacity(0.08) : .clear)
+                .padding(.horizontal, DS.Spacing.sm)
+        )
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
         // Clicking the selected row changes no selection, so below a source's first page it goes back there itself.

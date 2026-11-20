@@ -460,6 +460,7 @@
 		D4B38FA0F3C3D5AD55F2593C /* SpeakerNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6EDE0243D4627CDA12280BD /* SpeakerNameTests.swift */; };
 		D4DECDC6CDF7BB5176A791A6 /* AmpSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924329D93DBDBFCA651C23F9 /* AmpSettingsView.swift */; };
 		D52B5FC1C22D4B46DD316399 /* SettingsViewModelVolumeLimitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD789FF8C03D6C2F4555E11B /* SettingsViewModelVolumeLimitTests.swift */; };
+		D5678142B7932A5C717775E9 /* SidebarSelectionStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89E31B9BFB8AB05FEAF2807E /* SidebarSelectionStyle.swift */; };
 		D5E04D445F0E690D4A7475A6 /* SegmentedTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5CB3310CEE06BDA3930F625 /* SegmentedTab.swift */; };
 		D5E5D55C33C3689BB67F81EC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A672C3037E20F10D9D97B4B5 /* Assets.xcassets */; };
 		D60EA8CC0A645F43B6EF9B9A /* SpeakerNameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6EDE0243D4627CDA12280BD /* SpeakerNameTests.swift */; };
@@ -731,6 +732,7 @@
 		8840412049B8345AEA7C7520 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		885E7272420B9318F9CF0B3D /* SpinnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinnerTests.swift; sourceTree = "<group>"; };
 		887E08BE924A516C22CB7BE9 /* BrowseContentView+Header.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BrowseContentView+Header.swift"; sourceTree = "<group>"; };
+		89E31B9BFB8AB05FEAF2807E /* SidebarSelectionStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSelectionStyle.swift; sourceTree = "<group>"; };
 		8B5BF2A378AB393273F0E9D4 /* TrackListRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackListRow.swift; sourceTree = "<group>"; };
 		8C0EF7B53E177FE0D3206A7C /* MobileNowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileNowPlayingView.swift; sourceTree = "<group>"; };
 		8C5FFD7B4515BF86604D4E9F /* NowPlayingArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingArtwork.swift; sourceTree = "<group>"; };
@@ -1132,6 +1134,7 @@
 				F46AFC7CD7BA158BD6C3AEC4 /* MenuBarIcon.swift */,
 				71F30D34F662502BB7A0D830 /* PlaybackKeyMonitor.swift */,
 				ABA62C78B1686EACCD5B99B6 /* SidebarItem.swift */,
+				89E31B9BFB8AB05FEAF2807E /* SidebarSelectionStyle.swift */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
@@ -2030,6 +2033,7 @@
 				85764AD105C44E17A3802FDC /* ServiceConfigView.swift in Sources */,
 				D0BF6EB81F38DAEBA8C288E8 /* SettingsViewModel.swift in Sources */,
 				9B7EC818E5891179B1A74086 /* SidebarItem.swift in Sources */,
+				D5678142B7932A5C717775E9 /* SidebarSelectionStyle.swift in Sources */,
 				8CDFE42490C1D1B8402EBFB8 /* SidebarView.swift in Sources */,
 				EC6B300EFAA6CEA7F5CC2982 /* SignInPromptView.swift in Sources */,
 				7768DB66F5DC3EE6BD4526F1 /* SoundCloudLinkResolver.swift in Sources */,
@@ -2216,6 +2220,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Neos/Neos.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -2290,6 +2295,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Neos/Neos.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;

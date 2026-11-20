@@ -52,6 +52,7 @@ targets:
       base:
         INFOPLIST_FILE: Neos/Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         COMBINE_HIDPI_IMAGES: true
         ENABLE_HARDENED_RUNTIME: true
     entitlements:
