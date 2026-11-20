@@ -98,7 +98,7 @@ struct NowPlayingToolbar: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { state.isNowPlayingCanvasOpen.toggle() }
         .overlay {
-            if state.isLoadingTrack {
+            if state.isWaitingForAmp {
                 RoundedRectangle(cornerRadius: DS.Radius.artwork)
                     .fill(.black.opacity(0.5))
                 Spinner(size: 16, lineWidth: 2, color: .white)

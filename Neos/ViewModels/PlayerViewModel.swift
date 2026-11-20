@@ -103,6 +103,7 @@ final class PlayerViewModel {
         let wasPlaying = state.isPlaying
         // Optimistic
         state.setPlayStateOptimistically(wasPlaying ? .pause : .play)
+        if !wasPlaying { state.awaitAmp(.resume) }
         playPauseTask.replace(with: Task {
             do {
                 if wasPlaying {
@@ -227,14 +228,14 @@ final class PlayerViewModel {
 
     func seek(to position: TimeInterval) {
         guard let pid = state.selectedPlayerID else { return }
-        // Optimistic: update position and reset interpolation anchor
-        state.setProgress(position: Int(position * 1000), duration: state.playbackDuration)
+        state.beginSeek(toMillis: Int(position * 1000))
         seekTask.replace(with: Task {
             do {
                 try await service.seek(target: position)
             } catch {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 // Let the next HEOS progress event self-correct
+                state.endAmpWait()
                 state.error = .playbackFailed(error.localizedDescription)
             }
         })

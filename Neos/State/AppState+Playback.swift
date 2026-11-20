@@ -54,5 +54,19 @@ extension AppState {
         if state != .play {
             endTrackLoad()
         }
+        if state != .play || (confirmedByDevice && ampWait == .resume) {
+            endAmpWait()
+        }
     }
+}
+
+/// What the amp owes the user: a play that has not started, or a seek that has not landed.
+enum AmpWait: Equatable {
+    case resume
+    case seek(toMillis: Int)
+}
+
+extension AppState {
+    /// The player's spinner: a track loading, or a play or a seek the amp has not answered yet.
+    var isWaitingForAmp: Bool { isLoadingTrack || showsAmpWait }
 }

@@ -420,6 +420,34 @@ final class PlayerViewModelTests: XCTestCase {
         XCTAssertEqual(state.playbackPosition, 60_000)
     }
 
+    @MainActor
+    func testAFailedSeekStopsWaitingForTheAmp() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.playback.playbackDuration = 300_000
+        let mock = MockAudioService()
+        mock.seekError = NSError(domain: "test", code: 1)
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.seek(to: 60.0)
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertNil(state.ampWait)
+    }
+
+    @MainActor
+    func testPressingPlayWaitsForTheAmp() {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setPlayState(.pause)
+        let vm = PlayerViewModel(service: MockAudioService(), state: state)
+
+        vm.togglePlayPause()
+
+        XCTAssertEqual(state.ampWait, .resume)
+    }
+
     // MARK: - resyncPlaybackState
 
     @MainActor

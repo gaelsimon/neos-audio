@@ -105,6 +105,10 @@ final class AppState: StateUpdater {
 
     private(set) var isLoadingTrack: Bool = false
     private var trackLoadGeneration: UInt64 = 0
+    private(set) var ampWait: AmpWait?
+    /// Turns true only once a wait outlasts a quick answer, so the spinner does not flash.
+    private(set) var showsAmpWait = false
+    private var ampWaitTask: Task<Void, Never>?
     var isAdjustingVolume: Bool = false
     var error: AppError?
     var discoveryError: String?
@@ -247,6 +251,7 @@ final class AppState: StateUpdater {
     }
 
     private func resetPlaybackState() {
+        endAmpWait()
         playback.reset()
         imageCache.resetAliases()
     }
@@ -322,15 +327,15 @@ final class AppState: StateUpdater {
 
     // MARK: - Track Loading
 
-    /// Arms the spinner and its watchdog: a device that never reports the track must not strand it.
-    /// Returns the load's generation; hand it to `failTrackLoad` so a superseded play cannot roll it back.
-    @discardableResult
     /// Clears the playback error dedupe so a user retry gets feedback.
     private func resetPlaybackErrorDedupe() {
         lastPlaybackErrorMessage = nil
         lastPlaybackErrorAt = nil
     }
 
+    /// Arms the spinner and its watchdog: a device that never reports the track must not strand it.
+    /// Returns the load's generation; hand it to `failTrackLoad` so a superseded play cannot roll it back.
+    @discardableResult
     func beginTrackLoad(timeout: Duration = .seconds(30)) -> UInt64 {
         resetPlaybackErrorDedupe()
         trackLoadGeneration += 1
@@ -359,6 +364,28 @@ final class AppState: StateUpdater {
         pendingStreamContext = nil
     }
 
+    /// A waking amp took 15 s to start playing; the watchdog ends a wait it never answers.
+    func awaitAmp(_ wait: AmpWait, timeout: Duration = .seconds(30), showAfter delay: Duration = .milliseconds(500)) {
+        ampWait = wait
+        ampWaitTask?.cancel()
+        ampWaitTask = Task {
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            showsAmpWait = true
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            ampWait = nil
+            showsAmpWait = false
+        }
+    }
+
+    func endAmpWait() {
+        ampWaitTask?.cancel()
+        ampWaitTask = nil
+        ampWait = nil
+        showsAmpWait = false
+    }
+
     // MARK: - Playback
 
     func setNowPlaying(_ media: NowPlayingMedia) {
@@ -377,6 +404,7 @@ final class AppState: StateUpdater {
         // A different mid is a different stream, and only that restarts the timeline. A station
         // moving to its next song keeps playing, so the position must not go back to zero.
         if enrichedMedia.mid != playback.nowPlaying.mid {
+            if case .seek = ampWait { endAmpWait() }
             playback.nowPlayingOptions = []
             playback.playbackPosition = 0
             playback.lastProgressUpdate = Date()
@@ -439,17 +467,32 @@ final class AppState: StateUpdater {
         playback.shuffleMode = mode
     }
 
-    /// The amp reports position 0 once before the real one, on a resume and on a new track
-    /// alike, up to about 3s in. Taking it moves the interpolation baseline to now and sends
-    /// the bar back to the start, which is why it is dropped near a restart. Seeking absorbs
-    /// the same quirk through its own lockout. The duration is kept either way: the amp sends
-    /// it with that first event, and dropping it leaves the bar without one.
+    /// The amp reports 0 before the real position on a resume, a new track and a seek; the duration is kept regardless.
     func setProgress(position: Int, duration: Int) {
         playback.playbackDuration = duration
         if position == 0, let baseline = playback.positionBaselineAt,
            Date().timeIntervalSince(baseline) <= Self.staleZeroWindow {
             return
         }
+        switch ampWait {
+        case .seek(let target):
+            guard abs(position - target) <= Self.seekLandingTolerance else { return }
+            endAmpWait()
+        case .resume:
+            if position == 0 { return }
+        case nil:
+            break
+        }
+        movePosition(to: position)
+    }
+
+    /// The bar moves at once; the amp's reports are held off until one lands near the target.
+    func beginSeek(toMillis target: Int) {
+        movePosition(to: target)
+        awaitAmp(.seek(toMillis: target), timeout: .seconds(10))
+    }
+
+    private func movePosition(to position: Int) {
         playback.positionBaselineAt = nil
         playback.awaitingResumeConfirmation = false
         playback.playbackPosition = position
@@ -458,6 +501,8 @@ final class AppState: StateUpdater {
 
     /// Measured across twenty track starts: the first position lands between 0 and 3.1s in.
     private static let staleZeroWindow: TimeInterval = 5
+    /// A seek is sent in whole seconds and the amp reports every 5 s.
+    private static let seekLandingTolerance = 5000
 
     func setQueue(_ items: [QueueItem]) {
         playback.queue = items

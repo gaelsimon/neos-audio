@@ -100,6 +100,12 @@ private struct MiniPlayerContent: View {
                 }
         }
         .frame(width: artworkSize, height: artworkSize)
+        .overlay {
+            if state.isWaitingForAmp {
+                Color.black.opacity(0.5)
+                Spinner(size: 16, lineWidth: 2, color: .white)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
         .accessibilityHidden(true)
     }

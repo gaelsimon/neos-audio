@@ -139,6 +139,12 @@ struct NowPlayingCanvasView: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: 650)
+        .overlay {
+            if state.isWaitingForAmp {
+                Color.black.opacity(0.35)
+                Spinner(size: 32, lineWidth: 3, color: .white)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artworkLarge))
         .background {
             GeometryReader { geo in

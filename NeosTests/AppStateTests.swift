@@ -123,6 +123,106 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(state.isLoadingTrack)
     }
 
+    // MARK: - Waiting for the amp
+
+    @MainActor
+    func testASeekKeepsItsPlaceWhenTheAmpFirstReportsZero() {
+        let state = AppState()
+        state.beginSeek(toMillis: 1_992_000)
+
+        state.setProgress(position: 0, duration: 3_709_000)
+
+        XCTAssertEqual(state.playbackPosition, 1_992_000)
+        XCTAssertEqual(state.ampWait, .seek(toMillis: 1_992_000))
+    }
+
+    @MainActor
+    func testASeekEndsWhenTheAmpReportsWhereItLanded() {
+        let state = AppState()
+        state.beginSeek(toMillis: 1_992_000)
+
+        state.setProgress(position: 1_991_000, duration: 3_709_000)
+
+        XCTAssertNil(state.ampWait)
+        XCTAssertEqual(state.playbackPosition, 1_991_000)
+    }
+
+    @MainActor
+    func testASeekEndsWhenAnotherTrackStarts() {
+        let state = AppState()
+        state.setNowPlaying(NowPlayingMedia(song: "Show", mid: "m1"))
+        state.beginSeek(toMillis: 1_992_000)
+
+        state.setNowPlaying(NowPlayingMedia(song: "Next", mid: "m2"))
+
+        XCTAssertNil(state.ampWait)
+    }
+
+    @MainActor
+    func testAPlayWaitEndsWhenTheAmpStartsPlaying() {
+        let state = AppState()
+        state.setPlayStateOptimistically(.play)
+        state.awaitAmp(.resume)
+
+        state.setPlayState(.play)
+
+        XCTAssertNil(state.ampWait)
+    }
+
+    @MainActor
+    func testAResumeKeepsThePausedPlaceWhenTheAmpFirstReportsZero() {
+        let state = AppState()
+        state.setPlayState(.play)
+        state.setProgress(position: 2_100_000, duration: 3_709_000)
+        state.setPlayState(.pause)
+        state.setPlayStateOptimistically(.play)
+        state.awaitAmp(.resume)
+
+        state.setProgress(position: 0, duration: 3_709_000)
+
+        XCTAssertEqual(state.playbackPosition, 2_100_000)
+    }
+
+    @MainActor
+    func testPausingDropsTheWait() {
+        let state = AppState()
+        state.beginSeek(toMillis: 60_000)
+
+        state.setPlayStateOptimistically(.pause)
+
+        XCTAssertNil(state.ampWait)
+    }
+
+    @MainActor
+    func testAQuickAnswerShowsNoSpinner() {
+        let state = AppState()
+
+        state.awaitAmp(.resume)
+
+        XCTAssertFalse(state.isWaitingForAmp)
+    }
+
+    @MainActor
+    func testASlowAnswerShowsTheSpinner() async throws {
+        let state = AppState()
+        state.awaitAmp(.resume, showAfter: .milliseconds(20))
+
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertTrue(state.isWaitingForAmp)
+    }
+
+    @MainActor
+    func testAWaitTheAmpNeverAnswersEnds() async throws {
+        let state = AppState()
+        state.awaitAmp(.resume, timeout: .milliseconds(50), showAfter: .zero)
+
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertFalse(state.isWaitingForAmp)
+        XCTAssertNil(state.ampWait)
+    }
+
     @MainActor
     func testASupersededPlayCannotRollBackTheLoadThatReplacedIt() {
         let state = AppState()
