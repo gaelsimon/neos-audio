@@ -1582,6 +1582,56 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testARefusalWhileSignedOutStillAsksToSignInOnceTheAccountIsBack() async {
+        let viewModel = refusedViewModel(signedInUser: nil, service: MockAudioService())
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        viewModel.state.signedInUser = "user"
+
+        XCTAssertEqual(viewModel.refusedAccess, .accountSignedOut)
+    }
+
+    @MainActor
+    func testAPageRefusedWhileSignedOutLoadsAgainOnceTheAccountIsBack() async {
+        var refusals = 1
+        let state = AppState()
+        let viewModel = BrowseViewModel(
+            service: MockAudioService(),
+            state: state,
+            browseSource: { _ in
+                if refusals > 0 {
+                    refusals -= 1
+                    throw NSError(domain: "heos", code: 8, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+                }
+                return MockData.deezerRoot
+            },
+            browseContainer: { _, _, _ in MockData.deezerRoot }
+        )
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+        state.signedInUser = "user"
+
+        viewModel.accountChanged(signedIn: true)
+        await waitUntil { !viewModel.items.isEmpty }
+
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    @MainActor
+    func testAnExpiredServiceLinkDoesNotReloadWhenTheAccountIsReported() async {
+        let mock = MockAudioService()
+        mock.accountUser = "user"
+        let viewModel = refusedViewModel(signedInUser: "user", service: mock)
+        viewModel.selectSource(soundCloud)
+        await waitUntil { viewModel.errorMessage != nil }
+
+        viewModel.accountChanged(signedIn: true)
+
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    @MainActor
     func testAnErrorThatIsNotARefusalHasNoRefusedAccess() async {
         let viewModel = BrowseViewModel(service: MockAudioService(), state: AppState())
 

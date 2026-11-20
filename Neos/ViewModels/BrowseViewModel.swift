@@ -43,6 +43,8 @@ final class BrowseViewModel {
     var isLoading: Bool = false
     var isLoadingMore: Bool = false
     var errorMessage: String?
+    /// Whether the speaker still held an account when it refused the page.
+    var refusedWhileSignedIn = false
     var playingItemID: String?
     var addingToQueueItemID: String?
     /// Incremented on every sidebar navigation tap, even if destination unchanged.

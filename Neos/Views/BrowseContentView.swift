@@ -94,6 +94,7 @@ struct BrowseContentView: View {
             }
         }
         .accessibilityIdentifier(AccessibilityID.Browse.view)
+        .onChange(of: state.signedInUser != nil) { _, signedIn in browseVM.accountChanged(signedIn: signedIn) }
         #if os(iOS)
         .toolbar { navigationBarItems }
         #endif

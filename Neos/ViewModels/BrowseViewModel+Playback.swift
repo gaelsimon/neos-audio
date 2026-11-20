@@ -256,7 +256,13 @@ extension BrowseViewModel {
 
     var refusedAccess: RefusedAccess? {
         guard let errorMessage, Self.isAuthError(errorMessage) else { return nil }
-        return state.signedInUser == nil ? .accountSignedOut : .serviceLinkExpired
+        return refusedWhileSignedIn ? .serviceLinkExpired : .accountSignedOut
+    }
+
+    /// A page refused for want of an account loads again once the account is back.
+    func accountChanged(signedIn: Bool) {
+        guard signedIn, refusedAccess == .accountSignedOut else { return }
+        retry()
     }
 
     static func isAuthError(_ message: String) -> Bool {
@@ -275,6 +281,7 @@ extension BrowseViewModel {
             }
             guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
         }
+        refusedWhileSignedIn = state.signedInUser != nil
         errorMessage = shown.localizedDescription
     }
 
