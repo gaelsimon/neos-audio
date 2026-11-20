@@ -106,6 +106,7 @@ struct BrowseContentView: View {
                 state: state,
                 onDismiss: { showAddFavorite = false }
             )
+            .toastOnTop(state)
         }
         .sheet(item: $stationImageTarget) { item in
             StationImageEditor(
@@ -115,6 +116,7 @@ struct BrowseContentView: View {
                 state: state,
                 onDismiss: { stationImageTarget = nil }
             )
+            .toastOnTop(state)
         }
     }
 
@@ -332,7 +334,9 @@ struct BrowseContentView: View {
                             } else if item.isSubSource {
                                 browseVM.browseSubSource(item)
                             }
-                        } onAddToQueue: {}
+                        } onAddToQueue: {
+                            browseVM.addToQueue(item)
+                        }
                         .onAppear {
                             if let globalIndex = browseVM.items.firstIndex(where: { $0.id == item.id }),
                                browseVM.shouldLoadMore(at: globalIndex) {

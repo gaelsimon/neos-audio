@@ -9,6 +9,12 @@ struct AccountSettingsView: View {
     let localServersVM: LocalServersViewModel
 
     @State private var showSignOutConfirmation = false
+    @FocusState private var focusedField: SignInField?
+
+    private enum SignInField {
+        case email
+        case password
+    }
 
     var body: some View {
         Form {
@@ -77,10 +83,16 @@ struct AccountSettingsView: View {
             TextField("Email", text: $accountVM.username)
                 .textContentType(.username)
                 .literalTextInput(.email)
+                .focused($focusedField, equals: .email)
+                .submitLabel(.next)
+                .onSubmit { focusedField = .password }
                 .accessibilityIdentifier(AccessibilityID.Settings.emailField)
 
             SecureField("Password", text: $accountVM.password)
                 .textContentType(.password)
+                .focused($focusedField, equals: .password)
+                .submitLabel(.go)
+                .onSubmit { accountVM.signIn() }
                 .accessibilityIdentifier(AccessibilityID.Settings.passwordField)
 
             Toggle("Remember me", isOn: $accountVM.rememberMe)

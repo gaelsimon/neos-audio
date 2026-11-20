@@ -1,5 +1,6 @@
 import XCTest
 @testable import Neos
+import HEOSKit
 import NeosDomain
 
 final class HomeViewModelTests: XCTestCase {
@@ -307,6 +308,64 @@ final class HomeViewModelTests: XCTestCase {
         }
         XCTAssertTrue(mock.calls.contains(where: { $0.hasPrefix("browseSource:9") }))
         XCTAssertFalse(mock.calls.contains(where: { $0.hasPrefix("browseSource:5") }))
+        HomeCacheStore.clearAll()
+    }
+
+    // MARK: - Probe cut off by the connection
+
+    @MainActor
+    private func probeCutOffByTheConnection() async -> (HomeViewModel, MockAudioService, AppState) {
+        let (vm, mock, state) = makeProbeVM(cacheIsFresh: false)
+        HomeCacheStore.saveServiceCategory(
+            sid: 5, categoryIndex: 1, name: "Albums", cid: "cached-albums",
+            items: [BrowseItem(name: "Cached Album", cid: "a1", browsable: true)]
+        )
+        mock.browseContainerError = TransportError.disconnected
+        vm.loadHome()
+        for _ in 0..<100 where vm.loadingServiceSIDs.contains(5) || !mock.calls.contains(where: { $0.hasPrefix("browseContainer:5") }) {
+            await yieldForTask()
+        }
+        return (vm, mock, state)
+    }
+
+    @MainActor
+    func testAProbeCutOffByTheConnectionKeepsTheCachedCategories() async {
+        let (vm, _, _) = await probeCutOffByTheConnection()
+
+        XCTAssertEqual(vm.serviceCategoryNames[ServiceCategoryKey(sid: 5, categoryIndex: 1)], "Albums")
+        XCTAssertNotNil(HomeCacheStore.loadServiceCategory(sid: 5, categoryIndex: 1), "The cache lost the category")
+        XCTAssertTrue(HomeCacheStore.isStale(), "A cut-off probe must not mark the cache fresh")
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
+    func testAProbeCutOffByTheConnectionRunsAgainWhenTheSpeakerIsBack() async {
+        let (vm, mock, state) = await probeCutOffByTheConnection()
+        mock.browseContainerError = nil
+        let probes = mock.calls.filter { $0.hasPrefix("browseSource:5") }.count
+
+        state.setConnectionState(.connected)
+
+        for _ in 0..<100 where mock.calls.filter({ $0.hasPrefix("browseSource:5") }).count == probes {
+            await yieldForTask()
+        }
+        XCTAssertGreaterThan(mock.calls.filter { $0.hasPrefix("browseSource:5") }.count, probes)
+        // The model watches the connection only while it lives.
+        withExtendedLifetime(vm) {}
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
+    func testAContainerTheServiceRefusesStillLetsTheProbeFinish() async {
+        let (vm, mock, _) = makeProbeVM(cacheIsFresh: false)
+        mock.browseContainerError = NSError(domain: "HEOS", code: 2)
+
+        vm.loadHome()
+        for _ in 0..<100 where vm.loadingServiceSIDs.contains(5) || !mock.calls.contains(where: { $0.hasPrefix("browseContainer:5") }) {
+            await yieldForTask()
+        }
+
+        XCTAssertFalse(HomeCacheStore.isStale(), "A probe the speaker answered marks the cache fresh")
         HomeCacheStore.clearAll()
     }
 }

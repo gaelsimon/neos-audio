@@ -144,10 +144,12 @@ extension BrowseViewModel {
         }
         let sid = item.sid ?? browseStack.last?.sid ?? 0
         let cid = item.cid ?? browseStack.last?.cid ?? ""
+        // A folder goes in whole: the speaker adds a container when it gets no track id.
+        let mid = item.browsable ? nil : item.mid
         addingToQueueItemID = item.id
         Task {
             do {
-                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: item.mid, criteria: criteria)
+                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: mid, criteria: criteria)
                 state.noteQueueEdit()
                 let message = criteria == .playNext ? "Playing next" : "Added to queue"
                 state.showToast(message, icon: DS.Icons.addedToQueue, style: .success)

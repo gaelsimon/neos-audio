@@ -58,3 +58,49 @@ struct ToastOverlay: View {
         .animation(.easeInOut(duration: DS.Animation.standard), value: state.toast)
     }
 }
+
+extension EnvironmentValues {
+    /// How many sheets deep a view sits: the toast shows on the deepest screen that can show it.
+    @Entry var toastDepth = 0
+}
+
+/// The toast on a page or a sheet that another sheet may cover.
+struct FrontmostToast: View {
+    let state: AppState
+    let depth: Int
+    @State private var id = UUID()
+
+    var body: some View {
+        ZStack {
+            if state.toastHosts.isFrontmost(depth: depth) {
+                ToastOverlay(state: state)
+            }
+        }
+        .onAppear { state.toastHosts.enter(id, depth: depth) }
+        .onDisappear { state.toastHosts.leave(id) }
+    }
+}
+
+/// A sheet's own place for the toast, one level deeper than whatever presents it.
+private struct ToastOnTop: ViewModifier {
+    let state: AppState
+    @Environment(\.toastDepth) private var depth
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.toastDepth, depth + 1)
+            .overlay(alignment: .bottom) { FrontmostToast(state: state, depth: depth + 1) }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func toastOnTop(_ state: AppState) -> some View {
+        #if os(iOS)
+        modifier(ToastOnTop(state: state))
+        #else
+        // A Mac sheet leaves the window's own toast in sight.
+        self
+        #endif
+    }
+}

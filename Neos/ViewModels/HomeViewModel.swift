@@ -136,23 +136,28 @@ final class HomeViewModel {
 
     // MARK: - Source Observation
 
-    /// Observes changes to state.musicSources using Swift Observation.
-    /// When new sources arrive (e.g., after HEOS connection completes), triggers loading.
+    /// Loads what new sources bring, and the services a dropped connection cut off once it is back.
     private func startObservingSourceChanges() {
         guard !sourceObservationStarted else { return }
         sourceObservationStarted = true
         sourceObservationTask.replace(with: Task { [weak self] in
             while !Task.isCancelled {
+                let sourcesBefore = self?.state.musicSources
+                // A reconnect brings back the same sources, which notify nothing: the connection says it is back.
                 let changed = await withCheckedContinuation { continuation in
                     withObservationTracking {
                         _ = self?.state.musicSources
+                        _ = self?.state.isConnected
                     } onChange: {
                         continuation.resume(returning: true)
                     }
                 }
                 guard changed, !Task.isCancelled else { break }
                 await Task.yield()
-                self?.loadNewServiceContent()
+                guard let self else { break }
+                // Away from the speaker, only new sources are worth a look.
+                if !state.isConnected, state.musicSources == sourcesBefore { continue }
+                loadNewServiceContent()
             }
         })
     }
@@ -237,7 +242,7 @@ final class HomeViewModel {
             for source in sources {
                 guard serviceTracker.isCurrent(requestID), !Task.isCancelled else { return }
 
-                await discoverServiceCategories(
+                let finished = await discoverServiceCategories(
                     sid: source.sid,
                     sourceName: source.name,
                     requestID: requestID
@@ -245,30 +250,28 @@ final class HomeViewModel {
 
                 if serviceTracker.isCurrent(requestID), !Task.isCancelled {
                     loadingServiceSIDs.remove(source.sid)
-                    HomeCacheStore.markUpdated()
+                    if finished {
+                        HomeCacheStore.markUpdated()
+                    } else {
+                        // Probed again once the speaker is back.
+                        loadedSIDs.remove(source.sid)
+                    }
                 }
             }
         })
     }
 
-    /// Discovers categories for a service by probing its container hierarchy.
-    ///
-    /// Strategy:
-    /// 1. Browse the service's top-level menu (no range -- it's a menu, not content)
-    /// 2. For each top-level browsable container, probe one level deeper (no range)
-    /// 3. If the probe finds playable items or leaf items, use those as the category content
-    /// 4. If the probe finds only more containers, pick the most promising one and probe again
-    /// 5. Stop after finding enough categories or reaching max depth
-    private func discoverServiceCategories(sid: Int, sourceName: String, requestID: Int) async {
+    /// False when the connection went away mid-probe: what the cache holds stays until a probe completes.
+    private func discoverServiceCategories(sid: Int, sourceName: String, requestID: Int) async -> Bool {
         do {
             // Step 1: Get the service's top-level menu
             let topLevel = try await service.browseSource(sid: sid)
-            guard serviceTracker.isCurrent(requestID), !Task.isCancelled else { return }
+            guard serviceTracker.isCurrent(requestID), !Task.isCancelled else { return true }
 
             let browsableContainers = topLevel.items.filter { $0.browsable }
             guard !browsableContainers.isEmpty else {
                 clearServiceData(for: sid)
-                return
+                return true
             }
 
             // Step 2: Probe each top-level container for content.
@@ -277,10 +280,10 @@ final class HomeViewModel {
             var categoryIndex = 0
             for container in browsableContainers {
                 guard categoryIndex < maxCategoriesPerService else { break }
-                guard serviceTracker.isCurrent(requestID), !Task.isCancelled else { return }
+                guard serviceTracker.isCurrent(requestID), !Task.isCancelled else { return true }
                 guard let cid = container.cid else { continue }
 
-                await probeContainer(
+                try await probeContainer(
                     sid: sid,
                     cid: cid,
                     leafName: container.name,
@@ -298,20 +301,14 @@ final class HomeViewModel {
                 serviceCategoryCIDs.removeValue(forKey: key)
                 HomeCacheStore.clearServiceCategory(sid: sid, categoryIndex: i)
             }
+            return true
         } catch {
             state.reportNonFatal(source: "HomeViewModel", message: "Failed to load service content: \(error.localizedDescription)")
+            return !ConnectionLoss.matches(error)
         }
     }
 
-    /// Recursively probes a container to find displayable content for the Home dashboard.
-    ///
-    /// HEOS services structure their content as nested menus:
-    ///   Service Root -> "My Music" -> "Playlists" -> [playlist items]
-    ///
-    /// This method navigates down the hierarchy until it finds content:
-    /// - If browsing a container returns playable or non-browsable items -> content found
-    /// - If it returns only more containers -> recurse one level deeper
-    /// - Stop after maxProbeDepth levels
+    /// Goes down a service's menus until a level holds something to play, up to `maxProbeDepth`.
     @discardableResult
     private func probeContainer(
         sid: Int,
@@ -320,7 +317,7 @@ final class HomeViewModel {
         categoryIndex: inout Int,
         depth: Int,
         requestID: Int
-    ) async -> Bool {
+    ) async throws -> Bool {
         guard depth < maxProbeDepth, categoryIndex < maxCategoriesPerService else { return false }
         guard serviceTracker.isCurrent(requestID), !Task.isCancelled else { return false }
 
@@ -365,7 +362,7 @@ final class HomeViewModel {
                 guard let subCid = sub.cid else { continue }
 
                 // Use only the sub-container's name as the leaf label
-                let found = await probeContainer(
+                let found = try await probeContainer(
                     sid: sid,
                     cid: subCid,
                     leafName: sub.name,
@@ -378,6 +375,8 @@ final class HomeViewModel {
 
             return categoryIndex > 0
         } catch {
+            // A container the service refuses is skipped; a lost connection ends the whole probe.
+            if ConnectionLoss.matches(error) { throw error }
             return false
         }
     }

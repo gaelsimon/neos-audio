@@ -23,12 +23,15 @@ struct PagedStack<Root: View>: View {
     let container: ViewModelContainer
     /// Where the first page opens, for a tab that is one source; nil for a page that needs no place.
     var start: BrowseLocation?
+    /// The tab on screen, which opens what the player asks for.
+    var isSelected = false
     @ViewBuilder let root: (BrowseViewModel) -> Root
 
     @Environment(\.showsPadChrome) private var showsPadChrome
     @Environment(\.miniPlayerInTabBar) private var miniPlayerInTabBar
     @Environment(\.tabBarPlacement) private var tabBarPlacement
     @Environment(\.isSidebarShowing) private var isSidebarShowing
+    @Environment(\.toastDepth) private var toastDepth
     @State private var rootModel: BrowseViewModel?
     @State private var pages: [BrowsePage] = []
     @State private var playerBarHeight: CGFloat = 0
@@ -55,7 +58,7 @@ struct PagedStack<Root: View>: View {
         // An inset around the stack never reaches its pages, so each page makes room for the bar itself.
         .overlay(alignment: .bottom) {
             VStack(spacing: 0) {
-                ToastOverlay(state: state)
+                FrontmostToast(state: state, depth: toastDepth)
                 playerBar
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier(AccessibilityID.Player.bar)
@@ -65,6 +68,11 @@ struct PagedStack<Root: View>: View {
         .modifier(QueueInspector(state: state, container: container, isInstalled: QueueInspector.belongsInsideTabs))
         .onChange(of: tabBarPlacement == .sidebar, initial: true) { _, isShowing in
             isSidebarShowing.wrappedValue = isShowing
+        }
+        .onChange(of: state.pageRequestedFromPlayer) { _, page in
+            guard isSelected, let page, let rootModel else { return }
+            state.pageRequestedFromPlayer = nil
+            rootModel.open(page)
         }
         .onAppear {
             guard rootModel == nil else { return }
@@ -171,6 +179,7 @@ private struct AccountToolbar: ViewModifier {
                             homeVM: container.homeVM, localServersVM: container.localServersVM
                         )
                     }
+                    .toastOnTop(state)
                 }
             }
     }

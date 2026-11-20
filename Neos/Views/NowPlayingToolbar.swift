@@ -11,29 +11,13 @@ struct NowPlayingToolbar: View {
 
     // MARK: - Cross-Link Navigation
 
-    private var canBrowseAlbum: Bool {
-        guard let sid = state.nowPlaying.sid,
-              !state.nowPlaying.album.isEmpty,
-              let caps = state.serviceCapabilities[sid] else { return false }
-        return caps.canBrowseAlbums
-    }
+    private var canBrowseAlbum: Bool { state.canOpen(.album) }
 
-    private var canBrowseArtist: Bool {
-        guard let sid = state.nowPlaying.sid,
-              isLinkableArtist(state.nowPlaying.artist),
-              let caps = state.serviceCapabilities[sid] else { return false }
-        return caps.canBrowseArtists
-    }
+    private var canBrowseArtist: Bool { state.canOpen(.artist) }
 
-    private func navigateToAlbum() {
-        guard let sid = state.nowPlaying.sid else { return }
-        browseVM.pushAlbumSearchNavigate(sid: sid, albumName: state.nowPlaying.album, artistHint: state.nowPlaying.artist)
-    }
+    private func navigateToAlbum() { browseVM.open(.album) }
 
-    private func navigateToArtist() {
-        guard let sid = state.nowPlaying.sid else { return }
-        browseVM.pushArtistSearchNavigate(sid: sid, artistName: state.nowPlaying.artist)
-    }
+    private func navigateToArtist() { browseVM.open(.artist) }
 
     // MARK: - External Link
 

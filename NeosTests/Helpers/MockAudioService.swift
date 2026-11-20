@@ -217,8 +217,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         return browseResultsBySID[sid] ?? browseResult
     }
 
+    var browseContainerError: Error?
+
     func browseContainer(sid: Int, cid: String, range: ClosedRange<Int>?) async throws -> BrowseResult {
         calls.append("browseContainer:\(sid):\(cid)")
+        if let error = browseContainerError { throw error }
         return browseResult
     }
 
@@ -241,8 +244,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
     var addToQueueFailingMIDs: Set<String> = []
     var addToQueueSlowMIDs: Set<String> = []
 
+    var lastAddedToQueue: (cid: String, mid: String?)?
+
     func addToQueue(pid: Int, sid: Int, cid: String, mid: String?, criteria: AddCriteria) async throws {
         calls.append("addToQueue:\(pid)")
+        lastAddedToQueue = (cid, mid)
         if let mid, addToQueueSlowMIDs.contains(mid) {
             try? await Task.sleep(for: .milliseconds(200))
         }

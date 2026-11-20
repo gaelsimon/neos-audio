@@ -9,6 +9,8 @@ struct AmpSettingsView: View {
     @State private var selectedLeaderPID: Int?
     @State private var renamingGroupID: Int?
     @State private var groupNameDraft = ""
+    @FocusState private var isGroupNameFocused: Bool
+    @State private var ungroupConfirmationID: Int?
 
     var body: some View {
         Form {
@@ -170,7 +172,7 @@ struct AmpSettingsView: View {
         ) { groupVM.setGroupVolume(gid: group.gid, level: $0) }
 
         Button(role: .destructive) {
-            groupVM.ungroup(pid: group.gid)
+            ungroupConfirmationID = group.gid
         } label: {
             if groupVM.isUngrouping {
                 Spinner(size: 16, lineWidth: 2)
@@ -180,6 +182,25 @@ struct AmpSettingsView: View {
         }
         .disabled(groupVM.isUngrouping)
         .accessibilityIdentifier(AccessibilityID.Group.ungroupButton(group.gid))
+        .confirmationDialog(
+            "Ungroup \(state.displayName(for: group))?",
+            isPresented: Binding(
+                get: { ungroupConfirmationID == group.gid },
+                set: { if !$0 { ungroupConfirmationID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Ungroup", role: .destructive) { groupVM.ungroup(pid: group.gid) }
+        } message: {
+            Text("Each speaker goes back to playing on its own.")
+        }
+    }
+
+    private func finishRenaming(_ group: SpeakerGroup) {
+        guard renamingGroupID == group.gid else { return }
+        renamingGroupID = nil
+        guard groupNameDraft != state.displayName(for: group) else { return }
+        groupVM.renameGroup(group, to: groupNameDraft)
     }
 
     @ViewBuilder
@@ -191,9 +212,13 @@ struct AmpSettingsView: View {
                 .onChange(of: groupNameDraft) { _, draft in
                     groupNameDraft = String(draft.prefix(GroupViewModel.maxGroupNameLength))
                 }
-                .onSubmit {
-                    groupVM.renameGroup(group, to: groupNameDraft)
-                    renamingGroupID = nil
+                .focused($isGroupNameFocused)
+                .submitLabel(.done)
+                .onSubmit { finishRenaming(group) }
+                .onAppear { isGroupNameFocused = true }
+                // Tapping elsewhere keeps the name typed, as Return does; Escape on the Mac drops it.
+                .onChange(of: isGroupNameFocused) { _, isFocused in
+                    if !isFocused { finishRenaming(group) }
                 }
                 #if os(macOS)
                 .onExitCommand { renamingGroupID = nil }

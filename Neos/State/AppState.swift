@@ -114,9 +114,12 @@ final class AppState: StateUpdater {
     var discoveryError: String?
     var isDiscovering: Bool = false
     var toast: ToastMessage?
+    var toastHosts = ToastHosts()
     var availableUpdate: UpdateChecker.Update?
     var isQueuePanelOpen: Bool = false
     var isNowPlayingCanvasOpen: Bool = false
+    /// Asked for by the iPhone and iPad player, which closes: the tab on screen opens it.
+    var pageRequestedFromPlayer: NowPlayingPage?
     /// Drives the search field's focus; shared so the menu bar can focus it too.
     var isSearchFieldFocused: Bool = false
     var canvasDominantColors: [Color] = DominantColorExtractor.defaultColors

@@ -6,6 +6,8 @@ struct MobileNowPlayingView: View {
     let state: AppState
     let container: ViewModelContainer
     @State private var showsSpeakers = false
+    /// Its own: a queue left open beside an iPad's pages must not slide over the player as it opens.
+    @State private var showsQueue = false
     /// Narrower than the screen on iPad, where the controls would otherwise run past the artwork's edges.
     @State private var artworkWidth: CGFloat?
 
@@ -18,12 +20,14 @@ struct MobileNowPlayingView: View {
             .sheet(isPresented: $showsSpeakers) {
                 SpeakersSheet(state: state, container: container)
             }
-            .sheet(isPresented: Bindable(state).isQueuePanelOpen) {
+            .sheet(isPresented: queuePresentation) {
                 QueuePanelView(state: state, viewModel: container.queuePanelVM)
+                    .toastOnTop(state)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
                     .cappedTextSize()
             }
+            .toastOnTop(state)
             .cappedTextSize()
     }
 
@@ -62,7 +66,7 @@ struct MobileNowPlayingView: View {
 
             HStack(spacing: DS.Spacing.md) {
                 VolumeControlView(state: state, viewModel: playerVM, style: .compact)
-                Button { state.isQueuePanelOpen = true } label: {
+                Button { queuePresentation.wrappedValue = true } label: {
                     Image(systemName: DS.Icons.queue)
                         .font(DS.IconFont.lg)
                         .hitTarget()
@@ -78,6 +82,17 @@ struct MobileNowPlayingView: View {
         .padding(.bottom, DS.Spacing.lg)
         .frame(maxWidth: .infinity)
         .disabled(!state.isConnected)
+    }
+
+    /// The panel's flag follows the sheet, so the history refreshes while it shows.
+    private var queuePresentation: Binding<Bool> {
+        Binding(
+            get: { showsQueue },
+            set: { isShown in
+                showsQueue = isShown
+                state.isQueuePanelOpen = isShown
+            }
+        )
     }
 
     private var playingFrom: MusicSource? {
@@ -101,8 +116,15 @@ struct MobileNowPlayingView: View {
     private var trackMenu: some View {
         let options = state.nowPlayingOptions.filter { Self.menuOptionIcons[$0.id] != nil }
         let link = ExternalLinkMenu.make(for: state.nowPlaying, sources: state.musicSources)
-        if !options.isEmpty || link != nil {
+        let pages = [NowPlayingPage.artist, .album].filter(state.canOpen)
+        if !options.isEmpty || link != nil || !pages.isEmpty {
             Menu {
+                if pages.contains(.artist) {
+                    Button("Go to Artist", systemImage: "person") { open(.artist) }
+                }
+                if pages.contains(.album) {
+                    Button("Go to Album", systemImage: "square.stack") { open(.album) }
+                }
                 ForEach(options) { option in
                     Button(option.name, systemImage: Self.menuOptionIcons[option.id] ?? DS.Icons.musicNote) {
                         playerVM.executeServiceOption(option)
@@ -119,6 +141,11 @@ struct MobileNowPlayingView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("More")
         }
+    }
+
+    private func open(_ page: NowPlayingPage) {
+        state.pageRequestedFromPlayer = page
+        state.isNowPlayingCanvasOpen = false
     }
 
     private static let menuOptionIcons = [

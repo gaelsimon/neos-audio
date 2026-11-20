@@ -141,6 +141,9 @@ struct QueueView: View {
             onAlbumTap: albumTapHandler(for: item),
             onArtistTap: artistTapHandler(for: item),
             isResolvingArtist: browseVM.resolvingArtistName != nil && browseVM.resolvingArtistName == item.artist,
+            // In the menu too: a phone has no room for the artist and album columns.
+            onArtistView: artistTapHandler(for: item),
+            onAlbumView: albumTapHandler(for: item),
             externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
             state: state,
             onRemove: { viewModel.removeItem(item) },

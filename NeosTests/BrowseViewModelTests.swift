@@ -1060,6 +1060,28 @@ final class BrowseViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testAFolderRowAddsTheWholeFolder() async {
+        let state = AppState()
+        let mock = MockAudioService()
+        state.selectedPlayerID = 123
+        let vm = BrowseViewModel(
+            service: mock,
+            state: state,
+            browseSource: { _ in BrowseResult(items: []) },
+            browseContainer: { _, _, _ in BrowseResult(items: []) }
+        )
+        vm.selectSource(MusicSource(sid: 1, name: "TIDAL"))
+        await yieldForTask()
+        let album = BrowseItem(name: "Album", type: .album, cid: "album-7", mid: "album-mid", playable: true, browsable: true)
+
+        vm.addToQueue(album)
+        await yieldForTask()
+
+        XCTAssertEqual(mock.lastAddedToQueue?.cid, "album-7")
+        XCTAssertNil(mock.lastAddedToQueue?.mid, "A mid would ask the speaker for one track of the folder")
+    }
+
+    @MainActor
     func testPlayContainerRequiresPlayerSelected() async {
         let state = AppState()
         let mock = MockAudioService()

@@ -16,6 +16,8 @@ struct AccentSlider: View {
     @Environment(\.sliderFill) private var fill
     @State private var isHovering = false
     @State private var isDragging = false
+    /// The value a touch started from.
+    @State private var dragStart: Double?
 
     private static let trackHeight: CGFloat = 4
     private static let knobSize: CGFloat = 14
@@ -55,13 +57,15 @@ struct AccentSlider: View {
                     .onChanged { drag in
                         if !isDragging {
                             isDragging = true
+                            dragStart = value
                             onEditingChanged?(true)
                         }
-                        onChange(level(at: drag.location.x, width: width))
+                        report(drag, width: width)
                     }
                     .onEnded { drag in
-                        onChange(level(at: drag.location.x, width: width))
+                        report(drag, width: width)
                         isDragging = false
+                        dragStart = nil
                         onEditingChanged?(false)
                     }
             )
@@ -79,8 +83,14 @@ struct AccentSlider: View {
         }
     }
 
-    private func level(at x: CGFloat, width: CGFloat) -> Double {
-        let position = width > 0 ? min(max(x / width, 0), 1) : 0
-        return bounds.lowerBound + position * (bounds.upperBound - bounds.lowerBound)
+    /// On touch the value follows the finger from where it was, so landing near the end cannot send the speaker there.
+    private func report(_ drag: DragGesture.Value, width: CGFloat) {
+        let track = SliderDrag(bounds: bounds, width: width)
+        #if os(iOS)
+        guard drag.translation.width != 0 else { return }
+        onChange(track.level(from: dragStart ?? value, movedBy: drag.translation.width))
+        #else
+        onChange(track.level(at: drag.location.x))
+        #endif
     }
 }

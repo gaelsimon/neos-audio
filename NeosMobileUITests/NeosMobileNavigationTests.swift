@@ -69,6 +69,52 @@ final class NeosMobileNavigationTests: MobileDemoTestCase {
         openSidebarEntry("Home")
     }
 
+    func testThePlayerOpensClearOfAQueueOpenBesideThePage() throws {
+        try XCTSkipUnless(isPad, "Only the iPad shows the queue beside the page")
+        let toggle = element(AccessibilityID.QueuePanel.toggleButton)
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.tap()
+        XCTAssertTrue(app.staticTexts["Up Next"].waitForExistence(timeout: 5), "The queue never opened")
+
+        openPlayer()
+
+        // A sheet would slide in over the player after it opens.
+        Thread.sleep(forTimeInterval: 1.5)
+        XCTAssertTrue(app.buttons["Close Player"].isHittable, "Something covers the player")
+        app.buttons["Close Player"].tap()
+        if app.staticTexts["Up Next"].waitForExistence(timeout: 2) { toggle.tap() }
+    }
+
+    func testThePlayersArtistOpensFromItsMenu() {
+        // Other tests leave an input playing, which has no artist.
+        openLibraryPage("Deezer")
+        open("Albums", "Midnight Opera,")
+        let play = element(AccessibilityID.Browse.playContainer)
+        XCTAssertTrue(play.waitForExistence(timeout: 5))
+        play.tap()
+        XCTAssertTrue(waitUntil { nowPlaying.hasPrefix("Paper Lanterns") }, "Playing \(nowPlaying)")
+        openPlayer()
+
+        let more = app.buttons["More"].firstMatch
+        XCTAssertTrue(more.waitForExistence(timeout: 5), "The player offers no menu")
+        more.tap()
+        app.buttons["Go to Artist"].firstMatch.tap()
+
+        XCTAssertTrue(app.staticTexts["1 album"].waitForExistence(timeout: 8), "The artist's page never opened")
+    }
+
+    func testAToastRaisedInASheetShowsOnTheSheet() {
+        app.buttons["Settings"].firstMatch.tap()
+        let copy = element(AccessibilityID.Settings.copyDiagnosticsButton)
+        for _ in 0..<5 where !(copy.exists && copy.isHittable) { app.swipeUp() }
+
+        copy.tap()
+
+        let toast = app.staticTexts["Diagnostics copied to clipboard"]
+        XCTAssertTrue(toast.waitForExistence(timeout: 3) && toast.isHittable, "The toast is out of sight under the sheet")
+        app.buttons["Done"].firstMatch.tap()
+    }
+
     func testAnArtistWithOneAlbumCountsOneAlbum() {
         openLibraryPage("Deezer")
 

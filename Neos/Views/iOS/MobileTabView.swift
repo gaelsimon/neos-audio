@@ -42,20 +42,20 @@ struct MobileTabView: View {
         let shown = selection.showing(sourceTabs: showsPadChrome, sources: sources)
         return TabView(selection: $selection) {
             Tab("Home", systemImage: "house", value: MobileTab.home) {
-                PagedStack(state: state, container: container) { model in
+                PagedStack(state: state, container: container, isSelected: selection == .home) { model in
                     DestinationView(state: state, container: container, model: model)
                         .navigationTitle("Home")
                 }
             }
             Tab("Library", systemImage: "square.stack", value: MobileTab.library) {
-                PagedStack(state: state, container: container) { model in
+                PagedStack(state: state, container: container, isSelected: selection == .library) { model in
                     LibraryView(state: state, container: container, model: model)
                 }
             }
             // The sidebar lists the sources itself. The tab stays while it is the page on screen.
             .hidden(isSidebarShowing && selection != .library)
             Tab(value: MobileTab.search, role: .search) {
-                PagedStack(state: state, container: container) { model in
+                PagedStack(state: state, container: container, isSelected: selection == .search) { model in
                     MobileSearchView(state: state, container: container, model: model)
                 }
             }
@@ -65,7 +65,7 @@ struct MobileTabView: View {
                     sourceTab(entry.source, title: entry.title, icon: Image(systemName: entry.symbol))
                 }
                 Tab("Queue", systemImage: DS.Icons.queue, value: MobileTab.queue) {
-                    PagedStack(state: state, container: container, start: .queue) { model in
+                    PagedStack(state: state, container: container, start: .queue, isSelected: selection == .queue) { model in
                         DestinationView(state: state, container: container, model: model)
                             .navigationTitle("Queue")
                     }
@@ -100,7 +100,9 @@ struct MobileTabView: View {
     /// A source as a sidebar entry with a stack of its own.
     private func sourceTab(_ source: MusicSource, title: String, icon: Image) -> some TabContent<MobileTab> {
         Tab(value: MobileTab.source(source.sid)) {
-            PagedStack(state: state, container: container, start: .root(of: source)) { model in
+            PagedStack(
+                state: state, container: container, start: .root(of: source), isSelected: selection == .source(source.sid)
+            ) { model in
                 DestinationView(state: state, container: container, model: model)
                     .navigationTitle(title)
             }

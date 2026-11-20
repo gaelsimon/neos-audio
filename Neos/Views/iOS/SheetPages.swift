@@ -30,5 +30,6 @@ struct SpeakersSheet: View {
         DoneSheet(title: "Speakers") {
             AmpSettingsView(state: state, speakerVM: container.speakerVM, groupVM: container.groupVM)
         }
+        .toastOnTop(state)
     }
 }
