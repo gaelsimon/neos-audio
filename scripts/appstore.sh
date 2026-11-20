@@ -74,7 +74,7 @@ xcodebuild -project "$PROJECT_DIR/Neos.xcodeproj" \
 
 mkdir -p "$(dirname "$APP_PATH")"
 ditto "$ARCHIVE_PATH/Products/Applications/Neos.app" "$APP_PATH"
-if strings "$BINARY" | grep -q "ko-fi.com"; then
+if strings "$BINARY" | grep "ko-fi.com" > /dev/null; then
     echo "ERROR: the Ko-fi link is still in the binary; APP_STORE was not applied"
     exit 1
 fi

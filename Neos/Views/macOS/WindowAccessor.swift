@@ -5,7 +5,7 @@ import AppKit
 
 /// Makes the NSWindow titlebar transparent so canvas background fills edge-to-edge.
 struct WindowAccessor: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
+    func makeNSView(context _: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
             if let window = view.window {
