@@ -162,13 +162,13 @@ enum DemoCatalog {
 
     static func criteria(for sid: Int) -> [SearchCriteria] {
         if sid == tuneInSID {
-            return [SearchCriteria(scid: 1, name: "Station")]
+            return [SearchCriteria(scid: 4, name: "Station")]
         }
         return [
             SearchCriteria(scid: 1, name: "Artist"),
             SearchCriteria(scid: 2, name: "Album"),
             SearchCriteria(scid: 3, name: "Track"),
-            SearchCriteria(scid: 4, name: "Playlist"),
+            SearchCriteria(scid: 6, name: "Playlist"),
         ]
     }
 
@@ -181,7 +181,7 @@ enum DemoCatalog {
         switch scid {
         case 1: return artists(sid: sid)
         case 2: return sid == tidalSID ? DemoDataProvider.tidalAlbums : DemoDataProvider.deezerAlbums
-        case 4: return [playlist("Road Trip", longPlaylistCID, sid: sid)]
+        case 6: return [playlist("Road Trip", longPlaylistCID, sid: sid)]
         default: return DemoDataProvider.searchTracks
         }
     }

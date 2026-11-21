@@ -37,8 +37,8 @@ final class DemoCatalogTests: XCTestCase {
         XCTAssertEqual(DemoCatalog.search(sid: DemoCatalog.deezerSID, scid: 1, query: "night").first?.type, .artist)
         XCTAssertEqual(DemoCatalog.search(sid: DemoCatalog.deezerSID, scid: 2, query: "night").first?.type, .album)
         XCTAssertEqual(DemoCatalog.search(sid: DemoCatalog.deezerSID, scid: 3, query: "night").first?.type, .song)
-        XCTAssertEqual(DemoCatalog.search(sid: DemoCatalog.deezerSID, scid: 4, query: "night").first?.type, .playlist)
-        XCTAssertEqual(DemoCatalog.search(sid: DemoCatalog.tuneInSID, scid: 1, query: "night").first?.type, .station)
+        XCTAssertEqual(DemoCatalog.search(sid: DemoCatalog.deezerSID, scid: 6, query: "night").first?.type, .playlist)
+        XCTAssertEqual(DemoCatalog.search(sid: DemoCatalog.tuneInSID, scid: 4, query: "night").first?.type, .station)
         XCTAssertEqual(DemoCatalog.criteria(for: DemoCatalog.tuneInSID).map(\.name), ["Station"])
     }
 

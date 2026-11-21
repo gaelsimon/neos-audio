@@ -41,7 +41,9 @@ final class ViewModelContainer {
         self.browseVM = BrowseViewModel(service: service, state: state, serverPreferences: serverPreferences)
         self.homeVM = HomeViewModel(service: service, state: state)
         self.accountVM = AccountViewModel(service: service, state: state)
-        self.searchVM = SearchViewModel(service: service, state: state, serverPreferences: serverPreferences)
+        self.searchVM = SearchViewModel(
+            service: service, state: state, serverPreferences: serverPreferences, filterStore: AppDefaults.store
+        )
         self.queuePanelVM = QueuePanelViewModel(service: service, state: state)
         self.settingsVM = SettingsViewModel(state: state)
         self.groupVM = GroupViewModel(service: service, state: state)

@@ -159,7 +159,7 @@ enum DemoDataProvider {
             SearchCriteria(scid: 1, name: "Artist"),
             SearchCriteria(scid: 2, name: "Album"),
             SearchCriteria(scid: 3, name: "Track"),
-            SearchCriteria(scid: 4, name: "Playlist")
+            SearchCriteria(scid: 6, name: "Playlist")
         ]
         for sid in [2, 10] {
             state.browse.searchCriteria[sid] = criteria

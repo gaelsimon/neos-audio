@@ -48,8 +48,12 @@ final class SearchViewModel {
 
     /// nil means "All" categories
     var selectedCategoryFilter: Int?
-    /// nil means "All Services"
-    var selectedServiceFilter: Int?
+    /// Empty means every service. Kept across searches and launches, with a service that went away left in.
+    var selectedServiceFilters: Set<Int> = [] {
+        didSet { filterStore?.set(selectedServiceFilters.sorted(), forKey: Self.servicesKey) }
+    }
+    @ObservationIgnored private let filterStore: UserDefaults?
+    static let servicesKey = "searchedServices"
 
     // MARK: - History
 
@@ -86,10 +90,16 @@ final class SearchViewModel {
     private let searchTracker = RequestTracker()
     let previewCount = 5
 
-    init(service: any AudioService, state: AppState, serverPreferences: LocalServerPreferences? = nil) {
+    /// `filterStore` remembers the chosen services; without one they last as long as the model.
+    init(
+        service: any AudioService, state: AppState, serverPreferences: LocalServerPreferences? = nil,
+        filterStore: UserDefaults? = nil
+    ) {
         self.service = service
         self.state = state
         self.serverPreferences = serverPreferences ?? LocalServerPreferences()
+        self.filterStore = filterStore
+        selectedServiceFilters = Set(filterStore?.array(forKey: Self.servicesKey) as? [Int] ?? [])
     }
 
     // MARK: - Overlay Lifecycle
@@ -209,17 +219,30 @@ final class SearchViewModel {
         return sorted
     }
 
+    /// The chosen services that can be searched now; empty when none is chosen or none is left.
+    var activeServiceFilters: Set<Int> {
+        selectedServiceFilters.intersection(allSearchableServices.map(\.sid))
+    }
+
+    /// What the chosen services search for, or the kinds found anywhere when every service is searched.
+    var categoryOptions: [(scid: Int, name: String)] {
+        let chosen = activeServiceFilters
+        guard !chosen.isEmpty else { return allCriteriaNames }
+        var seen = Set<Int>()
+        return chosen.flatMap { state.searchCriteria[$0] ?? [] }
+            .filter { seen.insert($0.scid).inserted }
+            .map { (scid: $0.scid, name: $0.name) }
+            .sorted { $0.scid < $1.scid }
+    }
+
     /// SIDs with something to show under the current filters or still loading, ordered by source list position.
     var filteredServiceSIDs: [Int] {
         let resultSIDs = Set(serviceResults.keys.map(\.sid)).filter { !filteredResults(for: $0).isEmpty }
         let activeSIDs = resultSIDs.union(loadingServiceSIDs)
 
-        if let selected = selectedServiceFilter {
-            return activeSIDs.contains(selected) ? [selected] : []
-        }
-
+        let chosen = activeServiceFilters
         // Stable order: top-level services first, then discovered sub-sources
-        return allSearchableServices.map(\.sid).filter { activeSIDs.contains($0) }
+        return allSearchableServices.map(\.sid).filter { activeSIDs.contains($0) && (chosen.isEmpty || chosen.contains($0)) }
     }
 
     /// For a given SID, returns criteria+items pairs matching current filters.
@@ -288,7 +311,6 @@ final class SearchViewModel {
         expandedCategories = []
         loadingMoreCategories = []
         selectedCategoryFilter = nil
-        selectedServiceFilter = nil
     }
 
     // MARK: - Search Execution
@@ -312,19 +334,8 @@ final class SearchViewModel {
         await loadMissingSearchCriteria()
         guard isCurrent(requestID) else { return }
 
-        // Target services: the filtered one, or all when no filter is set.
         // Includes top-level services and discovered sub-sources.
-        let allSIDs = Set(allSearchableServices.map(\.sid))
-        // A filter on a server taken out of search since would match nothing.
-        if let filteredSID = selectedServiceFilter, !allSIDs.contains(filteredSID) {
-            selectedServiceFilter = nil
-        }
-        let targetSIDs: Set<Int>
-        if let filteredSID = selectedServiceFilter {
-            targetSIDs = allSIDs.intersection([filteredSID])
-        } else {
-            targetSIDs = allSIDs
-        }
+        let targetSIDs = targetServiceSIDs
         var searchable = state.searchCriteria.filter { targetSIDs.contains($0.key) && !$0.value.isEmpty }
 
         // Filter change: only fetch target services we don't already have.
@@ -530,14 +541,27 @@ extension SearchViewModel {
         }
     }
 
+    /// Adds or removes one service; nil goes back to every service. A kind no chosen service has goes back to All.
     func selectServiceFilter(_ sid: Int?) {
-        if selectedServiceFilter == sid {
-            selectedServiceFilter = nil
+        if let sid {
+            if selectedServiceFilters.contains(sid) {
+                selectedServiceFilters.remove(sid)
+            } else {
+                selectedServiceFilters.insert(sid)
+            }
         } else {
-            selectedServiceFilter = sid
+            selectedServiceFilters = []
+        }
+        if let scid = selectedCategoryFilter, !categoryOptions.contains(where: { $0.scid == scid }) {
+            selectedCategoryFilter = nil
         }
         // A filter change alters which SIDs executeSearch covers, so re-fetch.
         rerunSearchForCurrentQuery()
+    }
+
+    func chooseCategoryFilter(_ scid: Int?) {
+        guard scid != selectedCategoryFilter else { return }
+        selectCategoryFilter(scid)
     }
 
     /// Re-runs the search after a filter change (same query, no typing debounce).
@@ -553,11 +577,14 @@ extension SearchViewModel {
         })
     }
 
+    /// The chosen services, or every one when none of them can be searched.
+    var targetServiceSIDs: Set<Int> {
+        let chosen = activeServiceFilters
+        return chosen.isEmpty ? Set(allSearchableServices.map(\.sid)) : chosen
+    }
+
     /// True when the current service filter targets a service that has not answered the current query.
     private var hasUnloadedTargetServices: Bool {
-        if let sid = selectedServiceFilter {
-            return !answeredSIDs.contains(sid)
-        }
-        return allSearchableServices.contains { !answeredSIDs.contains($0.sid) }
+        !targetServiceSIDs.isSubset(of: answeredSIDs)
     }
 }

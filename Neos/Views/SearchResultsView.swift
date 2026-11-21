@@ -17,7 +17,7 @@ struct SearchResultsView: View {
                 .padding(.bottom, DS.Spacing.xxl)
         }
         .stickyHeader {
-            filterChipsSection
+            filterMenus
                 .padding(.top, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.md)
         }
@@ -26,50 +26,103 @@ struct SearchResultsView: View {
         .accessibilityIdentifier(AccessibilityID.Search.resultsView)
     }
 
-    // MARK: - Filter Chips
+    // MARK: - Filters
 
-    @ViewBuilder
-    private var filterChipsSection: some View {
-        FadingHorizontalScroll {
-            HStack(spacing: DS.Spacing.sm) {
-                // Service chips
-                FilterChip(
-                    label: "All Services",
-                    isSelected: searchVM.selectedServiceFilter == nil,
-                    action: { searchVM.selectServiceFilter(nil) }
-                )
-                ForEach(searchVM.allSearchableServices) { source in
-                    FilterChip(
-                        label: source.name,
-                        isSelected: searchVM.selectedServiceFilter == source.sid,
-                        icon: ServiceBranding.iconAssetName(for: source.name).map { Image($0) },
-                        action: { searchVM.selectServiceFilter(source.sid) }
-                    )
-                }
-
-                // Divider between service and category chips
+    /// Services ticked together, one kind at a time; the kinds are what the ticked services search for.
+    private var filterMenus: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            filterMenu(serviceTitle, icon: serviceIcon, isActive: !searchVM.activeServiceFilters.isEmpty) {
+                Toggle("All Services", isOn: Binding(
+                    get: { searchVM.activeServiceFilters.isEmpty },
+                    set: { _ in searchVM.selectServiceFilter(nil) }
+                ))
                 Divider()
-                    .frame(height: 28)
-                    .padding(.horizontal, DS.Spacing.xs)
-
-                // Category chips
-                FilterChip(
-                    label: "All",
-                    isSelected: searchVM.selectedCategoryFilter == nil,
-                    emphasis: .secondary,
-                    action: { searchVM.selectCategoryFilter(nil) }
-                )
-                ForEach(searchVM.allCriteriaNames, id: \.scid) { criterion in
-                    FilterChip(
-                        label: SearchCategoryName.plural(criterion.name),
-                        isSelected: searchVM.selectedCategoryFilter == criterion.scid,
-                        emphasis: .secondary,
-                        action: { searchVM.selectCategoryFilter(criterion.scid) }
-                    )
+                ForEach(searchVM.allSearchableServices) { source in
+                    Toggle(source.name, isOn: Binding(
+                        get: { searchVM.activeServiceFilters.contains(source.sid) },
+                        set: { _ in searchVM.selectServiceFilter(source.sid) }
+                    ))
+                    #if os(iOS)
+                    // Open while several services are ticked; a Mac menu always closes.
+                    .menuActionDismissBehavior(.disabled)
+                    #endif
                 }
             }
-            .pageMargins()
+
+            filterMenu(categoryTitle, isActive: searchVM.selectedCategoryFilter != nil) {
+                Picker("Kind", selection: Binding(
+                    get: { searchVM.selectedCategoryFilter },
+                    set: { searchVM.chooseCategoryFilter($0) }
+                )) {
+                    Text("All Kinds").tag(Int?.none)
+                    ForEach(searchVM.categoryOptions, id: \.scid) { criterion in
+                        Text(SearchCategoryName.plural(criterion.name)).tag(Int?.some(criterion.scid))
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
         }
+        .pageMargins()
+    }
+
+    /// The chosen services in the order of the menu.
+    private var chosenServices: [MusicSource] {
+        let chosen = searchVM.activeServiceFilters
+        return searchVM.allSearchableServices.filter { chosen.contains($0.sid) }
+    }
+
+    private var serviceTitle: String {
+        let chosen = chosenServices
+        switch chosen.count {
+        case 0: return "All Services"
+        case 1, 2: return chosen.map(\.name).joined(separator: ", ")
+        default: return "\(chosen.count) Services"
+        }
+    }
+
+    private var serviceIcon: Image? {
+        guard chosenServices.count == 1, let source = chosenServices.first else { return nil }
+        return ServiceBranding.iconAssetName(for: source.name).map { Image($0) }
+    }
+
+    private var categoryTitle: String {
+        guard let scid = searchVM.selectedCategoryFilter,
+              let criterion = searchVM.categoryOptions.first(where: { $0.scid == scid }) else { return "All Kinds" }
+        return SearchCategoryName.plural(criterion.name)
+    }
+
+    private func filterMenu(
+        _ title: String, icon: Image? = nil, isActive: Bool, @ViewBuilder content: () -> some View
+    ) -> some View {
+        let menu = Menu {
+            content()
+        } label: {
+            #if os(iOS)
+            HStack(spacing: DS.Spacing.xs) {
+                if let icon {
+                    icon
+                        .resizable()
+                        .renderingMode(.original)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 16, height: 16)
+                }
+                Text(title)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+            }
+            #else
+            // A Mac menu draws its label's image at full size.
+            Text(title)
+            #endif
+        }
+        .buttonBorderShape(.capsule)
+        .fixedSize()
+
+        // A Mac menu button takes no tint; its title alone says which filter is in use.
+        return menu
+            .buttonStyle(.bordered)
+            .tint(isActive ? DS.Colors.accent : nil)
     }
 
     // MARK: - Results Content
