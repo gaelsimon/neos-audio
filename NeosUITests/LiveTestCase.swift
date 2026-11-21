@@ -12,8 +12,8 @@ class LiveTestCase: XCTestCase {
     override class func setUp() {
         super.setUp()
         _app = XCUIApplication()
-        // --uitesting resets UI state; NO --skip-discovery so real discovery runs
-        _app.launchArguments = ["--uitesting", "-ApplePersistenceIgnoreState", "YES"]
+        // The pair goes first: after a lone flag, AppKit opens "YES" as a file and shows no window.
+        _app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--uitesting"]
         _app.launch()
 
         let home = _app.descendants(matching: .any)[AccessibilityID.Home.view]
