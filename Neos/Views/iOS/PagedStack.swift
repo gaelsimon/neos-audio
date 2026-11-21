@@ -35,6 +35,7 @@ struct PagedStack<Root: View>: View {
     @State private var rootModel: BrowseViewModel?
     @State private var pages: [BrowsePage] = []
     @State private var playerBarHeight: CGFloat = 0
+    @State private var showsSpeakers = false
 
     var body: some View {
         NavigationStack(path: $pages) {
@@ -87,9 +88,13 @@ struct PagedStack<Root: View>: View {
         if showsPadChrome {
             NowPlayingToolbar(
                 state: state, playerVM: container.playerVM,
-                browseVM: rootModel ?? container.browseVM, searchVM: container.searchVM
+                browseVM: rootModel ?? container.browseVM, searchVM: container.searchVM,
+                showSpeakers: { showsSpeakers = true }
             )
             .disabled(!state.isConnected)
+            .sheet(isPresented: $showsSpeakers) {
+                SpeakersSheet(state: state, container: container)
+            }
         } else if !miniPlayerInTabBar {
             MiniPlayerBar(state: state, playerVM: container.playerVM)
                 .disabled(!state.isConnected)

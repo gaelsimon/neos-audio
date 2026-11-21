@@ -238,7 +238,7 @@ struct BrowseContentView: View {
         let sid = currentSID
         guard let caps = state.serviceCapabilities[sid],
               caps.canBrowseAlbums,
-              let albumName = item.album, !albumName.isEmpty else { return nil }
+              let albumName = browseVM.albumToOpen(from: item) else { return nil }
         return { browseVM.pushAlbumSearchNavigate(sid: sid, albumName: albumName, artistHint: item.artist) }
     }
 

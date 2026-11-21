@@ -6,6 +6,8 @@ struct NowPlayingToolbar: View {
     let playerVM: PlayerViewModel
     let browseVM: BrowseViewModel
     let searchVM: SearchViewModel
+    /// Where the bar can open the speakers itself; the Mac has a page for them.
+    var showSpeakers: (() -> Void)?
 
     @State private var isArtworkHovered = false
 
@@ -174,26 +176,45 @@ struct NowPlayingToolbar: View {
             .accessibilityIdentifier(AccessibilityID.Player.qualityBadge)
     }
 
+    @ViewBuilder
+    private func speakerTarget(_ target: String, showsName: Bool) -> some View {
+        let label = HStack(spacing: DS.Spacing.xs) {
+            Image(systemName: DS.Icons.speaker)
+                .font(DS.IconFont.sm)
+            if showsName {
+                Text(target)
+                    .typography(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .foregroundStyle(DS.Colors.textSecondary)
+        .frame(maxWidth: showsName ? 240 : nil, alignment: .trailing)
+        .help("Playing on \(target)")
+
+        if let showSpeakers {
+            Button(action: showSpeakers) {
+                label
+                    .frame(minWidth: DS.HitTarget.button, minHeight: DS.HitTarget.button)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Playing on \(target)")
+            .accessibilityHint("Shows the speakers")
+            .accessibilityIdentifier(AccessibilityID.Player.speakerName)
+        } else {
+            label
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Playing on \(target)")
+                .accessibilityIdentifier(AccessibilityID.Player.speakerName)
+        }
+    }
+
     private func trailingControls(showsSpeakerName: Bool, inlineVolume: Bool) -> some View {
         HStack(spacing: DS.Spacing.md) {
             serviceOptionButtons
 
             if let target = state.speakerNameIfChoice {
-                HStack(spacing: DS.Spacing.xs) {
-                    Image(systemName: DS.Icons.speaker)
-                        .font(DS.IconFont.sm)
-                    if showsSpeakerName {
-                        Text(target)
-                            .typography(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .foregroundStyle(DS.Colors.textSecondary)
-                .frame(maxWidth: showsSpeakerName ? 240 : nil, alignment: .trailing)
-                .help("Playing on \(target)")
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Playing on \(target)")
-                .accessibilityIdentifier(AccessibilityID.Player.speakerName)
+                speakerTarget(target, showsName: showsSpeakerName)
             }
 
             VolumeControlView(state: state, viewModel: playerVM, style: inlineVolume ? .bottomBar : .bottomBarButton)

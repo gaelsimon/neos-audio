@@ -85,6 +85,17 @@ final class NeosMobileNavigationTests: MobileDemoTestCase {
         if app.staticTexts["Up Next"].waitForExistence(timeout: 2) { toggle.tap() }
     }
 
+    func testThePlayerBarsSpeakerOpensTheSpeakers() throws {
+        try XCTSkipUnless(isPad, "Only the iPad's player bar names the speaker")
+        let speaker = element(AccessibilityID.Player.speakerName)
+        XCTAssertTrue(speaker.waitForExistence(timeout: 5))
+
+        speaker.tap()
+
+        XCTAssertTrue(app.navigationBars["Speakers"].waitForExistence(timeout: 5), "The speakers never opened")
+        app.buttons["Done"].firstMatch.tap()
+    }
+
     func testThePlayersArtistOpensFromItsMenu() {
         // Other tests leave an input playing, which has no artist.
         openLibraryPage("Deezer")
