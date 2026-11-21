@@ -66,7 +66,6 @@ struct PagedStack<Root: View>: View {
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { playerBarHeight = $0 }
             }
         }
-        .modifier(QueueInspector(state: state, container: container, isInstalled: QueueInspector.belongsInsideTabs))
         .onChange(of: tabBarPlacement == .sidebar, initial: true) { _, isShowing in
             isSidebarShowing.wrappedValue = isShowing
         }
@@ -117,33 +116,6 @@ struct PagedStack<Root: View>: View {
             let model = makeModel()
             model.start(at: location)
             pages.append(BrowsePage(model: model, location: location))
-        }
-    }
-}
-
-/// The queue beside the pages of a wide iPad. Around the tab view, iPadOS 26 empties the sidebar while it is open;
-/// inside a tab, iPadOS 18 no longer brings the Library back to its list. Each system gets the place that works there.
-struct QueueInspector: ViewModifier {
-    static let belongsInsideTabs: Bool = {
-        if #available(iOS 26, *) { true } else { false }
-    }()
-
-    let state: AppState
-    let container: ViewModelContainer
-    let isInstalled: Bool
-    @Environment(\.showsPadChrome) private var showsPadChrome
-
-    func body(content: Content) -> some View {
-        if isInstalled {
-            // Not under the player, which shows the queue itself; an iPhone opens it from the player.
-            content.inspector(isPresented: Binding(
-                get: { showsPadChrome && state.isQueuePanelOpen && !state.isNowPlayingCanvasOpen },
-                set: { state.isQueuePanelOpen = $0 }
-            )) {
-                QueuePanelView(state: state, viewModel: container.queuePanelVM)
-            }
-        } else {
-            content
         }
     }
 }

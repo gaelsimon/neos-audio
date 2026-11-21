@@ -69,20 +69,31 @@ final class NeosMobileNavigationTests: MobileDemoTestCase {
         openSidebarEntry("Home")
     }
 
-    func testThePlayerOpensClearOfAQueueOpenBesideThePage() throws {
-        try XCTSkipUnless(isPad, "Only the iPad shows the queue beside the page")
+    func testTheBarsQueueButtonOpensThePlayerOnItsQueue() throws {
+        try XCTSkipUnless(isPad, "Only the iPad's player bar has a queue button")
         let toggle = element(AccessibilityID.QueuePanel.toggleButton)
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+
         toggle.tap()
-        XCTAssertTrue(app.staticTexts["Up Next"].waitForExistence(timeout: 5), "The queue never opened")
 
-        openPlayer()
-
-        // A sheet would slide in over the player after it opens.
-        Thread.sleep(forTimeInterval: 1.5)
-        XCTAssertTrue(app.buttons["Close Player"].isHittable, "Something covers the player")
+        XCTAssertTrue(app.buttons["Close Player"].waitForExistence(timeout: 5), "The player never opened")
+        XCTAssertTrue(app.staticTexts["Up Next"].waitForExistence(timeout: 5), "The player opened without its queue")
         app.buttons["Close Player"].tap()
-        if app.staticTexts["Up Next"].waitForExistence(timeout: 2) { toggle.tap() }
+    }
+
+    func testThePlayersQueueTakesTheArtworksPlace() {
+        openPlayer()
+        let artwork = element(AccessibilityID.NowPlayingCanvas.artwork)
+        XCTAssertTrue(artwork.waitForExistence(timeout: 5))
+
+        app.buttons["Queue"].firstMatch.tap()
+
+        XCTAssertTrue(app.staticTexts["Up Next"].waitForExistence(timeout: 5), "The queue never showed")
+        // A sheet would slide in over the player.
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(app.buttons["Close Player"].isHittable, "Something covers the player")
+        XCTAssertFalse(artwork.exists, "The queue should take the artwork's place")
+        app.buttons["Close Player"].tap()
     }
 
     func testThePlayerBarsSpeakerOpensTheSpeakers() throws {

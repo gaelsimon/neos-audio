@@ -94,7 +94,6 @@ struct MobileTabView: View {
         // A narrower window or a source going away takes the open tab with it. iOS 27 can crash on a selection
         // whose tab is hidden, and a binding that corrects it on the way in breaks the iPad's search there.
         .onChange(of: shown) { _, tab in selection = tab }
-        .modifier(QueueInspector(state: state, container: container, isInstalled: !QueueInspector.belongsInsideTabs))
     }
 
     /// A source as a sidebar entry with a stack of its own.

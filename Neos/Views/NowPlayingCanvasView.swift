@@ -10,6 +10,10 @@ struct NowPlayingCanvasView: View {
     }
 
     var headerLead: HeaderLead = .artist
+    /// Shown in place of the artwork, as Apple Music does, so the queue never covers the player.
+    var queue: QueuePanelView?
+
+    static let artworkMaxWidth: CGFloat = 650
 
     private var dominantColors: [Color] { state.canvasDominantColors }
     private var artwork: NowPlayingArtwork { NowPlayingArtwork(state: state) }
@@ -24,12 +28,18 @@ struct NowPlayingCanvasView: View {
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.top, DS.Spacing.lg)
 
-            Spacer(minLength: DS.Spacing.lg)
+            if let queue {
+                queue
+                    .frame(maxWidth: Self.artworkMaxWidth)
+                    .padding(.top, DS.Spacing.lg)
+            } else {
+                Spacer(minLength: DS.Spacing.lg)
 
-            heroArtwork
-                .padding(.horizontal, isCompactLayout ? DS.Spacing.xl : DS.Spacing.xxxl)
+                heroArtwork
+                    .padding(.horizontal, isCompactLayout ? DS.Spacing.xl : DS.Spacing.xxxl)
 
-            Spacer(minLength: DS.Spacing.xl)
+                Spacer(minLength: DS.Spacing.xl)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
@@ -138,7 +148,7 @@ struct NowPlayingCanvasView: View {
                 .background(DS.Colors.surfaceElevated)
         }
         .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: 650)
+        .frame(maxWidth: Self.artworkMaxWidth)
         .overlay {
             if state.isWaitingForAmp {
                 Color.black.opacity(0.35)

@@ -1,32 +1,26 @@
 import SwiftUI
 import NeosDomain
 
-/// The full player on iPhone and iPad: the speaker and the artwork over its colour, then the transport and the volume.
+/// The full player on iPhone and iPad: the speaker and the artwork, or the queue, over its colour, then the transport and the volume.
 struct MobileNowPlayingView: View {
     let state: AppState
     let container: ViewModelContainer
     @State private var showsSpeakers = false
-    /// Its own: a queue left open beside an iPad's pages must not slide over the player as it opens.
-    @State private var showsQueue = false
     /// Narrower than the screen on iPad, where the controls would otherwise run past the artwork's edges.
     @State private var artworkWidth: CGFloat?
 
     private var playerVM: PlayerViewModel { container.playerVM }
 
     var body: some View {
-        NowPlayingCanvasView(state: state, headerLead: .speaker { showsSpeakers = true })
+        NowPlayingCanvasView(state: state, headerLead: .speaker { showsSpeakers = true }, queue: queue)
             .safeAreaInset(edge: .bottom, spacing: 0) { controls }
             .onPreferenceChange(NowPlayingArtworkWidthKey.self) { artworkWidth = $0 }
+            .animation(.easeInOut(duration: DS.Animation.standard), value: state.isQueuePanelOpen)
             .sheet(isPresented: $showsSpeakers) {
                 SpeakersSheet(state: state, container: container)
             }
-            .sheet(isPresented: queuePresentation) {
-                QueuePanelView(state: state, viewModel: container.queuePanelVM)
-                    .toastOnTop(state)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                    .cappedTextSize()
-            }
+            // The player opens on its artwork the next time.
+            .onDisappear { state.isQueuePanelOpen = false }
             .toastOnTop(state)
             .cappedTextSize()
     }
@@ -34,6 +28,9 @@ struct MobileNowPlayingView: View {
     private var controls: some View {
         VStack(spacing: DS.Spacing.lg) {
             HStack(spacing: DS.Spacing.md) {
+                if state.isQueuePanelOpen {
+                    thumbnail
+                }
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     Text(state.nowPlaying.displayedTitle)
                         .typography(.sectionHeader)
@@ -66,33 +63,47 @@ struct MobileNowPlayingView: View {
 
             HStack(spacing: DS.Spacing.md) {
                 VolumeControlView(state: state, viewModel: playerVM, style: .compact)
-                Button { queuePresentation.wrappedValue = true } label: {
+                Button { state.isQueuePanelOpen.toggle() } label: {
                     Image(systemName: DS.Icons.queue)
                         .font(DS.IconFont.lg)
+                        .padding(DS.Spacing.xs)
+                        .background(.white.opacity(state.isQueuePanelOpen ? 0.2 : 0), in: Circle())
                         .hitTarget()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Queue")
+                .accessibilityAddTraits(state.isQueuePanelOpen ? .isSelected : [])
             }
         }
         // The artwork's colour is behind these; the orange would clash with it.
         .environment(\.sliderFill, .white)
-        .frame(maxWidth: artworkWidth)
+        // Opened on its queue, the player has measured no artwork yet.
+        .frame(maxWidth: artworkWidth ?? NowPlayingCanvasView.artworkMaxWidth)
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.bottom, DS.Spacing.lg)
         .frame(maxWidth: .infinity)
         .disabled(!state.isConnected)
     }
 
-    /// The panel's flag follows the sheet, so the history refreshes while it shows.
-    private var queuePresentation: Binding<Bool> {
-        Binding(
-            get: { showsQueue },
-            set: { isShown in
-                showsQueue = isShown
-                state.isQueuePanelOpen = isShown
-            }
+    private var queue: QueuePanelView? {
+        guard state.isQueuePanelOpen else { return nil }
+        return QueuePanelView(
+            state: state, viewModel: container.queuePanelVM, onClear: { container.queueVM.clearQueue() }, inPlayer: true
         )
+    }
+
+    /// The artwork stays in sight while the queue takes its place.
+    private var thumbnail: some View {
+        let artwork = NowPlayingArtwork(state: state)
+        return CachedAsyncImage(url: artwork.baseURL ?? artwork.trackURL) {
+            Image(systemName: DS.Icons.musicNote)
+                .foregroundStyle(DS.Colors.textTertiary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(DS.Colors.surfaceElevated)
+        }
+        .frame(width: 56, height: 56)
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artwork))
+        .accessibilityHidden(true)
     }
 
     private var playingFrom: MusicSource? {

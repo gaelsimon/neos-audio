@@ -209,6 +209,16 @@ struct NowPlayingToolbar: View {
         }
     }
 
+    /// The Mac opens its panel; iPhone and iPad show the queue in the player.
+    private func showQueue() {
+        #if os(iOS)
+        state.isQueuePanelOpen = true
+        state.isNowPlayingCanvasOpen = true
+        #else
+        state.isQueuePanelOpen.toggle()
+        #endif
+    }
+
     private func trailingControls(showsSpeakerName: Bool, inlineVolume: Bool) -> some View {
         HStack(spacing: DS.Spacing.md) {
             serviceOptionButtons
@@ -219,7 +229,7 @@ struct NowPlayingToolbar: View {
 
             VolumeControlView(state: state, viewModel: playerVM, style: inlineVolume ? .bottomBar : .bottomBarButton)
 
-            HoverButton(action: { state.isQueuePanelOpen.toggle() }) { hovered in
+            HoverButton(action: showQueue) { hovered in
                 Image(systemName: DS.Icons.queue)
                     .font(DS.IconFont.lg)
                     .foregroundStyle(

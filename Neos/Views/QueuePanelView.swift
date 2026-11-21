@@ -13,6 +13,8 @@ struct QueuePanelView: View {
     /// The Mac's card closes itself; a sheet or an iPad column has its own way out.
     var onClose: (() -> Void)?
     var onClear: (() -> Void)?
+    /// Up Next alone, over the player's own colours: the player shows what plays, the library keeps the history.
+    var inPlayer = false
 
     @State private var selectedTab: Tab = .queue
     @State private var showClearConfirmation = false
@@ -21,7 +23,9 @@ struct QueuePanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            if !inPlayer {
+                header
+            }
 
             if isEmptyState || (selectedTab == .queue && viewModel.isQueueTabEmpty) {
                 ContentUnavailableView("Nothing Playing", systemImage: DS.Icons.playlists)
@@ -42,12 +46,14 @@ struct QueuePanelView: View {
         .modifier(ClearQueueConfirmation(isPresented: $showClearConfirmation) { onClear?() })
         .frame(maxHeight: .infinity)
         .background {
-            QueuePanelFill(state: state)
-                .ignoresSafeArea()
+            if !inPlayer {
+                QueuePanelFill(state: state)
+                    .ignoresSafeArea()
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.QueuePanel.view)
-        .accessibilityLabel("Queue and history panel")
+        .accessibilityLabel(inPlayer ? "Queue" : "Queue and history panel")
         .task {
             viewModel.onPanelOpen()
         }
@@ -203,40 +209,67 @@ struct QueuePanelView: View {
     private var upNextSection: some View {
         if !viewModel.upNextItems.isEmpty {
             Section(header: sectionHeader("Up Next") { clearButton }) {
-                ForEach(viewModel.upNextItems) { item in
-                    QueuePanelRow(
-                        name: item.song,
-                        artist: item.artist,
-                        imageURL: item.imageURL,
-                        isStation: false,
-                        isNowPlaying: false,
-                        showRemoveButton: !DS.removesRowsBySwiping,
-                        onTap: { viewModel.playQueueItem(item) },
-                        onRemove: { viewModel.removeQueueItem(item) },
-                        externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
-                        state: state
-                    )
-                    .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextRow(item.qid))
-                    .accessibilityLabel("\(item.song) by \(item.artist), up next")
-                    .bareListRow()
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) { viewModel.removeQueueItem(item) } label: {
-                            Label("Remove", systemImage: "trash")
-                        }
+                upNextRows
+            }
+            .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextSection)
+        } else if showsUpNext {
+            Section(header: sectionHeader("Up Next")) {
+                upNextRows
+            }
+        }
+    }
+
+    /// Something plays, so an empty Up Next says so rather than vanishing.
+    private var showsUpNext: Bool {
+        !viewModel.upNextItems.isEmpty || viewModel.nowPlayingQueueItem != nil || !state.nowPlaying.mid.isEmpty
+    }
+
+    @ViewBuilder
+    private var upNextRows: some View {
+        if viewModel.upNextItems.isEmpty {
+            Text("Queue is empty")
+                .typography(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DS.Spacing.lg)
+                .bareListRow()
+        } else {
+            ForEach(viewModel.upNextItems) { item in
+                QueuePanelRow(
+                    name: item.song,
+                    artist: item.artist,
+                    imageURL: item.imageURL,
+                    isStation: false,
+                    isNowPlaying: false,
+                    showRemoveButton: !DS.removesRowsBySwiping,
+                    onTap: { viewModel.playQueueItem(item) },
+                    onRemove: { viewModel.removeQueueItem(item) },
+                    externalLink: ExternalLinkMenu.make(for: item, sourceName: nil),
+                    state: state
+                )
+                .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextRow(item.qid))
+                .accessibilityLabel("\(item.song) by \(item.artist), up next")
+                .bareListRow()
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) { viewModel.removeQueueItem(item) } label: {
+                        Label("Remove", systemImage: "trash")
                     }
                 }
             }
-            .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextSection)
-        } else if viewModel.nowPlayingQueueItem != nil || !state.nowPlaying.mid.isEmpty {
-            // Show empty Up Next state when something is playing but queue is empty after it
-            Section(header: sectionHeader("Up Next")) {
-                Text("Queue is empty")
-                    .typography(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, DS.Spacing.lg)
-                    .bareListRow()
+        }
+    }
+
+    /// Fixed above the rows: a pinned header would need a fill, and the player's colours run behind the list.
+    private var playerUpNextTitle: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Text("Up Next")
+                .typography(.bodyEmphasis)
+            Spacer()
+            if !viewModel.upNextItems.isEmpty {
+                clearButton
             }
         }
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.sm)
     }
 
     // MARK: - Tab Content
@@ -245,12 +278,24 @@ struct QueuePanelView: View {
     private var queueTabContent: some View {
         #if os(iOS)
         // A list, for the swipe that removes a track from Up Next on iPhone and iPad.
-        List {
-            nowPlayingSection
-            upNextSection
+        if inPlayer {
+            VStack(spacing: 0) {
+                playerUpNextTitle
+                List {
+                    upNextRows
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .accessibilityIdentifier(AccessibilityID.QueuePanel.upNextSection)
+            }
+        } else {
+            List {
+                nowPlayingSection
+                upNextSection
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         #else
         ScrollView {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
@@ -260,7 +305,6 @@ struct QueuePanelView: View {
         }
         #endif
     }
-
 
     private var recentlyPlayedTabContent: some View {
         ScrollView {
