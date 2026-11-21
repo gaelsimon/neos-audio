@@ -251,6 +251,42 @@ extension BrowseContentView {
 
     // MARK: - Container Action Buttons
 
+    #if os(iOS)
+    /// Add to Queue goes in the navigation bar's menu.
+    private var containerActionButtons: some View {
+        HStack(spacing: DS.Spacing.md) {
+            Button { browseVM.playContainer() } label: {
+                Label("Play", systemImage: DS.Icons.playing)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(DS.Colors.accent)
+            .foregroundStyle(.black)
+            .accessibilityIdentifier(AccessibilityID.Browse.playContainer)
+
+            Button { browseVM.shuffleContainer() } label: {
+                Label("Shuffle", systemImage: DS.Icons.shuffle)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier(AccessibilityID.Browse.shuffleContainer)
+        }
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+        .fontWeight(.semibold)
+        .frame(maxWidth: 360)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button("Add to Queue", systemImage: DS.Icons.addedToQueue) { browseVM.addContainerToQueue() }
+                        .accessibilityIdentifier(AccessibilityID.Browse.addToQueue)
+                } label: {
+                    Label("More", systemImage: "ellipsis")
+                }
+            }
+        }
+    }
+    #else
     private var containerActionButtons: some View {
         HStack(spacing: DS.Spacing.md) {
             CircularIconButton(
@@ -281,6 +317,7 @@ extension BrowseContentView {
             .help("Add to Queue")
         }
     }
+    #endif
 
     // MARK: - Source Header (root level, scrolls)
 
