@@ -128,7 +128,9 @@ final class NeosMobileNavigationTests: MobileDemoTestCase {
     func testAToastRaisedInASheetShowsOnTheSheet() {
         app.buttons["Settings"].firstMatch.tap()
         let copy = element(AccessibilityID.Settings.copyDiagnosticsButton)
-        for _ in 0..<5 where !(copy.exists && copy.isHittable) { app.swipeUp() }
+        let settings = app.collectionViews["settings.view"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        for _ in 0..<5 where !(copy.exists && copy.isHittable) { settings.swipeUp() }
 
         copy.tap()
 
