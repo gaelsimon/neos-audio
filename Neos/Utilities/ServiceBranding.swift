@@ -116,12 +116,7 @@ enum ServiceBranding {
                 .background(.black, in: RoundedRectangle(cornerRadius: DS.Radius.small))
                 .iconGlassBorder()
         } else if let sfSymbol = sfSymbolIcon(for: source.name) {
-            Image(systemName: sfSymbol)
-                .font(DS.IconFont.scaled(size * 0.5))
-                .foregroundStyle(DS.Colors.textSecondary)
-                .frame(width: size, height: size)
-                .background(.black, in: RoundedRectangle(cornerRadius: DS.Radius.small))
-                .iconGlassBorder()
+            symbolTile(sfSymbol, size: size)
         } else {
             CachedAsyncImage(url: URL(string: source.imageURL)) {
                 Image(systemName: source.type == "music_service" ? DS.Icons.playlists : DS.Icons.speaker)
@@ -134,6 +129,21 @@ enum ServiceBranding {
             .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
             .iconGlassBorder()
         }
+    }
+
+    /// The symbol that stands for a source with no logo of its own.
+    static func symbolName(for sourceName: String) -> String {
+        sfSymbolIcon(for: sourceName) ?? DS.Icons.playlists
+    }
+
+    /// A symbol on the same black tile as the service logos.
+    static func symbolTile(_ systemName: String, size: CGFloat) -> some View {
+        Image(systemName: systemName)
+            .font(DS.IconFont.scaled(size * 0.5))
+            .foregroundStyle(DS.Colors.textSecondary)
+            .frame(width: size, height: size)
+            .background(.black, in: RoundedRectangle(cornerRadius: DS.Radius.small))
+            .iconGlassBorder()
     }
 
     private static func sfSymbolIcon(for sourceName: String) -> String? {

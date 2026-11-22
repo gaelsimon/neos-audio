@@ -1,6 +1,5 @@
 import SwiftUI
 import NeosDomain
-import AppKit
 
 func isLinkableArtist(_ name: String?) -> Bool {
     guard let name, !name.isEmpty else { return false }
@@ -34,9 +33,18 @@ struct TrackListRow: View {
     var imageKey: String?
     var onSetCustomImage: (() -> Void)?
     var onRemove: (() -> Void)?
+    /// Off where the list removes a row by swiping it; the context menu keeps the action either way.
+    var showsRemoveButton = true
+    /// An iPhone row drops its number where the order means nothing; the columns of a wider row keep it.
+    var numbersRow = true
     let onTap: () -> Void
 
     @State private var isHovered = false
+    /// No room for columns: the artist goes under the title and the album goes.
+    @Environment(\.isCompactLayout) private var isCompact
+
+    private var showsArtistColumn: Bool { showArtist && !isCompact }
+    private var showsAlbumColumn: Bool { showAlbum && !isCompact }
 
     private var effectiveImageURL: String {
         if let state, let imageKey {
@@ -46,46 +54,51 @@ struct TrackListRow: View {
     }
 
     private var textColumnWeights: [CGFloat] {
-        TrackListColumnWeights.textColumnWeights(showArtist: showArtist, showAlbum: showAlbum)
+        TrackListColumnWeights.textColumnWeights(showArtist: showsArtistColumn, showAlbum: showsAlbumColumn)
     }
 
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
-            numberColumn
+            if numbersRow || !isCompact {
+                numberColumn
+            }
 
             TrackListWeightedColumnsLayout(weights: textColumnWeights, spacing: DS.Spacing.sm) {
                 titleColumn
 
-                if showArtist {
+                if showsArtistColumn {
                     artistColumn
                 }
 
-                if showAlbum {
+                if showsAlbumColumn {
                     albumColumn
                 }
             }
             .frame(maxWidth: .infinity)
 
             actionMenu
-                .opacity(isHovered && hasActions ? 1 : 0)
+                .opacity((isHovered || !DS.revealsControlsOnHover) && hasActions ? 1 : 0)
 
-            if let onRemove {
+            if let onRemove, showsRemoveButton {
                 HoverButton(action: onRemove) { hovered in
                     Image(systemName: DS.Icons.dismiss)
-                        .typography(.secondary)
-                        .foregroundStyle(hovered ? DS.Colors.textSecondary : DS.Colors.textTertiary)
+                        .typography(.secondary, color: hovered ? .white : nil)
                         .frame(width: DS.TrackList.actionWidth, height: DS.TrackList.actionWidth)
                 }
-                .opacity(isHovered ? 1 : 0)
+                .opacity(isHovered || !DS.revealsControlsOnHover ? 1 : 0)
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
-        .frame(height: DS.TrackList.rowHeight)
+        // A floor, not a fixed height: larger text sizes on iPhone and iPad need the room.
+        .frame(minHeight: DS.TrackList.rowHeight)
         .background(rowBackground, in: RoundedRectangle(cornerRadius: DS.Radius.small))
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onTap() }
         .onTapGesture(perform: onTap)
         .onHover { isHovered = $0 }
-        .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
+        .contextMenu(hasActions || onRemove != nil ? ContextMenu { menuItems } : nil)
         .accessibilityIdentifier(AccessibilityID.TrackList.row(index))
     }
 
@@ -111,7 +124,6 @@ struct TrackListRow: View {
         } label: {
             Image(systemName: "ellipsis")
                 .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
                 .frame(minWidth: DS.TrackList.actionWidth, minHeight: DS.TrackList.actionWidth)
                 .contentShape(Rectangle())
         }
@@ -162,6 +174,15 @@ struct TrackListRow: View {
             externalLinkItems
 
             artworkItems
+
+            if let onRemove {
+                if hasActions {
+                    Divider()
+                }
+                Button(role: .destructive) { onRemove() } label: {
+                    Label("Remove from Queue", systemImage: DS.Icons.close)
+                }
+            }
         }
     }
 
@@ -237,11 +258,18 @@ struct TrackListRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
             }
 
-            Text(name.displayTitle)
-                .typography(.bodyPrimary)
-                .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
-                .lineLimit(1)
-                .accessibilityIdentifier(AccessibilityID.TrackList.title(index))
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                Text(name.displayTitle)
+                    .typography(.bodyPrimary, color: isNowPlaying ? DS.Colors.accent : nil)
+                    .lineLimit(1)
+                    .accessibilityIdentifier(AccessibilityID.TrackList.title(index))
+
+                if isCompact && showArtist, let artist, !artist.isEmpty {
+                    Text(artist)
+                        .typography(.secondary)
+                        .lineLimit(1)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .layoutPriority(3)
@@ -254,11 +282,8 @@ struct TrackListRow: View {
             if isResolvingArtist {
                 Spinner(size: 12, lineWidth: 1.5)
                     .frame(height: 16)
-            } else if let onArtistTap {
-                ArtistLinkText(artist: artist ?? "", onTap: onArtistTap)
             } else {
-                Text(artist ?? "")
-                    .typography(.secondary)
+                CrossLink(artist ?? "", action: onArtistTap)
                     .lineLimit(1)
             }
         }
@@ -269,76 +294,24 @@ struct TrackListRow: View {
     // MARK: - Album Column
 
     private var albumColumn: some View {
-        Group {
-            if let onAlbumTap {
-                AlbumLinkText(album: album ?? "", onTap: onAlbumTap)
-            } else {
-                Text(album ?? "")
-                    .typography(.secondary)
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .layoutPriority(2)
+        CrossLink(album ?? "", action: onAlbumTap)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(2)
     }
 
     // MARK: - Row Background
 
     private var rowBackground: Color {
+        // iPhone and iPad mark the playing row by its orange title alone.
+        #if os(macOS)
         if isNowPlaying {
             return DS.Colors.accent.opacity(0.08)
-        } else if isHovered {
+        }
+        #endif
+        if isHovered {
             return DS.Colors.surfaceElevated.opacity(0.5)
         }
         return .clear
-    }
-}
-
-// MARK: - Cross-Link Text
-
-private struct AlbumLinkText: View {
-    let album: String
-    let onTap: () -> Void
-
-    var body: some View {
-        CrossLinkText(text: album, onTap: onTap)
-    }
-}
-
-private struct ArtistLinkText: View {
-    let artist: String
-    let onTap: () -> Void
-
-    var body: some View {
-        CrossLinkText(text: artist, onTap: onTap)
-    }
-}
-
-private struct CrossLinkText: View {
-    let text: String
-    let onTap: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Text(text)
-            .typography(.secondary)
-            .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
-            .lineLimit(1)
-            .onHover { hovering in
-                isHovered = hovering
-                if hovering {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .onDisappear {
-                if isHovered {
-                    NSCursor.pop()
-                    isHovered = false
-                }
-            }
-            .onTapGesture(perform: onTap)
-            .accessibilityAddTraits(.isLink)
     }
 }

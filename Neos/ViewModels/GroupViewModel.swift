@@ -39,7 +39,7 @@ final class GroupViewModel {
                 state.setGroups(groups)
             } catch {
                 guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                state.error = .groupFailed(error.localizedDescription)
+                state.setError(.groupFailed(error.localizedDescription))
             }
             guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoadingGroups = false
@@ -56,7 +56,7 @@ final class GroupViewModel {
                 try await service.refreshSpeakers()
             } catch {
                 guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                state.error = .groupFailed(error.localizedDescription)
+                state.setError(.groupFailed(error.localizedDescription))
             }
             guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoadingGroups = false
@@ -79,7 +79,7 @@ final class GroupViewModel {
                     selectedMemberPIDs = []
                     refresh()
                 } else {
-                    state.error = .groupFailed(error.localizedDescription)
+                    state.setError(.groupFailed(error.localizedDescription))
                 }
             }
             guard !Task.isCancelled else { return }
@@ -97,7 +97,7 @@ final class GroupViewModel {
             } catch {
                 guard !Task.isCancelled else { return }
                 if await groupsAfterSettling().contains(where: { $0.leader?.pid == pid }) {
-                    state.error = .groupFailed(error.localizedDescription)
+                    state.setError(.groupFailed(error.localizedDescription))
                 } else {
                     refresh()
                 }
@@ -135,19 +135,21 @@ final class GroupViewModel {
     }
 
     func setGroupVolume(gid: Int, level: Int) {
+        let level = withinTheVolumeLimit(level)
         groupVolumeTask.replace(with: Task {
             try? await Task.sleep(for: .milliseconds(100))
             guard !Task.isCancelled else { return }
             do {
                 try await service.setGroupVolume(gid: gid, level: level)
             } catch {
-                state.error = .groupFailed(error.localizedDescription)
+                state.setError(.groupFailed(error.localizedDescription))
             }
         })
     }
 
     /// Sets one speaker's volume, debounced per speaker so sliders never cancel each other.
     func setMemberVolume(pid: Int, level: Int) {
+        let level = withinTheVolumeLimit(level)
         let handle = memberVolumeTasks[pid] ?? CancellableTaskHandle()
         memberVolumeTasks[pid] = handle
         handle.replace(with: Task {
@@ -156,9 +158,14 @@ final class GroupViewModel {
             do {
                 try await service.setVolume(pid: pid, level: level)
             } catch {
-                state.error = .groupFailed(error.localizedDescription)
+                state.setError(.groupFailed(error.localizedDescription))
             }
         })
+    }
+
+    // maxVolume also holds the connected speaker's own limit, which says nothing of the other speakers.
+    private func withinTheVolumeLimit(_ level: Int) -> Int {
+        min(level, state.playback.volumeLimit ?? 100)
     }
 
     /// Fetches each member's current volume for the sliders.

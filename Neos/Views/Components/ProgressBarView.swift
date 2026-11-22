@@ -11,6 +11,8 @@ struct ProgressBarView: View {
     var showTimeLabels: Bool = true
     var inlineTimeLabels: Bool = false
 
+    @Environment(\.sliderFill) private var fill
+
     private var isSeekable: Bool { onSeek != nil && playbackDuration > 0 }
 
     var body: some View {
@@ -57,7 +59,7 @@ struct ProgressBarView: View {
                     in: CGRect(x: 0, y: yOffset, width: size.width * clamp(progressPercent), height: barHeight),
                     cornerSize: CGSize(width: cornerRadius, height: cornerRadius)
                 )
-                context.fill(fillPath, with: .color(DS.Colors.accent))
+                context.fill(fillPath, with: .color(fill))
             }
         }
         .frame(height: 16)
@@ -121,20 +123,10 @@ private struct SeekerPerformanceIsland: View {
     private func displayProgress(at date: Date) -> Double {
         if let drag = dragProgress { return drag }
         if let pending = pendingSeekProgress { return pending }
-        return clamp(interpolatedProgressPercent(at: date))
-    }
-
-    private func interpolatedProgressPercent(at now: Date) -> Double {
-        guard playbackDuration > 0 else { return 0 }
-        return Double(interpolatedPosition(at: now)) / Double(playbackDuration)
-    }
-
-    private func interpolatedPosition(at now: Date) -> Int {
-        guard isPlaying else { return playbackPosition }
-        let elapsed = now.timeIntervalSince(lastProgressUpdate)
-        guard elapsed > 0 else { return playbackPosition }
-        let interpolated = playbackPosition + Int(elapsed * 1000)
-        return min(interpolated, playbackDuration)
+        return PlaybackClock.fraction(
+            reported: playbackPosition, duration: playbackDuration,
+            reportedAt: lastProgressUpdate, isPlaying: isPlaying, at: date
+        )
     }
 
     // MARK: - Seekable Layout
@@ -160,7 +152,6 @@ private struct SeekerPerformanceIsland: View {
                         remainingLabel(currentMillis)
                     }
                     .typography(.badge)
-                    .foregroundStyle(DS.Colors.textSecondary)
                 }
             }
         }
@@ -188,11 +179,7 @@ private struct SeekerPerformanceIsland: View {
                         dragProgress = clamp(value.location.x / geo.size.width)
                     }
                     .onEnded { value in
-                        let finalProgress = clamp(value.location.x / geo.size.width)
-                        let seekTime = finalProgress * Double(playbackDuration) / 1000.0
-                        lastSeekDate = Date()
-                        pendingSeekProgress = finalProgress
-                        onSeek(seekTime)
+                        seek(to: clamp(value.location.x / geo.size.width))
                         withAnimation(.easeOut(duration: 0.15)) {
                             isDragging = false
                             dragProgress = nil
@@ -203,10 +190,20 @@ private struct SeekerPerformanceIsland: View {
                 withAnimation(.easeOut(duration: 0.15)) { isHovering = hovering }
             }
         }
-        .frame(height: 16)
+        .frame(height: max(16, DS.HitTarget.slider))
         .drawingGroup()
-        .accessibilityLabel("Playback position")
-        .accessibilityValue(formatTime(Int(clamp(progress) * Double(playbackDuration))))
+        .accessibilityRepresentation {
+            Slider(value: Binding(get: { clamp(progress) }, set: { seek(to: $0) }), in: 0...1) {
+                Text("Playback position")
+            }
+            .accessibilityValue(formatTime(Int(clamp(progress) * Double(playbackDuration))))
+        }
+    }
+
+    private func seek(to progress: Double) {
+        lastSeekDate = Date()
+        pendingSeekProgress = progress
+        onSeek(progress * Double(playbackDuration) / 1000.0)
     }
 
     // MARK: - Time Labels
@@ -215,7 +212,6 @@ private struct SeekerPerformanceIsland: View {
     private func elapsedLabel(_ millis: Int) -> some View {
         Text(formatTime(millis))
             .typography(.badge)
-            .foregroundStyle(DS.Colors.textSecondary)
             .monospacedDigit()
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
@@ -225,7 +221,6 @@ private struct SeekerPerformanceIsland: View {
     private func remainingLabel(_ millis: Int) -> some View {
         Text("-\(formatTime(max(0, playbackDuration - millis)))")
             .typography(.badge)
-            .foregroundStyle(DS.Colors.textSecondary)
             .monospacedDigit()
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
@@ -253,6 +248,8 @@ private struct CanvasSeekBar: View {
     let isHovering: Bool
     let showTrack: Bool
 
+    @Environment(\.sliderFill) private var fill
+
     var body: some View {
         Canvas { context, size in
             let barHeight: CGFloat = isDragging ? 6 : (isHovering ? 4.8 : 4)
@@ -274,7 +271,7 @@ private struct CanvasSeekBar: View {
                 in: CGRect(x: 0, y: yOffset, width: fillWidth, height: barHeight),
                 cornerSize: CGSize(width: cornerRadius, height: cornerRadius)
             )
-            context.fill(fillPath, with: .color(DS.Colors.accent))
+            context.fill(fillPath, with: .color(fill))
 
             if isHovering || isDragging {
                 let knobSize: CGFloat = 12
@@ -284,7 +281,7 @@ private struct CanvasSeekBar: View {
                 var knobPath = Path()
                 knobPath.addEllipse(in: CGRect(x: knobX, y: knobY, width: knobSize, height: knobSize))
                 context.addFilter(.shadow(color: .black.opacity(0.2), radius: 2, y: 1))
-                context.fill(knobPath, with: .color(DS.Colors.accent))
+                context.fill(knobPath, with: .color(fill))
             }
         }
     }

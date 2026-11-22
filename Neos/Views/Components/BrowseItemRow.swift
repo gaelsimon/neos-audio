@@ -25,8 +25,7 @@ struct BrowseItemRow: View {
 
             VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 Text(item.displayTitle)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(isNowPlaying ? DS.Colors.accent : .primary)
+                    .typography(.bodyPrimary, color: isNowPlaying ? DS.Colors.accent : nil)
                     .lineLimit(1)
 
                 if let artist = item.artist, !artist.isEmpty {
@@ -38,17 +37,21 @@ struct BrowseItemRow: View {
 
             Spacer()
 
-            actionMenu
-                .opacity(isHovered && hasActions ? 1 : 0)
+            if DS.revealsControlsOnHover {
+                actionMenu
+                    .opacity(isHovered && hasActions ? 1 : 0)
+            } else if hasActions && !opensAPage {
+                // A row that opens a page shows its chevron alone; the long press keeps the menu.
+                actionMenu
+            }
 
-            if item.playable {
+            if item.canJoinQueue {
                 if isAddingToQueue {
                     Spinner(size: 12, lineWidth: 1.5)
                 } else {
                     HoverButton(action: onAddToQueue) { hovered in
                         Image(systemName: DS.Icons.add)
-                            .typography(.secondary)
-                            .foregroundStyle(DS.Colors.accent.opacity(hovered ? 1.0 : 0.7))
+                            .typography(.secondary, color: hovered ? .white : nil)
                     }
                     .help("Add to queue")
                 }
@@ -58,12 +61,10 @@ struct BrowseItemRow: View {
                 Spinner(size: 16, lineWidth: 2)
             } else if isNowPlaying && !item.browsable {
                 Image(systemName: DS.Icons.speakerActive)
-                    .typography(.secondary)
-                    .foregroundStyle(DS.Colors.accent)
-            } else if item.browsable || item.isSubSource {
+                    .typography(.secondary, color: DS.Colors.accent)
+            } else if opensAPage {
                 Image(systemName: DS.Icons.forward)
-                    .typography(.secondary)
-                    .foregroundStyle(DS.Colors.textTertiary)
+                    .typography(.secondary, color: DS.Colors.textTertiary)
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
@@ -73,12 +74,17 @@ struct BrowseItemRow: View {
             in: RoundedRectangle(cornerRadius: DS.Radius.small)
         )
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onTap() }
         .onTapGesture(perform: onTap)
         .onHover { isHovered = $0 }
         .contextMenu(hasActions ? ContextMenu { menuItems } : nil)
     }
 
     // MARK: - Action Menu
+
+    private var opensAPage: Bool { item.browsable || item.isSubSource }
 
     private var hasNavigationActions: Bool { onArtistView != nil || onAlbumView != nil }
 
@@ -98,7 +104,6 @@ struct BrowseItemRow: View {
         } label: {
             Image(systemName: "ellipsis")
                 .typography(.secondary)
-                .foregroundStyle(DS.Colors.textSecondary)
                 .frame(minWidth: 36, minHeight: 36)
                 .contentShape(Rectangle())
         }
@@ -215,9 +220,16 @@ struct BrowseItemRow: View {
     }
 
     private var rowBackground: Color {
-        if isNowPlaying || isLoading {
+        if isLoading {
             return DS.Colors.accent.opacity(0.08)
-        } else if isHovered {
+        }
+        // iPhone and iPad mark the playing row by its orange title alone.
+        #if os(macOS)
+        if isNowPlaying {
+            return DS.Colors.accent.opacity(0.08)
+        }
+        #endif
+        if isHovered {
             return DS.Colors.surfaceElevated.opacity(0.5)
         }
         return .clear
@@ -231,7 +243,7 @@ struct BrowseItemRow: View {
         case .artist: DS.Icons.person
         case .playlist: DS.Icons.playlists
         case .genre: DS.Icons.genre
-        case .container: DS.Icons.folder
+        case .container: FolderSymbol.name(for: item.name) ?? DS.Icons.folder
         case .dlnaServer, .heosServer: DS.Icons.server
         case .heosService, .musicService: DS.Icons.musicNoteTV
         }

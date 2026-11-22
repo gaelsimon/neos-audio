@@ -105,25 +105,36 @@ final class AppState: StateUpdater {
 
     private(set) var isLoadingTrack: Bool = false
     private var trackLoadGeneration: UInt64 = 0
+    private(set) var ampWait: AmpWait?
+    /// Turns true only once a wait outlasts a quick answer, so the spinner does not flash.
+    private(set) var showsAmpWait = false
+    private var ampWaitTask: Task<Void, Never>?
     var isAdjustingVolume: Bool = false
-    var error: AppError?
+    private(set) var error: AppError?
     var discoveryError: String?
     var isDiscovering: Bool = false
     var toast: ToastMessage?
+    var toastHosts = ToastHosts()
     var availableUpdate: UpdateChecker.Update?
     var isQueuePanelOpen: Bool = false
     var isNowPlayingCanvasOpen: Bool = false
+    /// Asked for by the iPhone and iPad player, which closes: the tab on screen opens it.
+    var pageRequestedFromPlayer: NowPlayingPage?
     /// Drives the search field's focus; shared so the menu bar can focus it too.
     var isSearchFieldFocused: Bool = false
     var canvasDominantColors: [Color] = DominantColorExtractor.defaultColors
     var diagnostics: [DiagnosticEvent] = []
     private var toastDismissTask: Task<Void, Never>?
-    private var lastPlaybackErrorMessage: String?
-    private var lastPlaybackErrorAt: Date?
+    private var lastErrorMessage: String?
+    private var lastErrorAt: Date?
     private var trackLoadWatchdog: Task<Void, Never>?
     /// Called for every device discovery reports, so a remembered speaker can reconnect on its own.
     @ObservationIgnored var onDeviceDiscovered: ((DiscoveredDevice) -> Void)?
     @ObservationIgnored var onAccountReported: ((String?) -> Void)?
+    /// A raw stream's address is worth reading now, without waiting out the retry gaps.
+    @ObservationIgnored var onTrackMetadataWanted: (() -> Void)?
+    /// The speaker plays the radio that was asked for here.
+    @ObservationIgnored var onRadioStarted: (() -> Void)?
 
     // MARK: - Sub-States
 
@@ -243,6 +254,7 @@ final class AppState: StateUpdater {
     }
 
     private func resetPlaybackState() {
+        endAmpWait()
         playback.reset()
         imageCache.resetAliases()
     }
@@ -318,17 +330,17 @@ final class AppState: StateUpdater {
 
     // MARK: - Track Loading
 
+    /// Clears the error dedupe so a user retry gets feedback.
+    private func resetErrorDedupe() {
+        lastErrorMessage = nil
+        lastErrorAt = nil
+    }
+
     /// Arms the spinner and its watchdog: a device that never reports the track must not strand it.
     /// Returns the load's generation; hand it to `failTrackLoad` so a superseded play cannot roll it back.
     @discardableResult
-    /// Clears the playback error dedupe so a user retry gets feedback.
-    private func resetPlaybackErrorDedupe() {
-        lastPlaybackErrorMessage = nil
-        lastPlaybackErrorAt = nil
-    }
-
     func beginTrackLoad(timeout: Duration = .seconds(30)) -> UInt64 {
-        resetPlaybackErrorDedupe()
+        resetErrorDedupe()
         trackLoadGeneration += 1
         isLoadingTrack = true
         trackLoadWatchdog?.cancel()
@@ -355,41 +367,38 @@ final class AppState: StateUpdater {
         pendingStreamContext = nil
     }
 
+    /// A waking amp took 15 s to start playing; the watchdog ends a wait it never answers.
+    func awaitAmp(_ wait: AmpWait, timeout: Duration = .seconds(30), showAfter delay: Duration = .milliseconds(500)) {
+        ampWait = wait
+        ampWaitTask?.cancel()
+        ampWaitTask = Task {
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            showsAmpWait = true
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            ampWait = nil
+            showsAmpWait = false
+        }
+    }
+
+    func endAmpWait() {
+        ampWaitTask?.cancel()
+        ampWaitTask = nil
+        ampWait = nil
+        showsAmpWait = false
+    }
+
     // MARK: - Playback
 
     func setNowPlaying(_ media: NowPlayingMedia) {
         endTrackLoad()
-        var enrichedMedia = media
+        let contextWasUnbound = playback.pendingStreamContext.map { $0.enrichedDeviceMID == nil } ?? false
+        var enrichedMedia = namedByPlayContext(media)
 
-        // Enrich generic "Url Stream" metadata with context captured at play-time
-        if let ctx = playback.pendingStreamContext {
-            if ctx.pid != selectedPlayerID {
-                playback.pendingStreamContext = nil
-            } else if media.song == "Url Stream", Self.isEnrichable(media, by: ctx) {
-                if let name = ctx.stationName, !name.isEmpty {
-                    enrichedMedia = NowPlayingMedia(
-                        type: media.type, song: media.song, album: media.album,
-                        artist: media.artist,
-                        imageURL: media.imageURL.isEmpty ? ctx.imageURL : media.imageURL,
-                        albumID: media.albumID, mid: media.mid,
-                        qid: media.qid, sid: media.sid,
-                        station: name
-                    )
-                }
-                // Register alias so resolvedImageURL can find custom artwork via browse MID
-                if !ctx.browseMID.isEmpty, ctx.browseMID != media.mid {
-                    imageCache.registerStreamAlias(deviceMID: media.mid, browseMID: ctx.browseMID)
-                }
-                // Bind: further events for this stream keep enriching, another stream drops below.
-                playback.pendingStreamContext?.enrichedDeviceMID = media.mid
-            } else if media.mid != ctx.previousMID {
-                // Another stream took over, or a genuinely new track started; drop it.
-                playback.pendingStreamContext = nil
-            } else {
-                // Tail event of the track playing at capture; the stream is still starting.
-                playback.pendingStreamContext?.toleratedTail = true
-            }
-        }
+        let startsStream = contextWasUnbound && playback.pendingStreamContext?.enrichedDeviceMID != nil
+        enrichedMedia = keepingStreamName(enrichedMedia, startsStream: startsStream)
+        enrichedMedia = withKnownStationArtwork(withKnownStationName(enrichedMedia))
 
         // A different track, which on a station is a different song under the same mid.
         if enrichedMedia.isDifferentTrack(from: playback.nowPlaying) {
@@ -398,6 +407,7 @@ final class AppState: StateUpdater {
         // A different mid is a different stream, and only that restarts the timeline. A station
         // moving to its next song keeps playing, so the position must not go back to zero.
         if enrichedMedia.mid != playback.nowPlaying.mid {
+            if case .seek = ampWait { endAmpWait() }
             playback.nowPlayingOptions = []
             playback.playbackPosition = 0
             playback.lastProgressUpdate = Date()
@@ -408,15 +418,26 @@ final class AppState: StateUpdater {
         // Cache mid → imageURL for later lookup (e.g. favorites with empty image_url)
         if !enrichedMedia.imageURL.isEmpty {
             var entries: [(mid: String, imageURL: String)] = []
-            if !enrichedMedia.mid.isEmpty {
+            if !enrichedMedia.mid.isEmpty, enrichedMedia.mid != HEOSConstants.urlStreamPlaceholderID {
                 entries.append((mid: enrichedMedia.mid, imageURL: enrichedMedia.imageURL))
             }
-            // Station ID lives in albumID (e.g. "s44491"), which matches favorites mid
-            if !enrichedMedia.albumID.isEmpty, enrichedMedia.albumID != enrichedMedia.mid {
+            // A station's albumID is its ID (e.g. "s44491"), which matches favorites mid; a track's names no image.
+            if enrichedMedia.type == .station, !enrichedMedia.albumID.isEmpty, enrichedMedia.albumID != enrichedMedia.mid {
                 entries.append((mid: enrichedMedia.albumID, imageURL: enrichedMedia.imageURL))
             }
             imageCache.cacheImageEntries(entries)
         }
+    }
+
+    /// A paused TuneIn station comes back with no artwork and under a longer mid; its station id still finds the image.
+    private func withKnownStationArtwork(_ media: NowPlayingMedia) -> NowPlayingMedia {
+        guard media.type == .station, media.imageURL.isEmpty,
+              let known = imageCache.cachedImageURLs[media.albumID], !known.isEmpty else { return media }
+        return NowPlayingMedia(
+            type: media.type, song: media.song, album: media.album, artist: media.artist,
+            imageURL: known, albumID: media.albumID, mid: media.mid,
+            qid: media.qid, sid: media.sid, station: media.station
+        )
     }
 
     func setNowPlayingOptions(_ options: [ServiceOption]) {
@@ -425,6 +446,11 @@ final class AppState: StateUpdater {
 
     func setTrackMetadata(_ metadata: TrackMetadata?) {
         playback.trackMetadata = metadata
+        guard playback.nowPlaying.isUnnamedStream else {
+            playback.trackMetadataIsStale = false
+            return
+        }
+        readStreamAddress(metadata?.streamURL)
     }
 
     func setVolume(_ level: Int) {
@@ -444,17 +470,32 @@ final class AppState: StateUpdater {
         playback.shuffleMode = mode
     }
 
-    /// The amp reports position 0 once before the real one, on a resume and on a new track
-    /// alike, up to about 3s in. Taking it moves the interpolation baseline to now and sends
-    /// the bar back to the start, which is why it is dropped near a restart. Seeking absorbs
-    /// the same quirk through its own lockout. The duration is kept either way: the amp sends
-    /// it with that first event, and dropping it leaves the bar without one.
+    /// The amp reports 0 before the real position on a resume, a new track and a seek; the duration is kept regardless.
     func setProgress(position: Int, duration: Int) {
         playback.playbackDuration = duration
         if position == 0, let baseline = playback.positionBaselineAt,
            Date().timeIntervalSince(baseline) <= Self.staleZeroWindow {
             return
         }
+        switch ampWait {
+        case .seek(let target):
+            guard abs(position - target) <= Self.seekLandingTolerance else { return }
+            endAmpWait()
+        case .resume:
+            if position == 0 { return }
+        case nil:
+            break
+        }
+        movePosition(to: position)
+    }
+
+    /// The bar moves at once; the amp's reports are held off until one lands near the target.
+    func beginSeek(toMillis target: Int) {
+        movePosition(to: target)
+        awaitAmp(.seek(toMillis: target), timeout: .seconds(10))
+    }
+
+    private func movePosition(to position: Int) {
         playback.positionBaselineAt = nil
         playback.awaitingResumeConfirmation = false
         playback.playbackPosition = position
@@ -463,6 +504,8 @@ final class AppState: StateUpdater {
 
     /// Measured across twenty track starts: the first position lands between 0 and 3.1s in.
     private static let staleZeroWindow: TimeInterval = 5
+    /// A seek is sent in whole seconds and the amp reports every 5 s.
+    private static let seekLandingTolerance = 5000
 
     func setQueue(_ items: [QueueItem]) {
         playback.queue = items
@@ -481,13 +524,21 @@ final class AppState: StateUpdater {
 
     func setError(_ error: AppError?) {
         self.error = error
-        if case .playbackFailed(let msg) = error {
-            // The amp retries a failed stream and errors again seconds later; one banner is enough.
-            if msg == lastPlaybackErrorMessage, let at = lastPlaybackErrorAt,
-               Date().timeIntervalSince(at) < 10 { return }
-            lastPlaybackErrorMessage = msg
-            lastPlaybackErrorAt = Date()
-            showToast(msg, icon: DS.Icons.warning, style: .error)
+        guard let error, Self.isShown(error) else { return }
+        let message = error.message
+        // The amp retries a failed stream and errors again seconds later; one banner is enough.
+        if message == lastErrorMessage, let at = lastErrorAt,
+           Date().timeIntervalSince(at) < 10 { return }
+        lastErrorMessage = message
+        lastErrorAt = Date()
+        showToast(message, icon: DS.Icons.warning, style: .error)
+    }
+
+    /// The amp's own system errors answer no action the user took.
+    private static func isShown(_ error: AppError) -> Bool {
+        switch error {
+        case .deviceError, .discoveryFailed, .generic: false
+        default: true
         }
     }
 
@@ -518,7 +569,7 @@ final class AppState: StateUpdater {
     }
 
     func setMaxVolume(_ level: Int?) {
-        playback.maxVolume = level.map { max(1, $0) }
+        playback.speakerVolumeLimit = level.map { max(1, $0) }
     }
 
     func setServiceCapabilities(sid: Int, capabilities: ServiceCapabilities) {

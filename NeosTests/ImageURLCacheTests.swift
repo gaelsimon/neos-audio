@@ -2,10 +2,7 @@ import XCTest
 @testable import Neos
 
 final class ImageURLCacheTests: XCTestCase {
-    private static let fileURL: URL = {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return appSupport.appendingPathComponent("Neos/image-url-cache.json")
-    }()
+    private static let fileURL = AppDefaults.supportDirectory.appendingPathComponent("image-url-cache.json")
 
     override func setUp() {
         super.setUp()

@@ -1,4 +1,5 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
 
 /// AppKit backdrop, so the blur radius can be chosen: the SwiftUI materials expose no such knob.
@@ -17,6 +18,20 @@ struct BackdropBlur: NSViewRepresentable {
         view.material = material
     }
 }
+#else
+struct BackdropBlur: View {
+    enum Style {
+        case hudWindow
+        case popover
+    }
+
+    let material: Style
+
+    var body: some View {
+        Rectangle().fill(material == .popover ? SwiftUI.Material.thin : SwiftUI.Material.ultraThin)
+    }
+}
+#endif
 
 struct DarkGlass: View {
     var body: some View {
@@ -47,11 +62,25 @@ struct GlassCapsule: View {
 }
 
 extension View {
+    /// Pins a sub-header over a scrolling page. From iOS 26 the system blurs the page under it, as under its own bars.
+    @ViewBuilder
+    func stickyHeader(@ViewBuilder _ header: () -> some View) -> some View {
+        #if os(iOS)
+        if #available(iOS 26, *) {
+            safeAreaBar(edge: .top, spacing: 0, content: header)
+        } else {
+            safeAreaInset(edge: .top, spacing: 0) { header().stickyHeaderGlass() }
+        }
+        #else
+        safeAreaInset(edge: .top, spacing: 0) { header().stickyHeaderGlass() }
+        #endif
+    }
+
     /// A sub-header pinned under the top bar: one glass reaches up behind the bar, so the two never show a seam.
     func stickyHeaderGlass() -> some View {
-        padding(.top, DS.TopBar.height)
+        padding(.top, DS.Layout.topOverlay)
             .background(DarkGlass())
             .overlay(alignment: .bottom) { Rectangle().fill(DS.Colors.border).frame(height: 1) }
-            .padding(.top, -DS.TopBar.height)
+            .padding(.top, -DS.Layout.topOverlay)
     }
 }

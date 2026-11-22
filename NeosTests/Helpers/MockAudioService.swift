@@ -24,6 +24,7 @@ final class MockAudioService: AudioService, @unchecked Sendable {
     var browseResult: BrowseResult = MockData.deezerRoot
     var historyResult: BrowseResult = MockData.historyRoot
     var queueItems: [QueueItem] = MockData.queueItems
+    var queueRangesAsked: [ClosedRange<Int>?] = []
     var groups: [SpeakerGroup] = []
     var searchCriteria: [SearchCriteria] = MockData.searchCriteria
     var getGroupsError: Error?
@@ -138,6 +139,7 @@ final class MockAudioService: AudioService, @unchecked Sendable {
 
     func getQueue(pid: Int, range: ClosedRange<Int>?) async throws -> [QueueItem] {
         calls.append("getQueue:\(pid)")
+        queueRangesAsked.append(range)
         if let error = getQueueError { throw error }
         return queueItems
     }
@@ -215,8 +217,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         return browseResultsBySID[sid] ?? browseResult
     }
 
+    var browseContainerError: Error?
+
     func browseContainer(sid: Int, cid: String, range: ClosedRange<Int>?) async throws -> BrowseResult {
         calls.append("browseContainer:\(sid):\(cid)")
+        if let error = browseContainerError { throw error }
         return browseResult
     }
 
@@ -224,8 +229,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         calls.append("playStation:\(pid):sid=\(sid):cid=\(cid)")
     }
 
+    var playURLError: Error?
+
     func playURL(pid: Int, url: String) async throws {
         calls.append("playURL:\(pid)")
+        if let error = playURLError { throw error }
     }
 
     func playInput(pid: Int, input: String) async throws {
@@ -236,8 +244,13 @@ final class MockAudioService: AudioService, @unchecked Sendable {
     var addToQueueFailingMIDs: Set<String> = []
     var addToQueueSlowMIDs: Set<String> = []
 
+    var lastAddedToQueue: (cid: String, mid: String?)?
+    var lastAddCriteria: AddCriteria?
+
     func addToQueue(pid: Int, sid: Int, cid: String, mid: String?, criteria: AddCriteria) async throws {
         calls.append("addToQueue:\(pid)")
+        lastAddedToQueue = (cid, mid)
+        lastAddCriteria = criteria
         if let mid, addToQueueSlowMIDs.contains(mid) {
             try? await Task.sleep(for: .milliseconds(200))
         }
@@ -246,8 +259,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         }
     }
 
+    var historyError: Error?
+
     func getHistory(range: ClosedRange<Int>?) async throws -> BrowseResult {
         calls.append("getHistory")
+        if let error = historyError { throw error }
         return historyResult
     }
 
@@ -272,8 +288,13 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         return searchCriteriaBySID[sid] ?? searchCriteria
     }
 
+    /// How long a search on a criteria takes to answer, keyed by scid.
+    var searchDelays: [Int: Duration] = [:]
+
+    /// Searches run side by side, so the call log is kept on the main actor.
     func search(sid: Int, query: String, scid: Int, range: ClosedRange<Int>?) async throws -> BrowseResult {
-        calls.append("search:\(sid):\(query):\(scid)")
+        await MainActor.run { calls.append("search:\(sid):\(query):\(scid)") }
+        if let delay = searchDelays[scid] { try await Task.sleep(for: delay) }
         return searchResult
     }
 
@@ -289,8 +310,11 @@ final class MockAudioService: AudioService, @unchecked Sendable {
         if let error = signOutError { throw error }
     }
 
+    var checkAccountError: Error?
+
     func checkAccount() async throws -> String? {
         calls.append("checkAccount")
+        if let error = checkAccountError { throw error }
         return accountUser
     }
 

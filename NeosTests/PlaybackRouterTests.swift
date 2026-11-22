@@ -182,7 +182,7 @@ final class PlaybackRouterTests: XCTestCase {
     }
 
     @MainActor
-    func testTuneInCustomURLWithRealNameDoesNotSetContext() async throws {
+    func testTuneInCustomURLWithRealNameKeepsThatNameForTheStream() async throws {
         let state = AppState()
         state.selectedPlayerID = 42
         let mock = MockAudioService()
@@ -193,7 +193,52 @@ final class PlaybackRouterTests: XCTestCase {
         let item = BrowseItem(name: "FIP HiFi", type: .station, mid: "u32", playable: true)
         try await PlaybackRouter.play(item, sid: 1028, cid: "", service: mock, state: state)
 
-        // playStation was used, no pending context needed
-        XCTAssertNil(state.pendingStreamContext)
+        // The speaker plays what TuneIn resolves as "Url Stream"; its address is only known once read.
+        XCTAssertEqual(state.pendingStreamContext?.stationName, "FIP HiFi")
+        XCTAssertEqual(state.pendingStreamContext?.streamURL, "")
+    }
+
+    // MARK: - Radio starts
+
+    @MainActor
+    private func awaitsRadioStart(after item: BrowseItem, failing: Bool = false) async -> Bool {
+        let state = AppState()
+        state.selectedPlayerID = 42
+        let mock = MockAudioService()
+        if failing { mock.playURLError = NSError(domain: "test", code: 1) }
+        try? await PlaybackRouter.play(item, sid: 3, cid: "c1", service: mock, state: state)
+        return state.playback.awaitsRadioStart
+    }
+
+    @MainActor
+    func testARadioPlayedByAddressIsAwaited() async {
+        let item = BrowseItem(name: "My Stream", type: .station, mid: "https://stream.example.com/live", playable: true)
+
+        let awaited = await awaitsRadioStart(after: item)
+
+        XCTAssertTrue(awaited)
+    }
+
+    @MainActor
+    func testAStationIsAwaited() async {
+        let awaited = await awaitsRadioStart(after: BrowseItem(name: "Funk", type: .station, mid: "s17439", playable: true))
+
+        XCTAssertTrue(awaited)
+    }
+
+    @MainActor
+    func testATrackIsNotAwaitedAsARadio() async {
+        let awaited = await awaitsRadioStart(after: BrowseItem(name: "Track", mid: "m1", playable: true))
+
+        XCTAssertFalse(awaited)
+    }
+
+    @MainActor
+    func testARadioThatFailedToStartIsNotAwaited() async {
+        let item = BrowseItem(name: "My Stream", type: .station, mid: "https://stream.example.com/live", playable: true)
+
+        let awaited = await awaitsRadioStart(after: item, failing: true)
+
+        XCTAssertFalse(awaited)
     }
 }

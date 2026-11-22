@@ -14,8 +14,7 @@ struct NowPlayingBanner: View {
                     highResURL: state.artwork(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL).highRes
                 ) {
                     Image(systemName: DS.Icons.musicNote)
-                        .typography(.pageTitle)
-                        .foregroundStyle(DS.Colors.textSecondary)
+                        .typography(.pageTitle, color: DS.Colors.textSecondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(.quaternary)
                 }
@@ -44,14 +43,12 @@ struct NowPlayingBanner: View {
                     if !state.nowPlaying.album.isEmpty {
                         Text(state.nowPlaying.album)
                             .typography(.secondary)
-                            .foregroundStyle(DS.Colors.textTertiary)
                             .lineLimit(1)
                             .accessibilityIdentifier(AccessibilityID.NowPlayingBanner.albumName)
                     }
                     if let quality = state.trackMetadata?.qualityDescription {
                         Text(quality)
                             .typography(.badge)
-                            .foregroundStyle(DS.Colors.textTertiary)
                             .lineLimit(1)
                             .accessibilityIdentifier(AccessibilityID.NowPlayingBanner.qualityBadge)
                     }

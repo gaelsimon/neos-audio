@@ -1,40 +1,25 @@
 import SwiftUI
 import NeosDomain
-import AppKit
 
 struct NowPlayingToolbar: View {
     let state: AppState
     let playerVM: PlayerViewModel
     let browseVM: BrowseViewModel
     let searchVM: SearchViewModel
+    /// Where the bar can open the speakers itself; the Mac has a page for them.
+    var showSpeakers: (() -> Void)?
 
     @State private var isArtworkHovered = false
 
     // MARK: - Cross-Link Navigation
 
-    private var canBrowseAlbum: Bool {
-        guard let sid = state.nowPlaying.sid,
-              !state.nowPlaying.album.isEmpty,
-              let caps = state.serviceCapabilities[sid] else { return false }
-        return caps.canBrowseAlbums
-    }
+    private var canBrowseAlbum: Bool { state.canOpen(.album) }
 
-    private var canBrowseArtist: Bool {
-        guard let sid = state.nowPlaying.sid,
-              isLinkableArtist(state.nowPlaying.artist),
-              let caps = state.serviceCapabilities[sid] else { return false }
-        return caps.canBrowseArtists
-    }
+    private var canBrowseArtist: Bool { state.canOpen(.artist) }
 
-    private func navigateToAlbum() {
-        guard let sid = state.nowPlaying.sid else { return }
-        browseVM.pushAlbumSearchNavigate(sid: sid, albumName: state.nowPlaying.album, artistHint: state.nowPlaying.artist)
-    }
+    private func navigateToAlbum() { browseVM.open(.album) }
 
-    private func navigateToArtist() {
-        guard let sid = state.nowPlaying.sid else { return }
-        browseVM.pushArtistSearchNavigate(sid: sid, artistName: state.nowPlaying.artist)
-    }
+    private func navigateToArtist() { browseVM.open(.artist) }
 
     // MARK: - External Link
 
@@ -88,17 +73,18 @@ struct NowPlayingToolbar: View {
             highResURL: state.artwork(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL).highRes
         ) {
             Image(systemName: DS.Icons.musicNote)
-                .typography(.bodyPrimary)
-                .foregroundStyle(DS.Colors.textTertiary)
+                .typography(.bodyPrimary, color: DS.Colors.textTertiary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(DS.Colors.surfaceElevated)
         }
         .frame(width: 72, height: 72)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artwork))
         .accessibilityIdentifier(AccessibilityID.Player.albumArt)
-        .accessibilityLabel(canBrowseAlbum ? "Go to album: \(state.nowPlaying.album)" : "Album artwork")
+        .accessibilityLabel("Full Screen Player")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { state.isNowPlayingCanvasOpen.toggle() }
         .overlay {
-            if state.isLoadingTrack {
+            if state.isWaitingForAmp {
                 RoundedRectangle(cornerRadius: DS.Radius.artwork)
                     .fill(.black.opacity(0.5))
                 Spinner(size: 16, lineWidth: 2, color: .white)
@@ -128,43 +114,20 @@ struct NowPlayingToolbar: View {
                 .lineLimit(1)
                 .accessibilityIdentifier(AccessibilityID.Player.songTitle)
             if let station = state.nowPlaying.displayedStation {
-                Text(station)
-                    .typography(.secondary)
-                    .lineLimit(1)
-                    .accessibilityIdentifier(AccessibilityID.Player.artistName)
-            } else if !state.nowPlaying.artist.isEmpty {
-                if browseVM.isResolvingArtist {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Spinner(size: 12, lineWidth: 1.5)
-                        Text(state.nowPlaying.artist)
-                            .typography(.secondary)
-                            .lineLimit(1)
-                    }
-                    .accessibilityIdentifier(AccessibilityID.Player.artistName)
-                } else if canBrowseArtist {
-                    NowPlayingCrossLink(
-                        text: state.nowPlaying.artist,
-                        onTap: { navigateToArtist() }
-                    )
-                    .accessibilityIdentifier(AccessibilityID.Player.artistName)
-                } else {
-                    Text(state.nowPlaying.artist)
+                followedByQuality {
+                    Text(station)
                         .typography(.secondary)
                         .lineLimit(1)
                         .accessibilityIdentifier(AccessibilityID.Player.artistName)
                 }
+            } else if !state.nowPlaying.artist.isEmpty {
+                followedByQuality { artistLine }
+            } else if let quality = state.trackMetadata?.qualityDescription {
+                qualityText(quality)
             }
             if !state.nowPlaying.album.isEmpty, state.nowPlaying.station == nil {
-                if canBrowseAlbum {
-                    NowPlayingCrossLink(
-                        text: state.nowPlaying.album,
-                        onTap: { navigateToAlbum() }
-                    )
-                } else {
-                    Text(state.nowPlaying.album)
-                        .typography(.secondary)
-                        .lineLimit(1)
-                }
+                CrossLink(state.nowPlaying.album, action: canBrowseAlbum ? navigateToAlbum : nil)
+                    .lineLimit(1)
             }
         }
         .frame(maxWidth: 220, alignment: .leading)
@@ -172,6 +135,119 @@ struct NowPlayingToolbar: View {
         .contextMenu(externalLink.map { link in
             ContextMenu { ExternalLinkMenuItems(link: link, state: state) }
         })
+    }
+
+    @ViewBuilder private var artistLine: some View {
+        if browseVM.isResolvingArtist {
+            HStack(spacing: DS.Spacing.xs) {
+                Spinner(size: 12, lineWidth: 1.5)
+                Text(state.nowPlaying.artist)
+                    .typography(.secondary)
+                    .lineLimit(1)
+            }
+            .accessibilityIdentifier(AccessibilityID.Player.artistName)
+        } else {
+            CrossLink(state.nowPlaying.artist, action: canBrowseArtist ? navigateToArtist : nil)
+                .lineLimit(1)
+                .accessibilityIdentifier(AccessibilityID.Player.artistName)
+        }
+    }
+
+    /// The quality shortens to its codec, then goes, when the name needs the room.
+    @ViewBuilder private func followedByQuality<Line: View>(@ViewBuilder _ line: () -> Line) -> some View {
+        if let quality = state.trackMetadata?.qualityDescription {
+            ViewThatFits(in: .horizontal) {
+                lineWithQuality(quality, line)
+                if let codec = state.trackMetadata?.codec, codec != quality {
+                    lineWithQuality(codec, line)
+                }
+                line()
+            }
+        } else {
+            line()
+        }
+    }
+
+    private func lineWithQuality<Line: View>(_ quality: String, _ line: () -> Line) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.xs) {
+            line()
+            Text("·").typography(.footnote)
+            qualityText(quality)
+        }
+    }
+
+    private func qualityText(_ quality: String) -> some View {
+        Text(quality)
+            .typography(.footnote)
+            .lineLimit(1)
+            .accessibilityIdentifier(AccessibilityID.Player.qualityBadge)
+    }
+
+    @ViewBuilder
+    private func speakerTarget(_ target: String, showsName: Bool) -> some View {
+        let label = HStack(spacing: DS.Spacing.xs) {
+            Image(systemName: DS.Icons.speaker)
+                .font(DS.IconFont.sm)
+            if showsName {
+                Text(target)
+                    .typography(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .foregroundStyle(DS.Colors.textSecondary)
+        .frame(maxWidth: showsName ? 240 : nil, alignment: .trailing)
+        .help("Playing on \(target)")
+
+        if let showSpeakers {
+            Button(action: showSpeakers) {
+                label
+                    .frame(minWidth: DS.HitTarget.button, minHeight: DS.HitTarget.button)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Playing on \(target)")
+            .accessibilityHint("Shows the speakers")
+            .accessibilityIdentifier(AccessibilityID.Player.speakerName)
+        } else {
+            label
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Playing on \(target)")
+                .accessibilityIdentifier(AccessibilityID.Player.speakerName)
+        }
+    }
+
+    /// The Mac opens its panel; iPhone and iPad show the queue in the player.
+    private func showQueue() {
+        #if os(iOS)
+        state.isQueuePanelOpen = true
+        state.isNowPlayingCanvasOpen = true
+        #else
+        state.isQueuePanelOpen.toggle()
+        #endif
+    }
+
+    private func trailingControls(showsSpeakerName: Bool, inlineVolume: Bool) -> some View {
+        HStack(spacing: DS.Spacing.md) {
+            serviceOptionButtons
+
+            if let target = state.speakerNameIfChoice {
+                speakerTarget(target, showsName: showsSpeakerName)
+            }
+
+            VolumeControlView(state: state, viewModel: playerVM, style: inlineVolume ? .bottomBar : .bottomBarButton)
+
+            HoverButton(action: showQueue) { hovered in
+                Image(systemName: DS.Icons.queue)
+                    .font(DS.IconFont.lg)
+                    .foregroundStyle(
+                        state.isQueuePanelOpen ? DS.Colors.accent :
+                        hovered ? .white : DS.Colors.textSecondary
+                    )
+            }
+            .help("Queue")
+            .accessibilityIdentifier(AccessibilityID.QueuePanel.toggleButton)
+            .accessibilityLabel("Toggle queue panel")
+        }
     }
 
     // MARK: - Background
@@ -223,9 +299,6 @@ struct NowPlayingToolbar: View {
                 }
                 .clipped()
                 .contentShape(Rectangle())
-                .onHover { hovering in
-                    if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                }
                 .onTapGesture { state.isNowPlayingCanvasOpen.toggle() }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -237,56 +310,21 @@ struct NowPlayingToolbar: View {
                 }
                 .frame(maxWidth: 550)
 
-                // Right: service options + quality badge + volume (equal flex column, content trailing)
-                HStack(spacing: DS.Spacing.md) {
-                    serviceOptionButtons
-
-                    if state.displayPlayers.count > 1, let target = state.playbackTargetName {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: DS.Icons.speaker)
-                                .font(DS.IconFont.sm)
-                            Text(target)
-                                .typography(.secondary)
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(DS.Colors.textSecondary)
-                        .frame(maxWidth: 240)
-                        .help("Playing on \(target)")
-                        .accessibilityIdentifier(AccessibilityID.Player.speakerName)
-                    }
-
-                    if let quality = state.trackMetadata?.qualityDescription {
-                        Text(quality)
-                            .typography(.badge)
-                            .foregroundStyle(DS.Colors.textSecondary)
-                            .padding(.horizontal, DS.Spacing.md)
-                            .padding(.vertical, DS.Spacing.sm)
-                            .background(
-                                RoundedRectangle(cornerRadius: DS.Radius.small)
-                                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
-                            )
-                            .accessibilityIdentifier(AccessibilityID.Player.qualityBadge)
-                    }
-                    VolumeControlView(state: state, viewModel: playerVM, style: .bottomBar)
-
-                    HoverButton(action: { state.isQueuePanelOpen.toggle() }) { hovered in
-                        Image(systemName: DS.Icons.queue)
-                            .font(DS.IconFont.lg)
-                            .foregroundStyle(
-                                state.isQueuePanelOpen ? DS.Colors.accent :
-                                hovered ? .white : DS.Colors.textSecondary
-                            )
-                    }
-                    .help("Queue")
-                    .accessibilityIdentifier(AccessibilityID.QueuePanel.toggleButton)
-                    .accessibilityLabel("Toggle queue panel")
+                // Right: what does not fit goes in this order: the speaker's name, the inline slider.
+                ViewThatFits(in: .horizontal) {
+                    trailingControls(showsSpeakerName: true, inlineVolume: true)
+                    trailingControls(showsSpeakerName: false, inlineVolume: true)
+                    trailingControls(showsSpeakerName: false, inlineVolume: false)
                 }
+                // Animated, a switch back to the first variant stays drawn where the previous one stood.
+                .transaction(value: state.isNowPlayingCanvasOpen) { $0.animation = nil }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.horizontal, state.isNowPlayingCanvasOpen ? DS.Spacing.xxl : DS.Spacing.xl)
             .padding(.vertical, state.isNowPlayingCanvasOpen ? DS.Spacing.xl : DS.Spacing.md)
         }
-        .background { toolbarBackground }
+        // Down to the screen's edge on iPad, under the home indicator.
+        .background { toolbarBackground.ignoresSafeArea(edges: .bottom) }
         .padding(.horizontal, state.isNowPlayingCanvasOpen ? DS.Spacing.md : 0)
         .padding(.bottom, state.isNowPlayingCanvasOpen ? DS.Spacing.sm : 0)
         .contentShape(Rectangle())
@@ -296,9 +334,7 @@ struct NowPlayingToolbar: View {
 
 // MARK: - Observation Island
 
-/// Isolates progress-related AppState reads so that frequent
-/// playbackPosition/lastProgressUpdate changes only re-render
-/// the progress bar, not the entire toolbar.
+/// Holds the frequent progress reads, so they re-render the bar and leave the toolbar alone.
 private struct ToolbarProgressSection: View {
     let state: AppState
     let playerVM: PlayerViewModel
@@ -314,36 +350,5 @@ private struct ToolbarProgressSection: View {
             showTrack: true,
             inlineTimeLabels: true
         )
-    }
-}
-
-// MARK: - Now Playing Cross Link
-
-private struct NowPlayingCrossLink: View {
-    let text: String
-    let onTap: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Text(text)
-            .typography(.secondary)
-            .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
-            .lineLimit(1)
-            .onHover { hovering in
-                isHovered = hovering
-                if hovering {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
-            .onDisappear {
-                if isHovered {
-                    NSCursor.pop()
-                    isHovered = false
-                }
-            }
-            .onTapGesture(perform: onTap)
-            .accessibilityAddTraits(.isLink)
     }
 }

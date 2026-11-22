@@ -4,9 +4,21 @@ import NeosDomain
 // MARK: - Play State
 
 extension AppState {
+    /// Where the music plays, named only when there is more than one speaker to choose from.
+    var speakerNameIfChoice: String? {
+        displayPlayers.count > 1 ? playbackTargetName : nil
+    }
+
     /// The amp reporting what it is doing.
     func setPlayState(_ state: PlayState) {
         applyPlayState(state, confirmedByDevice: true)
+        if state == .stop { rawStreamReportedStopped() }
+        guard state == .play else { return }
+        rawStreamReportedPlaying()
+        if playback.awaitsRadioStart {
+            playback.awaitsRadioStart = false
+            onRadioStarted?()
+        }
     }
 
     /// The user pressed play or pause; the amp has not answered yet.
@@ -42,5 +54,19 @@ extension AppState {
         if state != .play {
             endTrackLoad()
         }
+        if state != .play || (confirmedByDevice && ampWait == .resume) {
+            endAmpWait()
+        }
     }
+}
+
+/// What the amp owes the user: a play that has not started, or a seek that has not landed.
+enum AmpWait: Equatable {
+    case resume
+    case seek(toMillis: Int)
+}
+
+extension AppState {
+    /// The player's spinner: a track loading, or a play or a seek the amp has not answered yet.
+    var isWaitingForAmp: Bool { isLoadingTrack || showsAmpWait }
 }

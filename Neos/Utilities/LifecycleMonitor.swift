@@ -1,10 +1,25 @@
-import AppKit
+import Foundation
 import Network
 import NeosDomain
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
-/// Sleep suspends the session and wake resumes it; otherwise the heartbeat needs ~45 s to notice.
+/// Sleep (macOS) or the background (iOS) suspends the session; otherwise the heartbeat needs ~45 s to notice.
 @MainActor
 final class LifecycleMonitor {
+    #if os(macOS)
+    nonisolated static let suspendNotification = NSWorkspace.willSleepNotification
+    nonisolated static let resumeNotification = NSWorkspace.didWakeNotification
+    nonisolated static var systemNotificationCenter: NotificationCenter { NSWorkspace.shared.notificationCenter }
+    #else
+    nonisolated static let suspendNotification = UIApplication.didEnterBackgroundNotification
+    nonisolated static let resumeNotification = UIApplication.willEnterForegroundNotification
+    nonisolated static var systemNotificationCenter: NotificationCenter { .default }
+    #endif
+
     private let service: any ConnectionService
     private let state: AppState
     private let notificationCenter: NotificationCenter
@@ -16,7 +31,7 @@ final class LifecycleMonitor {
     init(
         service: any ConnectionService,
         state: AppState,
-        notificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        notificationCenter: NotificationCenter = LifecycleMonitor.systemNotificationCenter,
         monitorsNetworkPath: Bool = true
     ) {
         self.service = service
@@ -27,8 +42,8 @@ final class LifecycleMonitor {
 
     func start() {
         guard observers.isEmpty else { return }
-        observe(NSWorkspace.willSleepNotification) { service in await service.suspend() }
-        observe(NSWorkspace.didWakeNotification) { service in await service.resume() }
+        observe(Self.suspendNotification) { service in await service.suspend() }
+        observe(Self.resumeNotification) { service in await service.resume() }
         if monitorsNetworkPath { startPathMonitoring() }
     }
 

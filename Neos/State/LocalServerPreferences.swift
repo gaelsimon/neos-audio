@@ -12,7 +12,7 @@ final class LocalServerPreferences {
     private(set) var hiddenNames: Set<String>
     private(set) var unsearchableNames: Set<String>
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = AppDefaults.store) {
         self.defaults = defaults
         hiddenNames = Set(defaults.stringArray(forKey: Self.hiddenKey) ?? [])
         unsearchableNames = Set(defaults.stringArray(forKey: Self.unsearchableKey) ?? [])

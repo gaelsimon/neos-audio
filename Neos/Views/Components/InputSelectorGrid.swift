@@ -17,7 +17,7 @@ struct InputSelectorGrid: View {
                     inputCard(item)
                 }
             }
-            .padding(.horizontal, DS.Spacing.xxl)
+            .pageMargins()
             .padding(.top, DS.Spacing.xl)
             .accessibilityIdentifier(AccessibilityID.InputSelector.grid)
         }
@@ -99,11 +99,9 @@ private struct InputCardButton: View {
                 }
 
                 Text(name)
-                    .typography(.secondary)
-                    .foregroundStyle(isActive ? .primary : DS.Colors.textSecondary)
-                    .lineLimit(2)
+                    .typography(.secondary, color: isActive ? .primary : nil)
+                    .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.center)
-                    .frame(height: 32, alignment: .top)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, DS.Spacing.lg)

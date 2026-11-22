@@ -21,7 +21,8 @@ final class LiveAccountTests: XCTestCase {
         }
 
         _app = XCUIApplication()
-        _app.launchArguments = ["--uitesting", "-ApplePersistenceIgnoreState", "YES"]
+        // The pair goes first: after a lone flag, AppKit opens "YES" as a file and shows no window.
+        _app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--uitesting"]
         _app.launch()
 
         let home = _app.descendants(matching: .any)[AccessibilityID.Home.view]

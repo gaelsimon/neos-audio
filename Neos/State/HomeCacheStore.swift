@@ -43,7 +43,7 @@ enum HomeCacheStore {
         let entry = CachedCategory(name: name, cid: cid, items: items.map { CachedBrowseItem(from: $0) })
         do {
             let data = try JSONEncoder().encode(entry)
-            UserDefaults.standard.set(data, forKey: key)
+            AppDefaults.store.set(data, forKey: key)
         } catch {
             cacheLogger.warning("Failed to encode service category \(sid)/\(categoryIndex): \(error.localizedDescription)")
         }
@@ -51,7 +51,7 @@ enum HomeCacheStore {
 
     static func loadServiceCategory(sid: Int, categoryIndex: Int) -> (name: String, cid: String?, items: [BrowseItem])? {
         let key = "\(serviceCategoryPrefix)\(sid)_\(categoryIndex)"
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        guard let data = AppDefaults.store.data(forKey: key) else { return nil }
         do {
             let entry = try JSONDecoder().decode(CachedCategory.self, from: data)
             return (entry.name, entry.cid, entry.items.map { $0.toBrowseItem() })
@@ -69,17 +69,17 @@ enum HomeCacheStore {
 
     static func clearServiceCategory(sid: Int, categoryIndex: Int) {
         let key = "\(serviceCategoryPrefix)\(sid)_\(categoryIndex)"
-        UserDefaults.standard.removeObject(forKey: key)
+        AppDefaults.store.removeObject(forKey: key)
     }
 
     // MARK: - Timestamp
 
     static func markUpdated() {
-        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: timestampKey)
+        AppDefaults.store.set(Date().timeIntervalSince1970, forKey: timestampKey)
     }
 
     static func isStale() -> Bool {
-        let timestamp = UserDefaults.standard.double(forKey: timestampKey)
+        let timestamp = AppDefaults.store.double(forKey: timestampKey)
         guard timestamp > 0 else { return true }
         return Date().timeIntervalSince1970 - timestamp > maxAge
     }
@@ -87,13 +87,13 @@ enum HomeCacheStore {
     // MARK: - Clear All
 
     static func clearAll() {
-        UserDefaults.standard.removeObject(forKey: recentsKey)
-        UserDefaults.standard.removeObject(forKey: favoritesKey)
-        UserDefaults.standard.removeObject(forKey: timestampKey)
+        AppDefaults.store.removeObject(forKey: recentsKey)
+        AppDefaults.store.removeObject(forKey: favoritesKey)
+        AppDefaults.store.removeObject(forKey: timestampKey)
         // Clear every persisted service-category entry regardless of SID
-        for key in UserDefaults.standard.dictionaryRepresentation().keys
+        for key in AppDefaults.store.dictionaryRepresentation().keys
             where key.hasPrefix(serviceCategoryPrefix) {
-            UserDefaults.standard.removeObject(forKey: key)
+            AppDefaults.store.removeObject(forKey: key)
         }
     }
 
@@ -103,14 +103,14 @@ enum HomeCacheStore {
         let cached = items.map { CachedBrowseItem(from: $0) }
         do {
             let data = try JSONEncoder().encode(cached)
-            UserDefaults.standard.set(data, forKey: key)
+            AppDefaults.store.set(data, forKey: key)
         } catch {
             cacheLogger.warning("Failed to encode \(key): \(error.localizedDescription)")
         }
     }
 
     private static func load(forKey key: String) -> [BrowseItem] {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
+        guard let data = AppDefaults.store.data(forKey: key) else { return [] }
         do {
             let cached = try JSONDecoder().decode([CachedBrowseItem].self, from: data)
             return cached.map { $0.toBrowseItem() }

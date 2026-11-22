@@ -4,11 +4,7 @@ import Foundation
 /// Populated whenever browse results contain items with both `mid` and `image_url`.
 /// Used as fallback when a source (like HEOS Favorites) omits image URLs.
 enum ImageURLCache {
-    private static let fileURL: URL = {
-        let dir = URL.applicationSupportDirectory.appendingPathComponent("Neos", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("image-url-cache.json")
-    }()
+    private static let fileURL = AppDefaults.supportDirectory.appendingPathComponent("image-url-cache.json")
 
     private static let maxEntries = 5000
 

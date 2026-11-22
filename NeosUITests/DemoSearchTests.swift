@@ -1,19 +1,15 @@
 import XCTest
 
-/// Tests for search functionality in demo mode.
-/// Verifies search field interaction, results display, and clear behavior.
+/// Search in demo mode. No test leaves Home, so none goes back to it first.
 final class DemoSearchTests: DemoTestCase {
 
     private var topBar: TopBarScreen { TopBarScreen(app: app) }
     private var search: SearchScreen { SearchScreen(app: app) }
 
-    override func setUp() {
-        super.setUp()
-        resetToHome()
-    }
-
+    /// Empties the field first: the previous test's query is still in it, and typing would add to it.
     private func typeSearch(_ query: String) {
         waitForElement(topBar.searchField)
+        if search.clearButton.exists { search.clearButton.click() }
         topBar.searchField.click()
         topBar.searchField.typeText(query)
     }
@@ -22,7 +18,6 @@ final class DemoSearchTests: DemoTestCase {
 
     func testSearchFieldAcceptsInput() {
         typeSearch("The Velvet Hours")
-        // The field should contain the typed text
         let value = topBar.searchField.value as? String ?? ""
         XCTAssertTrue(value.contains("The Velvet Hours"), "Search field should contain typed text, got: \(value)")
     }
@@ -44,10 +39,54 @@ final class DemoSearchTests: DemoTestCase {
         waitForElement(search.clearButton)
         search.clearButton.click()
 
-        // After clearing, results should disappear and home should show
         let home = HomeScreen(app: app)
         waitForElement(home.view)
         XCTAssertTrue(home.view.exists, "Home should be visible after clearing search")
+    }
+
+    // MARK: - What a search found
+
+    func testASearchNobodyAnswersSaysSo() {
+        typeSearch("zzz")
+        waitForElement(search.resultsView)
+
+        let nothing = app.staticTexts
+            .matching(NSPredicate(format: "value BEGINSWITH 'No Results' OR label BEGINSWITH 'No Results'")).firstMatch
+        XCTAssertTrue(nothing.waitForExistence(timeout: 5), "The page should say nothing was found")
+    }
+
+    func testAServiceThatFoundNothingIsLeftOut() {
+        let deezer = app.descendants(matching: .any).matching(identifier: AccessibilityID.Search.serviceHeader(2)).firstMatch
+        let tuneIn = app.descendants(matching: .any).matching(identifier: AccessibilityID.Search.serviceHeader(3)).firstMatch
+
+        typeSearch("radio")
+
+        XCTAssertTrue(tuneIn.waitForExistence(timeout: 5), "TuneIn answered")
+        XCTAssertFalse(deezer.exists, "Deezer found nothing and should not show an empty section")
+    }
+
+    // MARK: - Recent searches
+
+    /// The list shows while the field is focused and empty; each row is labelled "Search for <query>".
+    private func recentSearch(_ query: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Search for \(query)")).firstMatch
+    }
+
+    private func showRecentSearches() {
+        search.clearButton.click()
+        topBar.searchField.click()
+    }
+
+    func testOnlyASubmittedSearchIsRemembered() {
+        typeSearch("pap")
+        waitForElement(search.resultsView)
+        showRecentSearches()
+        XCTAssertFalse(recentSearch("pap").waitForExistence(timeout: 1), "Typing alone should not be remembered")
+
+        topBar.searchField.typeText("paper\n")
+        waitForElement(search.resultsView)
+        showRecentSearches()
+        XCTAssertTrue(recentSearch("paper").waitForExistence(timeout: 5), "A submitted search should be remembered")
     }
 
     // MARK: - Search to Navigation Flow
@@ -56,7 +95,6 @@ final class DemoSearchTests: DemoTestCase {
         typeSearch("The Velvet Hours")
         waitForElement(search.resultsView)
 
-        // Press back to dismiss search
         let backButton = TopBarScreen(app: app).backButton
         waitForElement(backButton)
         backButton.click()

@@ -30,21 +30,20 @@ struct HomeCard: View {
                     }
                     .overlay {
                         Image(systemName: DS.Icons.musicNote)
-                            .typography(.pageTitle)
-                            .foregroundStyle(DS.Colors.textTertiary)
+                            .typography(.pageTitle, color: DS.Colors.textTertiary)
                     }
                 }
                 .frame(width: DS.ImageSize.homeCard, height: DS.ImageSize.homeCard)
                 .clipShape(isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: DS.Radius.artwork)))
 
                 Text(title)
-                    .typography(.secondaryEmphasis)
+                    .typography(.cardTitle)
                     .lineLimit(1)
                     .frame(width: DS.ImageSize.homeCard, alignment: textAlignment)
 
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .typography(.secondary)
+                        .typography(.cardSubtitle)
                         .lineLimit(1)
                         .frame(width: DS.ImageSize.homeCard, alignment: textAlignment)
                 }

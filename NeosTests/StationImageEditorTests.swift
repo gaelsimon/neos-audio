@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import Testing
 @testable import Neos
@@ -9,15 +8,18 @@ struct StationImageEditorTests {
     private static let mid = "test-mid-station-image-editor"
 
     private var artworkDirectory: URL {
-        URL.applicationSupportDirectory.appendingPathComponent("Neos/CustomArtwork", isDirectory: true)
+        AppDefaults.supportDirectory.appendingPathComponent("CustomArtwork", isDirectory: true)
     }
 
-    private func makeImage(_ color: NSColor, size: CGFloat = 8) -> NSImage {
-        let image = NSImage(size: CGSize(width: size, height: size))
-        image.lockFocus()
-        color.drawSwatch(in: NSRect(x: 0, y: 0, width: size, height: size))
-        image.unlockFocus()
-        return image
+    private enum Swatch {
+        case pink, blue
+    }
+
+    private func makeImage(_ swatch: Swatch) -> PlatformImage {
+        switch swatch {
+        case .pink: TestImages.solid(red: 1, green: 0.2, blue: 0.5)
+        case .blue: TestImages.solid(red: 0, green: 0.4, blue: 1)
+        }
     }
 
     private func cleanUp(_ url: URL?) {
@@ -26,7 +28,7 @@ struct StationImageEditorTests {
     }
 
     @Test func copyWritesAPNGIntoTheArtworkDirectory() throws {
-        let written = StationImageEditor.copyToAppSupport(image: makeImage(.systemPink), forMID: Self.mid)
+        let written = StationImageEditor.copyToAppSupport(image: makeImage(.pink), forMID: Self.mid)
         defer { cleanUp(written) }
 
         let url = try #require(written)
@@ -35,13 +37,13 @@ struct StationImageEditorTests {
         // Named `<media id hash>-<image bytes hash>`, so the same station can hold a new image.
         #expect(url.deletingPathExtension().lastPathComponent.split(separator: "-").map(\.count) == [64, 16])
         #expect(FileManager.default.fileExists(atPath: url.path))
-        #expect(NSImage(contentsOf: url) != nil)
+        #expect(PlatformImage.load(contentsOf: url) != nil)
     }
 
     /// A replacement has to land on a new URL, or the image cache keeps serving the old bitmap.
     @Test func replacingTheImageYieldsADifferentFile() throws {
-        let first = StationImageEditor.copyToAppSupport(image: makeImage(.systemPink), forMID: Self.mid)
-        let second = StationImageEditor.copyToAppSupport(image: makeImage(.systemBlue), forMID: Self.mid)
+        let first = StationImageEditor.copyToAppSupport(image: makeImage(.pink), forMID: Self.mid)
+        let second = StationImageEditor.copyToAppSupport(image: makeImage(.blue), forMID: Self.mid)
         defer {
             cleanUp(first)
             cleanUp(second)
@@ -53,8 +55,8 @@ struct StationImageEditorTests {
     }
 
     @Test func differentMediaIDsGetDifferentFiles() throws {
-        let one = StationImageEditor.copyToAppSupport(image: makeImage(.systemPink), forMID: Self.mid + "-a")
-        let two = StationImageEditor.copyToAppSupport(image: makeImage(.systemPink), forMID: Self.mid + "-b")
+        let one = StationImageEditor.copyToAppSupport(image: makeImage(.pink), forMID: Self.mid + "-a")
+        let two = StationImageEditor.copyToAppSupport(image: makeImage(.pink), forMID: Self.mid + "-b")
         defer {
             cleanUp(one)
             cleanUp(two)

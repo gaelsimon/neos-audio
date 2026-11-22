@@ -24,7 +24,7 @@ enum PlaybackRouter {
                 state.pendingStreamContext = .init(
                     pid: pid, stationName: item.name,
                     browseMID: mid, imageURL: item.imageURL, streamURL: mid,
-                    previousMID: state.nowPlaying.mid
+                    previousMID: state.nowPlaying.mid, previousQID: state.nowPlaying.qid
                 )
                 try await service.playURL(pid: pid, url: mid)
             } else if item.type == .station, let mid = item.mid, isTuneInCustomURL(mid) {
@@ -42,6 +42,7 @@ enum PlaybackRouter {
             state.failTrackLoad(generation: loadGeneration)
             throw error
         }
+        if item.type == .station { state.playback.awaitsRadioStart = true }
         state.showToast("Now playing", icon: DS.Icons.playing, style: .success)
     }
 
@@ -66,7 +67,7 @@ enum PlaybackRouter {
             state.pendingStreamContext = .init(
                 pid: pid, stationName: nil,
                 browseMID: mid, imageURL: imageURL, streamURL: name,
-                previousMID: state.nowPlaying.mid
+                previousMID: state.nowPlaying.mid, previousQID: state.nowPlaying.qid
             )
             try await service.playURL(pid: pid, url: name)
             return
@@ -77,6 +78,12 @@ enum PlaybackRouter {
         guard let favCID = root.items.first(where: { $0.name == "Favorites" })?.cid else {
             throw PlaybackError.cannotResolveStreamURL(mid)
         }
+        // The speaker plays what TuneIn resolves as a raw stream, so the name has to come from here.
+        state.pendingStreamContext = .init(
+            pid: pid, stationName: name,
+            browseMID: mid, imageURL: imageURL, streamURL: "",
+            previousMID: state.nowPlaying.mid, previousQID: state.nowPlaying.qid
+        )
         try await service.playStation(pid: pid, sid: HEOSConstants.tuneInSID, cid: favCID, mid: mid, name: name)
     }
 }

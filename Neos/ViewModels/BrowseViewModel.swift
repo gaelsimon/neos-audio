@@ -4,12 +4,6 @@ import os
 
 let browseLogger = Logger(subsystem: "com.galela.neos", category: "browse")
 
-/// Context for "See All" search results browsing (search API instead of container API).
-struct SearchResultsContext: Equatable {
-    let query: String
-    let scid: Int
-}
-
 /// A snapshot of everything needed to restore a navigation state.
 private struct NavigationEntry: Equatable {
     let destination: NavigationDestination
@@ -49,6 +43,8 @@ final class BrowseViewModel {
     var isLoading: Bool = false
     var isLoadingMore: Bool = false
     var errorMessage: String?
+    /// Whether the speaker still held an account when it refused the page.
+    var refusedWhileSignedIn = false
     var playingItemID: String?
     var addingToQueueItemID: String?
     /// Incremented on every sidebar navigation tap, even if destination unchanged.
@@ -131,11 +127,33 @@ final class BrowseViewModel {
     /// Called after back or forward lands on an entry, so a search pinned to it can come back.
     var onDidMoveInHistory: (() -> Void)?
 
-    private func pushEntry(destination: NavigationDestination, browseStack: [BrowseTarget], searchContext: SearchResultsContext? = nil) {
+    /// Set where each place gets a page of its own: a move then hands the place over instead of loading it here.
+    @ObservationIgnored var openPage: ((BrowseLocation) -> Void)?
+
+    /// False when the place went to another page, which then loads it.
+    private func pushEntry(destination: NavigationDestination, browseStack: [BrowseTarget], searchContext: SearchResultsContext? = nil) -> Bool {
+        if let openPage {
+            openPage(BrowseLocation(destination: destination, browseStack: browseStack, searchContext: searchContext))
+            return false
+        }
         onWillPushEntry?()
         snapshotCurrentEntry()
         history.push(NavigationEntry(destination: destination, browseStack: browseStack, searchContext: searchContext))
         resetScrollTracking()
+        return true
+    }
+
+    /// Opens this page on `location`, loading it the way back and forward do.
+    func start(at location: BrowseLocation) {
+        history = NavigationHistoryStack(root: NavigationEntry(
+            destination: location.destination,
+            browseStack: location.browseStack,
+            searchContext: location.searchContext
+        ))
+        if let sid = location.browseStack.first?.sid {
+            loadServiceCapabilitiesIfNeeded(sid: sid)
+        }
+        applyCurrentEntry()
     }
 
     /// Save current items and pagination into the history entry before navigating away.
@@ -209,7 +227,7 @@ final class BrowseViewModel {
                 sid: sid, cid: cid, name: albumName, imageURL: imageURL,
                 mediaType: .album, serviceName: source.name
             )]
-            pushEntry(destination: currentDestination, browseStack: newStack)
+            guard pushEntry(destination: currentDestination, browseStack: newStack) else { return }
             fetchCurrentBreadcrumb()
             return
         }
@@ -226,7 +244,7 @@ final class BrowseViewModel {
                 sid: sid, cid: cid, name: artistName, imageURL: imageURL,
                 mediaType: .artist, serviceName: source.name
             )]
-            pushEntry(destination: currentDestination, browseStack: newStack)
+            guard pushEntry(destination: currentDestination, browseStack: newStack) else { return }
             fetchCurrentBreadcrumb()
             return
         }
@@ -349,30 +367,15 @@ final class BrowseViewModel {
     }
 
     func navigateToHome() {
-        pushEntry(destination: .home, browseStack: [])
+        guard pushEntry(destination: .home, browseStack: []) else { return }
         navigationTapCount += 1
         cancelBrowsing()
         items = []
     }
 
-    static func isAuthError(_ message: String) -> Bool {
-        let lower = message.lowercased()
-        return lower.contains("not logged in") || lower.contains("not signed in")
-    }
-
-    // The speaker drops its account without an event at times; the first refused browse is how Neos learns of it.
-    func reportBrowseError(_ error: Error) {
-        errorMessage = error.localizedDescription
-        if state.signedInUser != nil, Self.isAuthError(error.localizedDescription) {
-            state.setSignedInUser(nil)
-        }
-    }
-
     func selectSource(_ source: MusicSource) {
-        let rootTarget = BrowseTarget(sid: source.sid, name: source.name, imageURL: source.imageURL, serviceName: source.name)
-        let newDest = NavigationDestination.browse(rootTarget)
-        let newStack = [rootTarget]
-        pushEntry(destination: newDest, browseStack: newStack)
+        let root = BrowseLocation.root(of: source)
+        guard pushEntry(destination: root.destination, browseStack: root.browseStack) else { return }
         navigationTapCount += 1
         fetchBrowseRoot(source)
     }
@@ -384,7 +387,7 @@ final class BrowseViewModel {
             rootTarget,
             BrowseTarget(sid: source.sid, cid: cid, name: containerName, imageURL: imageURL, mediaType: mediaType, serviceName: source.name)
         ]
-        pushEntry(destination: newDest, browseStack: newStack)
+        guard pushEntry(destination: newDest, browseStack: newStack) else { return }
         loadServiceCapabilitiesIfNeeded(sid: source.sid)
         fetchCurrentBreadcrumb()
     }
@@ -397,25 +400,25 @@ final class BrowseViewModel {
             rootTarget,
             BrowseTarget(sid: source.sid, name: "\(categoryName) Search for \"\(query)\"", serviceName: source.name)
         ]
-        pushEntry(destination: newDest, browseStack: newStack, searchContext: ctx)
+        guard pushEntry(destination: newDest, browseStack: newStack, searchContext: ctx) else { return }
         fetchCurrentBreadcrumb()
     }
 
     func selectQueue() {
-        pushEntry(destination: .queue, browseStack: [])
+        guard pushEntry(destination: .queue, browseStack: []) else { return }
         navigationTapCount += 1
         cancelBrowsing()
         items = []
     }
 
     func navigateToSettings() {
-        pushEntry(destination: .settings, browseStack: [])
+        guard pushEntry(destination: .settings, browseStack: []) else { return }
         cancelBrowsing()
         items = []
     }
 
     func navigateToAmpSettings() {
-        pushEntry(destination: .ampSettings, browseStack: [])
+        guard pushEntry(destination: .ampSettings, browseStack: []) else { return }
         cancelBrowsing()
         items = []
     }
@@ -432,7 +435,7 @@ final class BrowseViewModel {
             mediaType: item.type,
             serviceName: serviceName
         )]
-        pushEntry(destination: currentDestination, browseStack: newStack)
+        guard pushEntry(destination: currentDestination, browseStack: newStack) else { return }
         fetchCurrentBreadcrumb()
     }
 
@@ -449,14 +452,14 @@ final class BrowseViewModel {
             mediaType: item.type,
             serviceName: serviceName
         )]
-        pushEntry(destination: currentDestination, browseStack: newStack)
+        guard pushEntry(destination: currentDestination, browseStack: newStack) else { return }
         fetchCurrentBreadcrumb()
     }
 
     func navigateToBreadcrumb(at index: Int) {
         guard index < browseStack.count - 1 else { return }
         let truncatedStack = Array(browseStack.prefix(index + 1))
-        pushEntry(destination: currentDestination, browseStack: truncatedStack)
+        guard pushEntry(destination: currentDestination, browseStack: truncatedStack) else { return }
         fetchCurrentBreadcrumb()
     }
 
@@ -479,7 +482,7 @@ final class BrowseViewModel {
         case .home: return "Home"
         case .queue: return "Queue"
         case .settings: return "Settings"
-        case .ampSettings: return "Amp Settings"
+        case .ampSettings: return "Speakers"
         case .browse:
             return browseStack.last?.name ?? "Browse"
         }

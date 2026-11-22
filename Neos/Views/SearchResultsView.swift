@@ -6,6 +6,9 @@ struct SearchResultsView: View {
     let searchVM: SearchViewModel
     let browseVM: BrowseViewModel
     let service: any AudioService
+    @Environment(\.groupInset) private var groupInset
+    @Environment(\.groupListInset) private var groupListInset
+    @Environment(\.groupSectionStyle) private var groupSectionStyle
 
     var body: some View {
         ScrollView {
@@ -13,61 +16,113 @@ struct SearchResultsView: View {
                 .padding(.top, DS.Spacing.xl)
                 .padding(.bottom, DS.Spacing.xxl)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            filterChipsSection
+        .stickyHeader {
+            filterMenus
                 .padding(.top, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.md)
-                .stickyHeaderGlass()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DS.Colors.background)
         .accessibilityIdentifier(AccessibilityID.Search.resultsView)
     }
 
-    // MARK: - Filter Chips
+    // MARK: - Filters
 
-    @ViewBuilder
-    private var filterChipsSection: some View {
-        FadingHorizontalScroll {
-            HStack(spacing: DS.Spacing.sm) {
-                // Service chips
-                FilterChip(
-                    label: "All Services",
-                    isSelected: searchVM.selectedServiceFilter == nil,
-                    action: { searchVM.selectServiceFilter(nil) }
-                )
-                ForEach(searchVM.allSearchableServices) { source in
-                    FilterChip(
-                        label: source.name,
-                        isSelected: searchVM.selectedServiceFilter == source.sid,
-                        icon: ServiceBranding.iconAssetName(for: source.name).map { Image($0) },
-                        action: { searchVM.selectServiceFilter(source.sid) }
-                    )
-                }
-
-                // Divider between service and category chips
+    /// Services ticked together, one kind at a time; the kinds are what the ticked services search for.
+    private var filterMenus: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            filterMenu(serviceTitle, icon: serviceIcon, isActive: !searchVM.activeServiceFilters.isEmpty) {
+                Toggle("All Services", isOn: Binding(
+                    get: { searchVM.activeServiceFilters.isEmpty },
+                    set: { _ in searchVM.selectServiceFilter(nil) }
+                ))
                 Divider()
-                    .frame(height: 28)
-                    .padding(.horizontal, DS.Spacing.xs)
-
-                // Category chips
-                FilterChip(
-                    label: "All",
-                    isSelected: searchVM.selectedCategoryFilter == nil,
-                    emphasis: .secondary,
-                    action: { searchVM.selectCategoryFilter(nil) }
-                )
-                ForEach(searchVM.allCriteriaNames, id: \.scid) { criterion in
-                    FilterChip(
-                        label: criterion.name,
-                        isSelected: searchVM.selectedCategoryFilter == criterion.scid,
-                        emphasis: .secondary,
-                        action: { searchVM.selectCategoryFilter(criterion.scid) }
-                    )
+                ForEach(searchVM.allSearchableServices) { source in
+                    Toggle(source.name, isOn: Binding(
+                        get: { searchVM.activeServiceFilters.contains(source.sid) },
+                        set: { _ in searchVM.selectServiceFilter(source.sid) }
+                    ))
+                    #if os(iOS)
+                    // Open while several services are ticked; a Mac menu always closes.
+                    .menuActionDismissBehavior(.disabled)
+                    #endif
                 }
             }
-            .padding(.horizontal, DS.Spacing.xxl)
+
+            filterMenu(categoryTitle, isActive: searchVM.selectedCategoryFilter != nil) {
+                Picker("Kind", selection: Binding(
+                    get: { searchVM.selectedCategoryFilter },
+                    set: { searchVM.chooseCategoryFilter($0) }
+                )) {
+                    Text("All Kinds").tag(Int?.none)
+                    ForEach(searchVM.categoryOptions, id: \.scid) { criterion in
+                        Text(SearchCategoryName.plural(criterion.name)).tag(Int?.some(criterion.scid))
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
         }
+        .pageMargins()
+    }
+
+    /// The chosen services in the order of the menu.
+    private var chosenServices: [MusicSource] {
+        let chosen = searchVM.activeServiceFilters
+        return searchVM.allSearchableServices.filter { chosen.contains($0.sid) }
+    }
+
+    private var serviceTitle: String {
+        let chosen = chosenServices
+        switch chosen.count {
+        case 0: return "All Services"
+        case 1, 2: return chosen.map(\.name).joined(separator: ", ")
+        default: return "\(chosen.count) Services"
+        }
+    }
+
+    private var serviceIcon: Image? {
+        guard chosenServices.count == 1, let source = chosenServices.first else { return nil }
+        return ServiceBranding.iconAssetName(for: source.name).map { Image($0) }
+    }
+
+    private var categoryTitle: String {
+        guard let scid = searchVM.selectedCategoryFilter,
+              let criterion = searchVM.categoryOptions.first(where: { $0.scid == scid }) else { return "All Kinds" }
+        return SearchCategoryName.plural(criterion.name)
+    }
+
+    private func filterMenu(
+        _ title: String, icon: Image? = nil, isActive: Bool, @ViewBuilder content: () -> some View
+    ) -> some View {
+        let menu = Menu {
+            content()
+        } label: {
+            #if os(iOS)
+            HStack(spacing: DS.Spacing.xs) {
+                if let icon {
+                    icon
+                        .resizable()
+                        .renderingMode(.original)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 16, height: 16)
+                }
+                Text(title)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+            }
+            #else
+            // A Mac menu draws its label's image at full size.
+            Text(title)
+            #endif
+        }
+        .buttonBorderShape(.capsule)
+        .fixedSize()
+
+        // A Mac menu button takes no tint; its title alone says which filter is in use.
+        return menu
+            .buttonStyle(.bordered)
+            .tint(isActive ? DS.Colors.accent : nil)
     }
 
     // MARK: - Results Content
@@ -75,9 +130,9 @@ struct SearchResultsView: View {
     @ViewBuilder
     private var resultsContent: some View {
         if searchVM.isSearching && searchVM.serviceResults.isEmpty {
-            SearchShimmerView()
-        } else if !searchVM.isSearching && searchVM.serviceResults.isEmpty && !searchVM.query.isEmpty {
-            EmptyStateView(icon: DS.Icons.search, message: "No results found")
+            SearchPlaceholderView()
+        } else if !searchVM.isSearching && searchVM.filteredServiceSIDs.isEmpty && !searchVM.query.isEmpty {
+            ContentUnavailableView.search(text: searchVM.query)
                 .padding(.top, DS.Spacing.xxxl)
         } else {
             ForEach(searchVM.filteredServiceSIDs, id: \.self) { sid in
@@ -100,31 +155,27 @@ struct SearchResultsView: View {
             }
 
             if results.isEmpty && isLoading {
-                // No old results to template from; generic shimmer fallback
-                ShimmerCardRow(cardCount: 3)
+                // No old results to template from, so generic placeholders
+                PlaceholderCardRow(cardCount: 3, inset: groupInset)
                 VStack(spacing: 0) {
                     ForEach(0..<3, id: \.self) { _ in
-                        ShimmerListRow()
+                        PlaceholderRow()
                     }
                 }
+                .padding(.horizontal, groupListInset)
             } else {
                 ForEach(results, id: \.criteria.scid) { entry in
                     categorySection(
-                        criteriaName: entry.criteria.name,
+                        criteriaName: SearchCategoryName.plural(entry.criteria.name),
                         items: entry.items,
                         sid: sid,
                         scid: entry.criteria.scid,
-                        isServiceLoading: isLoading
+                        isPending: searchVM.isPending(ServiceCriteriaKey(sid: sid, scid: entry.criteria.scid))
                     )
                 }
             }
         }
-        .padding(.vertical, DS.Spacing.xl)
-        .background(
-            RoundedRectangle(cornerRadius: DS.Radius.large)
-                .fill(DS.Colors.surfaceContainer)
-        )
-        .padding(.horizontal, DS.Layout.pageMargin)
+        .serviceGroupSurface()
     }
 
     // MARK: - Service Header
@@ -142,7 +193,10 @@ struct SearchResultsView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, DS.Layout.surfaceInset)
+        .padding(.horizontal, groupInset)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier(AccessibilityID.Search.serviceHeader(source.sid))
     }
 
     // MARK: - Category Section
@@ -162,19 +216,19 @@ struct SearchResultsView: View {
         items: [BrowseItem],
         sid: Int,
         scid: Int,
-        isServiceLoading: Bool
+        isPending: Bool
     ) -> some View {
         let cardLayout = isCardLayout(items)
 
         let key = ServiceCriteriaKey(sid: sid, scid: scid)
-        let showSeeAll = !isServiceLoading
+        let showSeeAll = !isPending
             && items.count >= searchVM.previewCount
             && !searchVM.expandedCategories.contains(key)
 
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             HStack {
                 Text(criteriaName)
-                    .typography(.sectionHeader)
+                    .typography(groupSectionStyle)
 
                 Spacer()
 
@@ -184,17 +238,18 @@ struct SearchResultsView: View {
                     }
                 }
             }
-            .padding(.horizontal, DS.Layout.surfaceInset)
+            .padding(.horizontal, groupInset)
 
-            if isServiceLoading {
+            if isPending {
                 if cardLayout {
-                    ShimmerCardRow(cardCount: min(items.count, searchVM.previewCount))
+                    PlaceholderCardRow(cardCount: min(items.count, searchVM.previewCount), inset: groupInset)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(0..<min(items.count, searchVM.previewCount), id: \.self) { _ in
-                            ShimmerListRow()
+                            PlaceholderRow()
                         }
                     }
+                    .padding(.horizontal, groupListInset)
                 }
             } else if cardLayout {
                 categoryCardContent(items: items, circular: isArtistCategory(items), sid: sid)
@@ -230,7 +285,7 @@ struct SearchResultsView: View {
                     )
                 }
             }
-            .padding(.horizontal, DS.Layout.surfaceInset)
+            .padding(.horizontal, groupInset)
         }
     }
 
@@ -247,12 +302,14 @@ struct SearchResultsView: View {
                 )
             }
         }
+        .padding(.horizontal, groupListInset)
     }
 
     // MARK: - Actions
 
     private func seeAll(criteriaName: String, sid: Int, scid: Int) {
         guard let source = searchVM.musicSource(for: sid) else { return }
+        searchVM.commitQueryToHistory()
         browseVM.navigateToSearchResults(
             source: source,
             categoryName: criteriaName,
@@ -262,6 +319,7 @@ struct SearchResultsView: View {
     }
 
     private func handleItemTap(_ item: BrowseItem, sid: Int) {
+        searchVM.commitQueryToHistory()
         if item.browsable {
             browseInto(item, sid: sid)
         } else if item.playable {
@@ -289,7 +347,8 @@ struct SearchResultsView: View {
     }
 
     private func handleAddToQueue(_ item: BrowseItem, sid: Int) {
-        guard item.playable else { return }
+        guard item.canJoinQueue else { return }
+        searchVM.commitQueryToHistory()
         let effectiveSID = item.sid ?? sid
         let cid = item.cid ?? ""
         guard let pid = state.selectedPlayerID else {

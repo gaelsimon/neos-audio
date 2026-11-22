@@ -18,7 +18,7 @@ final class SearchViewModelTests: XCTestCase {
         vm.serviceResults = [ServiceCriteriaKey(sid: 1, scid: 1): []]
         vm.expandedCategories = [ServiceCriteriaKey(sid: 1, scid: 1)]
         vm.selectedCategoryFilter = 1
-        vm.selectedServiceFilter = 1
+        vm.selectedServiceFilters = [1]
 
         vm.clearSearch()
 
@@ -30,7 +30,7 @@ final class SearchViewModelTests: XCTestCase {
         XCTAssertTrue(vm.serviceResults.isEmpty)
         XCTAssertTrue(vm.expandedCategories.isEmpty)
         XCTAssertNil(vm.selectedCategoryFilter)
-        XCTAssertNil(vm.selectedServiceFilter)
+        XCTAssertEqual(vm.selectedServiceFilters, [1], "The chosen services outlive a search")
     }
 
     // MARK: - dismissOverlay
@@ -230,7 +230,7 @@ final class SearchViewModelTests: XCTestCase {
 
         vm.selectServiceFilter(3)
 
-        XCTAssertEqual(vm.selectedServiceFilter, 3)
+        XCTAssertEqual(vm.selectedServiceFilters, [3])
     }
 
     @MainActor
@@ -242,7 +242,7 @@ final class SearchViewModelTests: XCTestCase {
         vm.selectServiceFilter(3)
         vm.selectServiceFilter(3)
 
-        XCTAssertNil(vm.selectedServiceFilter)
+        XCTAssertTrue(vm.selectedServiceFilters.isEmpty)
     }
 
     // MARK: - searchableServices
@@ -299,27 +299,210 @@ final class SearchViewModelTests: XCTestCase {
         let mock = MockAudioService()
         let vm = SearchViewModel(service: mock, state: state)
 
+        state.musicSources = [
+            MusicSource(sid: 5, name: "Tidal", type: "music_service"),
+            MusicSource(sid: 10, name: "Deezer", type: "music_service"),
+        ]
+        state.searchCriteria = [
+            5: [SearchCriteria(scid: 1, name: "Track")],
+            10: [SearchCriteria(scid: 1, name: "Track")],
+        ]
         vm.serviceResults = [
             ServiceCriteriaKey(sid: 5, scid: 1): [BrowseItem(name: "A")],
             ServiceCriteriaKey(sid: 10, scid: 1): [BrowseItem(name: "B")],
         ]
-        vm.selectedServiceFilter = 5
+        vm.selectedServiceFilters = [5]
 
         XCTAssertEqual(vm.filteredServiceSIDs, [5])
     }
 
     @MainActor
-    func testFilteredServiceSIDsEmptyWhenSelectedNotPresent() {
+    func testFilteredServiceSIDsLeaveOutAServiceThatFoundNothing() {
         let state = AppState()
-        let mock = MockAudioService()
-        let vm = SearchViewModel(service: mock, state: state)
+        let vm = SearchViewModel(service: MockAudioService(), state: state)
+        state.musicSources = [
+            MusicSource(sid: 5, name: "Tidal", type: "music_service"),
+            MusicSource(sid: 10, name: "Deezer", type: "music_service"),
+        ]
+        state.searchCriteria = [
+            5: [SearchCriteria(scid: 1, name: "Track")],
+            10: [SearchCriteria(scid: 1, name: "Track")],
+        ]
 
+        vm.serviceResults = [
+            ServiceCriteriaKey(sid: 5, scid: 1): [],
+            ServiceCriteriaKey(sid: 10, scid: 1): [BrowseItem(name: "B")],
+        ]
+
+        XCTAssertEqual(vm.filteredServiceSIDs, [10])
+    }
+
+    @MainActor
+    func testFilteredServiceSIDsAreEmptyWhenEveryServiceFoundNothing() {
+        let state = AppState()
+        let vm = SearchViewModel(service: MockAudioService(), state: state)
+        state.musicSources = [MusicSource(sid: 5, name: "Tidal", type: "music_service")]
+        state.searchCriteria = [5: [SearchCriteria(scid: 1, name: "Track")]]
+
+        vm.serviceResults = [ServiceCriteriaKey(sid: 5, scid: 1): []]
+
+        XCTAssertTrue(vm.filteredServiceSIDs.isEmpty)
+    }
+
+    @MainActor
+    func testFilteredServiceSIDsLeaveOutAServiceWithNothingInTheChosenCategory() {
+        let state = AppState()
+        let vm = SearchViewModel(service: MockAudioService(), state: state)
+        state.musicSources = [
+            MusicSource(sid: 5, name: "Tidal", type: "music_service"),
+            MusicSource(sid: 10, name: "Deezer", type: "music_service"),
+        ]
+        state.searchCriteria = [
+            5: [SearchCriteria(scid: 1, name: "Track")],
+            10: [SearchCriteria(scid: 1, name: "Track"), SearchCriteria(scid: 2, name: "Album")],
+        ]
+        vm.serviceResults = [
+            ServiceCriteriaKey(sid: 5, scid: 1): [BrowseItem(name: "A")],
+            ServiceCriteriaKey(sid: 10, scid: 2): [BrowseItem(name: "B")],
+        ]
+
+        vm.selectedCategoryFilter = 2
+
+        XCTAssertEqual(vm.filteredServiceSIDs, [10])
+    }
+
+    @MainActor
+    func testFilteredServiceSIDsKeepAServiceThatIsStillSearching() {
+        let state = AppState()
+        let vm = SearchViewModel(service: MockAudioService(), state: state)
+        state.musicSources = [MusicSource(sid: 5, name: "Tidal", type: "music_service")]
+        state.searchCriteria = [5: [SearchCriteria(scid: 1, name: "Track")]]
+
+        vm.loadingServiceSIDs = [5]
+
+        XCTAssertEqual(vm.filteredServiceSIDs, [5])
+    }
+
+    @MainActor
+    func testAChosenServiceThatIsGoneShowsEveryService() {
+        let state = AppState()
+        let vm = SearchViewModel(service: MockAudioService(), state: state)
+        state.musicSources = [MusicSource(sid: 5, name: "Tidal", type: "music_service")]
+        state.searchCriteria = [5: [SearchCriteria(scid: 1, name: "Track")]]
         vm.serviceResults = [
             ServiceCriteriaKey(sid: 5, scid: 1): [BrowseItem(name: "A")],
         ]
-        vm.selectedServiceFilter = 99
+        vm.selectedServiceFilters = [99]
 
-        XCTAssertTrue(vm.filteredServiceSIDs.isEmpty)
+        XCTAssertEqual(vm.filteredServiceSIDs, [5])
+    }
+
+    // MARK: - Several services
+
+    @MainActor
+    private func makeSoundCloudAndTidal() -> (SearchViewModel, AppState) {
+        let state = AppState()
+        state.musicSources = [
+            MusicSource(sid: 5, name: "Deezer", type: "music_service"),
+            MusicSource(sid: 9, name: "SoundCloud", type: "music_service"),
+            MusicSource(sid: 10, name: "Tidal", type: "music_service"),
+        ]
+        // As the amp answers get_search_criteria.
+        state.searchCriteria = [
+            5: [SearchCriteria(scid: 1, name: "Artist"), SearchCriteria(scid: 2, name: "Album"), SearchCriteria(scid: 3, name: "Track")],
+            9: [SearchCriteria(scid: 7, name: "Accounts"), SearchCriteria(scid: 3, name: "Track")],
+            10: [
+                SearchCriteria(scid: 1, name: "Artist"), SearchCriteria(scid: 2, name: "Album"),
+                SearchCriteria(scid: 3, name: "Track"), SearchCriteria(scid: 6, name: "Playlist"),
+            ],
+        ]
+        return (SearchViewModel(service: MockAudioService(), state: state), state)
+    }
+
+    @MainActor
+    func testTheKindsAreWhatTheChosenServiceSearches() {
+        let (vm, _) = makeSoundCloudAndTidal()
+
+        vm.selectServiceFilter(9)
+
+        XCTAssertEqual(vm.categoryOptions.map(\.name), ["Track", "Accounts"])
+    }
+
+    @MainActor
+    func testTheKindsOfTwoServicesAreBothServicesKinds() {
+        let (vm, _) = makeSoundCloudAndTidal()
+
+        vm.selectServiceFilter(9)
+        vm.selectServiceFilter(10)
+
+        XCTAssertEqual(vm.categoryOptions.map(\.scid), [1, 2, 3, 6, 7])
+    }
+
+    @MainActor
+    func testAKindNoChosenServiceSearchesGoesBackToAll() {
+        let (vm, _) = makeSoundCloudAndTidal()
+        vm.selectedCategoryFilter = 1
+
+        vm.selectServiceFilter(9)
+
+        XCTAssertNil(vm.selectedCategoryFilter)
+    }
+
+    @MainActor
+    func testTwoChosenServicesShowTogetherInTheSourcesOrder() {
+        let (vm, _) = makeSoundCloudAndTidal()
+        vm.serviceResults = [
+            ServiceCriteriaKey(sid: 5, scid: 3): [BrowseItem(name: "A")],
+            ServiceCriteriaKey(sid: 9, scid: 3): [BrowseItem(name: "B")],
+            ServiceCriteriaKey(sid: 10, scid: 3): [BrowseItem(name: "C")],
+        ]
+
+        vm.selectServiceFilter(10)
+        vm.selectServiceFilter(9)
+
+        XCTAssertEqual(vm.filteredServiceSIDs, [9, 10])
+    }
+
+    @MainActor
+    func testAllServicesUnticksEveryService() {
+        let (vm, _) = makeSoundCloudAndTidal()
+        vm.selectServiceFilter(9)
+        vm.selectServiceFilter(10)
+
+        vm.selectServiceFilter(nil)
+
+        XCTAssertTrue(vm.selectedServiceFilters.isEmpty)
+    }
+
+    @MainActor
+    func testTheChosenServicesAreThereAtTheNextLaunch() async {
+        await withIsolatedStores { defaults in
+            let (vm, state) = makeSoundCloudAndTidal()
+            let first = SearchViewModel(service: MockAudioService(), state: state, filterStore: defaults)
+            first.selectServiceFilter(9)
+            first.selectServiceFilter(10)
+
+            let next = SearchViewModel(service: MockAudioService(), state: state, filterStore: defaults)
+
+            XCTAssertEqual(next.selectedServiceFilters, [9, 10])
+            XCTAssertTrue(vm.selectedServiceFilters.isEmpty, "A model without a store keeps nothing")
+        }
+    }
+
+    @MainActor
+    func testOnlyTheChosenServicesAreSearched() async {
+        let (_, state) = makeSoundCloudAndTidal()
+        let mock = MockAudioService()
+        let vm = SearchViewModel(service: mock, state: state)
+        vm.selectServiceFilter(9)
+        vm.selectServiceFilter(10)
+
+        vm.onQueryChanged("mi")
+        await waitUntil { !vm.isSearching && !mock.calls.filter { $0.hasPrefix("search:") }.isEmpty }
+
+        let searched = Set(mock.calls.filter { $0.hasPrefix("search:") }.map { $0.split(separator: ":")[1] })
+        XCTAssertEqual(searched, ["9", "10"])
+        vm.clearSearch()
     }
 
     // MARK: - allCriteriaNames
@@ -548,12 +731,13 @@ final class SearchViewModelTests: XCTestCase {
     func testFilterOnAServerTakenOutOfSearchFallsBackToAll() async {
         await withIsolatedStores { defaults in
             let (vm, mock, _) = makeLocalMusicSearch(unsearchable: "NASPERES", defaults: defaults)
-            vm.selectedServiceFilter = -2
+            vm.selectedServiceFilters = [-2]
 
             vm.onQueryChanged("paris")
             await waitUntil { mock.calls.contains { $0.hasPrefix("search:-1:") } && !vm.isSearching }
 
-            XCTAssertNil(vm.selectedServiceFilter)
+            XCTAssertTrue(vm.activeServiceFilters.isEmpty)
+            XCTAssertEqual(vm.selectedServiceFilters, [-2], "Kept for when the server is back in search")
         }
     }
 
@@ -571,5 +755,158 @@ final class SearchViewModelTests: XCTestCase {
 
             XCTAssertEqual(mock.calls.filter { $0.hasPrefix("search:-2:") }, [])
         }
+    }
+
+    // MARK: - Searching every category at once
+
+    @MainActor
+    private func makeTidalSearch(_ mock: MockAudioService) -> SearchViewModel {
+        let state = AppState()
+        state.musicSources = [MusicSource(sid: 10, name: "Tidal", type: "music_service")]
+        state.searchCriteria = [10: [SearchCriteria(scid: 1, name: "Artist"), SearchCriteria(scid: 3, name: "Track")]]
+        return SearchViewModel(service: mock, state: state)
+    }
+
+    @MainActor
+    func testAQuickCategoryShowsWhileASlowerOneIsStillSearching() async {
+        await withIsolatedStores { _ in
+            let mock = MockAudioService()
+            mock.searchDelays = [1: .seconds(5)]
+            let vm = makeTidalSearch(mock)
+
+            vm.onQueryChanged("karma")
+            await waitUntil { vm.serviceResults[ServiceCriteriaKey(sid: 10, scid: 3)] != nil }
+
+            XCTAssertTrue(vm.isPending(ServiceCriteriaKey(sid: 10, scid: 1)))
+            XCTAssertFalse(vm.isPending(ServiceCriteriaKey(sid: 10, scid: 3)))
+            XCTAssertTrue(vm.loadingServiceSIDs.contains(10))
+            vm.clearSearch()
+        }
+    }
+
+    @MainActor
+    func testAServiceStopsLoadingOnceEveryCategoryAnswered() async {
+        await withIsolatedStores { _ in
+            let mock = MockAudioService()
+            let vm = makeTidalSearch(mock)
+
+            vm.onQueryChanged("karma")
+            await waitUntil { !vm.isSearching && mock.calls.count == 2 }
+
+            XCTAssertTrue(vm.loadingServiceSIDs.isEmpty)
+            XCTAssertNotNil(vm.serviceResults[ServiceCriteriaKey(sid: 10, scid: 1)])
+            XCTAssertNotNil(vm.serviceResults[ServiceCriteriaKey(sid: 10, scid: 3)])
+        }
+    }
+
+    @MainActor
+    func testTypingDuringASearchKeepsTheResultsOnScreen() async {
+        await withIsolatedStores { _ in
+            let mock = MockAudioService()
+            let vm = makeTidalSearch(mock)
+            vm.onQueryChanged("radio")
+            await waitUntil { !vm.isSearching && mock.calls.count == 2 }
+
+            mock.searchDelays = [1: .seconds(5), 3: .seconds(5)]
+            vm.onQueryChanged("radioh")
+            await waitUntil { mock.calls.count == 4 }
+            vm.onQueryChanged("radiohe")
+            await waitUntil { mock.calls.count == 6 }
+
+            XCTAssertEqual(vm.serviceResults.count, 2)
+            vm.clearSearch()
+        }
+    }
+
+    @MainActor
+    func testRemovingAFilterMidSearchSearchesWhatStillShowsTheLastQuery() async {
+        await withIsolatedStores { _ in
+            let mock = MockAudioService()
+            let state = AppState()
+            state.musicSources = [
+                MusicSource(sid: 10, name: "Tidal", type: "music_service"),
+                MusicSource(sid: 13, name: "Qobuz", type: "music_service"),
+            ]
+            state.searchCriteria = [10: [SearchCriteria(scid: 1, name: "Artist")], 13: []]
+            let vm = SearchViewModel(service: mock, state: state)
+            vm.onQueryChanged("beatles")
+            await waitUntil { !vm.isSearching && mock.calls.count == 1 }
+
+            state.searchCriteria[13] = [SearchCriteria(scid: 2, name: "Artist")]
+            mock.searchDelays = [1: .seconds(5), 2: .seconds(5)]
+            vm.onQueryChanged("stones")
+            await waitUntil { mock.calls.count == 3 }
+            vm.selectServiceFilter(13)
+            vm.selectServiceFilter(13)
+            let tidalSearches = { mock.calls.filter { $0 == "search:10:stones:1" }.count }
+            await waitUntil(timeout: 1) { tidalSearches() == 2 }
+
+            XCTAssertEqual(tidalSearches(), 2)
+            vm.clearSearch()
+        }
+    }
+
+    @MainActor
+    func testLocalServersAreAskedFirst() {
+        let artist = [SearchCriteria(scid: 1, name: "Artist")]
+        let state = AppState()
+        state.musicSources = [MusicSource(sid: 10, name: "Tidal", type: "music_service")]
+        state.searchCriteria = [10: artist, -1: artist]
+        let vm = SearchViewModel(service: MockAudioService(), state: state)
+        vm.registerSubSource(BrowseItem(name: "Kantele NAS", type: .heosServer, sid: -1), sid: -1)
+
+        let order = vm.searchOrder([10: artist, -1: artist])
+
+        XCTAssertEqual(order.map(\.sid), [-1, 10])
+    }
+
+    // MARK: - Recent searches
+
+    @MainActor
+    func testTypingDoesNotFillRecentSearches() async {
+        await withIsolatedStores { _ in
+            SearchHistoryStore.clearAll()
+            let mock = MockAudioService()
+            let vm = makeTidalSearch(mock)
+
+            vm.onQueryChanged("radio")
+            await waitUntil { !vm.isSearching && mock.calls.count == 2 }
+
+            XCTAssertEqual(SearchHistoryStore.recentQueries(), [])
+        }
+    }
+
+    @MainActor
+    func testASubmittedQueryIsKept() {
+        let vm = SearchViewModel(service: MockAudioService(), state: AppState())
+        let saved = SearchHistoryStore.recentQueries()
+        defer {
+            SearchHistoryStore.clearAll()
+            saved.reversed().forEach(SearchHistoryStore.addQuery)
+        }
+        SearchHistoryStore.clearAll()
+
+        vm.query = "  radiohead "
+        vm.commitQueryToHistory()
+
+        XCTAssertEqual(vm.recentQueries, ["radiohead"])
+    }
+
+    @MainActor
+    func testSearchingAgainMovesAPastQueryToTheTop() {
+        let vm = SearchViewModel(service: MockAudioService(), state: AppState())
+        let saved = SearchHistoryStore.recentQueries()
+        defer {
+            vm.clearSearch()
+            SearchHistoryStore.clearAll()
+            saved.reversed().forEach(SearchHistoryStore.addQuery)
+        }
+        SearchHistoryStore.clearAll()
+        SearchHistoryStore.addQuery("portishead")
+        SearchHistoryStore.addQuery("massive attack")
+
+        vm.searchAgain("portishead")
+
+        XCTAssertEqual(vm.recentQueries, ["portishead", "massive attack"])
     }
 }

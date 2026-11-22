@@ -1,6 +1,10 @@
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 
-/// Hands an external link to the desktop, preferring a service's own app when it is installed.
+/// Hands an external link to the system, preferring a service's own app when it is installed.
 @MainActor
 enum ExternalLinkOpener {
 
@@ -49,8 +53,7 @@ enum ExternalLinkOpener {
 
     // MARK: - Private
 
-    /// The search page is the floor: it needs no endpoint to keep working. It is nil only for an
-    /// item with neither artist nor title, where resolution is the only path.
+    /// Falls back to the search page, which is nil only for an item with neither artist nor title.
     private static func resolvedSoundCloudURL(id: String, fallback: URL?) async -> (url: URL?, outcome: Outcome) {
         if let permalink = await SoundCloudLinkResolver.shared.permalink(trackID: id) {
             return (permalink, .exact)
@@ -61,16 +64,29 @@ enum ExternalLinkOpener {
 
     /// Falls through to the web when the app is absent, and also when it refuses to launch.
     private static func openPreferringApp(app: URL?, web: URL) -> Bool {
+        #if os(macOS)
         if let app, NSWorkspace.shared.urlForApplication(toOpen: app) != nil, open(app) { return true }
         return open(web)
+        #else
+        guard let app else { return open(web) }
+        UIApplication.shared.open(app) { opened in
+            if !opened { UIApplication.shared.open(web) }
+        }
+        return true
+        #endif
     }
 
+    /// iOS answers asynchronously, so a handed-over link counts as opened there.
     private static func open(_ url: URL) -> Bool {
+        #if os(macOS)
         NSWorkspace.shared.open(url)
+        #else
+        UIApplication.shared.open(url)
+        return true
+        #endif
     }
 
     private static func copy(_ url: URL) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(url.absoluteString, forType: .string)
+        Clipboard.copy(url.absoluteString)
     }
 }

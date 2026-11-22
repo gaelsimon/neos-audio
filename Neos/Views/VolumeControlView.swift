@@ -5,7 +5,8 @@ struct VolumeControlView: View {
     enum Style {
         case full      // MenuBar: mute button, flexible slider, dB label
         case compact   // Panel: dynamic icon, flexible slider, dB label
-        case bottomBar // Main window bottom bar: icon + vertical popover
+        case bottomBar // Main window bottom bar: icon and a short slider
+        case bottomBarButton // Narrow bottom bar: icon opening the slider in a popover
     }
 
     let state: AppState
@@ -14,10 +15,7 @@ struct VolumeControlView: View {
 
     @State private var sliderVolume: Double = 0
     @State private var isDragging = false
-    @State private var isHovering = false
-    @State private var showPopover = false
-    @State private var dismissTask: Task<Void, Never>?
-    @State private var panelState = VolumePanelState()
+    @State private var showsPopover = false
 
     private var effectiveMax: Double { Double(state.maxVolume ?? 100) }
 
@@ -30,11 +28,8 @@ struct VolumeControlView: View {
                 compactLayout
             case .bottomBar:
                 bottomBarLayout
-            }
-        }
-        .onChange(of: sliderVolume) { _, newValue in
-            if isDragging {
-                viewModel.setVolume(Int(newValue))
+            case .bottomBarButton:
+                bottomBarButtonLayout
             }
         }
         .onChange(of: state.volume) { _, newValue in
@@ -52,7 +47,7 @@ struct VolumeControlView: View {
     private var fullLayout: some View {
         HStack(spacing: DS.Spacing.sm) {
             muteButton
-            customSlider
+            slider
             dBLabel
         }
         .padding(.horizontal, DS.Spacing.lg)
@@ -63,60 +58,39 @@ struct VolumeControlView: View {
     private var compactLayout: some View {
         HStack(spacing: DS.Spacing.sm) {
             muteButton
-            customSlider
+            slider
             dBLabel
         }
     }
 
-    // MARK: - Bottom Bar Layout (AppKit hover zone + vertical popover)
+    // MARK: - Bottom Bar Layout
 
-    private func scheduleDismiss() {
-        dismissTask?.cancel()
-        dismissTask = Task {
-            try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled else { return }
-            if !isDragging && !(panelState.checkMouseInside?() ?? false) {
-                withAnimation(.easeOut(duration: 0.15)) {
-                    showPopover = false
-                }
-            }
+    private var bottomBarLayout: some View {
+        HStack(spacing: DS.Spacing.xs) {
+            muteButton
+            slider
+                .frame(minWidth: 56, idealWidth: 96, maxWidth: 96)
+            levelLabel
         }
     }
 
-    private var bottomBarLayout: some View {
-        muteButton
-            .background {
-                VolumeHoverZone(
-                    isExpanded: showPopover,
-                    panelState: panelState,
-                    onHoverChanged: { hovering in
-                        if hovering {
-                            dismissTask?.cancel()
-                            if !showPopover {
-                                panelState.volume = sliderVolume
-                                panelState.effectiveMax = effectiveMax
-                                panelState.setVolume = { [viewModel] v in viewModel.setVolume(v) }
-                                panelState.setAdjustingVolume = { [viewModel] a in viewModel.setAdjustingVolume(a) }
-                                showPopover = true
-                            }
-                        } else if !panelState.isDragging {
-                            scheduleDismiss()
-                        }
-                    }
-                )
-            }
-            .onChange(of: panelState.isDragging) { _, newValue in
-                isDragging = newValue
-                if !newValue { scheduleDismiss() }
-            }
-            .onChange(of: panelState.volume) { _, newValue in
-                sliderVolume = newValue
-            }
-            .onChange(of: state.volume) { _, newValue in
-                if !panelState.isDragging {
-                    panelState.volume = Double(newValue)
-                }
-            }
+    private var bottomBarButtonLayout: some View {
+        Button { showsPopover = true } label: {
+            Image(systemName: volumeIcon)
+                .font(DS.IconFont.xl)
+                .foregroundStyle(state.isMuted ? .red : DS.Colors.textSecondary)
+                .frame(width: 28, height: 28)
+                .hitTarget(DS.HitTarget.glyph)
+        }
+        .buttonStyle(.plain)
+        .help("Volume")
+        .accessibilityLabel("Volume")
+        .accessibilityIdentifier(AccessibilityID.Player.volumeMute)
+        .popover(isPresented: $showsPopover) {
+            fullLayout
+                .frame(width: 280)
+                .padding(.vertical, DS.Spacing.lg)
+        }
     }
 
     // MARK: - Shared Components
@@ -129,6 +103,7 @@ struct VolumeControlView: View {
                 .font(style == .bottomBar ? DS.IconFont.xl : DS.IconFont.body)
                 .foregroundStyle(state.isMuted ? .red : isMuteHovered ? .primary : DS.Colors.textSecondary)
                 .frame(width: style == .bottomBar ? 28 : 20, height: style == .bottomBar ? 28 : 20)
+                .hitTarget(DS.HitTarget.glyph)
         }
         .buttonStyle(.plain)
         .onHover { hovering in
@@ -140,70 +115,23 @@ struct VolumeControlView: View {
         .accessibilityIdentifier(AccessibilityID.Player.volumeMute)
     }
 
-    // MARK: - Custom Slider
+    // MARK: - Slider
 
-    private static let trackHeight: CGFloat = 4
-    private static let thumbSize: CGFloat = 14
-
-    private var showThumb: Bool { isHovering || isDragging }
-
-    private var customSlider: some View {
-        GeometryReader { geo in
-            let width = geo.size.width
-            let fraction = sliderVolume / effectiveMax
-            let thumbX = fraction * width
-
-            ZStack(alignment: .leading) {
-                // Background track
-                Capsule()
-                    .fill(Color.white.opacity(0.15))
-                    .frame(height: Self.trackHeight)
-
-                // Filled track
-                Capsule()
-                    .fill(DS.Colors.accent)
-                    .frame(width: max(0, thumbX), height: Self.trackHeight)
-
-                // Thumb (visible on hover/drag only)
-                if showThumb {
-                    Circle()
-                        .fill(DS.Colors.accent)
-                        .frame(width: Self.thumbSize, height: Self.thumbSize)
-                        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-                        .offset(x: thumbX - Self.thumbSize / 2)
-                        .transition(.scale.combined(with: .opacity))
-                }
+    private var slider: some View {
+        AccentSlider(
+            value: sliderVolume,
+            bounds: 0...max(effectiveMax, 1),
+            label: "Volume",
+            onEditingChanged: { editing in
+                isDragging = editing
+                viewModel.setAdjustingVolume(editing)
+            },
+            onChange: { level in
+                sliderVolume = level
+                viewModel.setVolume(Int(level))
             }
-            .frame(height: geo.size.height)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        if !isDragging {
-                            isDragging = true
-                            viewModel.setAdjustingVolume(true)
-                        }
-                        let clamped = max(0, min(1, value.location.x / width))
-                        sliderVolume = clamped * effectiveMax
-                    }
-                    .onEnded { value in
-                        let clamped = max(0, min(1, value.location.x / width))
-                        sliderVolume = clamped * effectiveMax
-                        viewModel.setVolume(Int(sliderVolume))
-                        isDragging = false
-                        viewModel.setAdjustingVolume(false)
-                    }
-            )
-            .onHover { hovering in
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    isHovering = hovering
-                }
-            }
-        }
-        .frame(height: Self.thumbSize)
+        )
         .accessibilityIdentifier(AccessibilityID.Player.volumeSlider)
-        .accessibilityLabel("Volume")
-        .accessibilityValue("\(Int(sliderVolume)) percent")
     }
 
     /// The HEOS level as the device reports it; a dB figure would only hold for one amp model.
@@ -212,6 +140,17 @@ struct VolumeControlView: View {
             .typography(.secondary)
             .frame(width: 52, alignment: .trailing)
             .monospacedDigit()
+    }
+
+    /// Room for "100"; the mute icon already says muted, so the level only dims.
+    private var levelLabel: some View {
+        Text("\(Int(sliderVolume))")
+            .typography(.secondary)
+            .monospacedDigit()
+            .opacity(state.isMuted ? 0.4 : 1)
+            .fixedSize()
+            .frame(minWidth: 24, alignment: .leading)
+            .accessibilityHidden(true)
     }
 
     // MARK: - Volume Icon

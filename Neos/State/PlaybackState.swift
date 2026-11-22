@@ -23,10 +23,25 @@ final class PlaybackState {
         let stationName: String?   // nil when the name is a URL (not user-facing)
         let browseMID: String      // key for custom artwork (e.g., "u32" or stream URL)
         let imageURL: String       // from BrowseItem
-        let streamURL: String      // the actual stream URL sent to playURL
+        var streamURL: String      // the stream URL sent to playURL; empty until read when TuneIn resolves it
         let previousMID: String    // track playing at capture; its tail events must not kill the context
+        var previousQID: Int?      // its queue place; a raw stream asked for here takes another
         var enrichedDeviceMID: String?   // set on first enrichment; a different mid means another stream
+        var enrichedQID: Int?            // every raw stream shares one mid, so the queue place tells them apart
         var toleratedTail = false        // the outgoing track's replay went by; the next event is ours
+    }
+
+    /// What the address reads have said of the raw stream playing.
+    struct RawStreamReading {
+        var address: String?
+        /// The address the shown name came from; nil when the name came with the play.
+        var namedFrom: String?
+        /// The address of what played before: a speaker still answers with it until the new stream plays.
+        var doubted: String?
+        /// The speaker reported play since this stream's first event, so the address it gives is this stream's.
+        var heardPlay = false
+        /// When it last took another queue place while playing, which a stop right after shows to be another stream starting.
+        var movedAt: Date?
     }
 
     // MARK: - Playback
@@ -35,8 +50,18 @@ final class PlaybackState {
     var nowPlaying = NowPlayingMedia()
     var nowPlayingOptions: [ServiceOption] = []
     var trackMetadata: TrackMetadata?
+    /// Every raw stream shares one placeholder id, so only a fresh read of its address says which one plays.
+    var trackMetadataIsStale = false
+    var rawStream = RawStreamReading()
+    /// A radio was asked for here and the speaker has not reported playing since.
+    var awaitsRadioStart = false
     var volume: Int = 0
-    var maxVolume: Int?
+    /// The limit set in Settings.
+    var volumeLimit: Int?
+    /// The limit the speaker reports for itself.
+    var speakerVolumeLimit: Int?
+    /// The lower of the two.
+    var maxVolume: Int? { [volumeLimit, speakerVolumeLimit].compactMap { $0 }.min() }
     var isMuted: Bool = false
     var repeatMode: RepeatMode = .off
     var shuffleMode: ShuffleMode = .off
@@ -92,6 +117,9 @@ final class PlaybackState {
         nowPlaying = NowPlayingMedia()
         nowPlayingOptions = []
         trackMetadata = nil
+        trackMetadataIsStale = false
+        rawStream = RawStreamReading()
+        awaitsRadioStart = false
         playbackPosition = 0
         positionBaselineAt = nil
         awaitingResumeConfirmation = false

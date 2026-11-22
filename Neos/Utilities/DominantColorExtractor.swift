@@ -1,8 +1,6 @@
 import SwiftUI
-import AppKit
 
-/// Extracts dominant colors from album artwork for ambient background gradients.
-/// Uses CGImage pixel sampling on a downscaled grid; no third-party deps, no CIFilter.
+/// Dominant colours of an artwork, sampled on a downscaled grid, for the canvas background.
 enum DominantColorExtractor {
 
     struct RGB: Hashable {
@@ -23,12 +21,9 @@ enum DominantColorExtractor {
         }
     }
 
-    /// Extract 2-3 dominant colors from an NSImage for ambient background use.
-    /// Runs on a utility thread; safe to call from .task { }.
-    /// Returns colors darkened for background use (multiplied by 0.7).
-    static func extractColors(from image: NSImage, count: Int = 3) async -> [Color] {
+    static func extractColors(from image: PlatformImage, count: Int = 3) async -> [Color] {
         await Task.detached(priority: .utility) {
-            guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            guard let cgImage = image.cgImageValue else {
                 return defaultColors
             }
 
@@ -60,8 +55,7 @@ enum DominantColorExtractor {
         }.value
     }
 
-    /// Divide the downscaled image into a 4x4 grid and average each cell's pixel colors.
-    /// Filters out near-black and near-white regions.
+    /// Averages a 4x4 grid, skipping near-black and near-white cells.
     private static func sampleGridColors(from data: UnsafeMutableRawPointer, bytesPerRow: Int, sampleSize: Int) -> [RGB] {
         let pointer = data.bindMemory(to: UInt8.self, capacity: sampleSize * sampleSize * 4)
         let gridSize = 4
@@ -95,8 +89,7 @@ enum DominantColorExtractor {
         return regionColors
     }
 
-    /// Sort by saturation, deduplicate similar colors, and apply pastel tone mapping
-    /// for soft, muted background use.
+    /// Most saturated first, near-duplicates dropped, then toned down for a background.
     private static func selectAndTone(_ regionColors: [RGB], count: Int) -> [Color] {
         // Sort by saturation (most vibrant first)
         let sorted = regionColors.sorted { $0.saturation > $1.saturation }

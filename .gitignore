@@ -55,12 +55,6 @@ coverage.lcov
 .vscode/
 .fleet/
 
-# AI agents / local notes
-.claude/
-.planning/
-CLAUDE.md
-sessions/
-
 # Network captures (may contain identifiable data)
 *.pcap
 

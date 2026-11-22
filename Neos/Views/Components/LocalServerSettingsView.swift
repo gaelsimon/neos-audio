@@ -47,7 +47,10 @@ struct LocalServerSettingsView: View {
             .frame(width: columnWidth)
             .accessibilityIdentifier(AccessibilityID.Settings.localServerSearch(server.name))
         }
+        #if os(macOS)
         .toggleStyle(.checkbox)
+        #endif
+        .tint(DS.Colors.accent)
         .labelsHidden()
         .padding(.vertical, DS.Spacing.xs)
     }

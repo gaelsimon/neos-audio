@@ -4,19 +4,15 @@ import XCTest
 final class StationImageStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
-        // Clean both legacy UserDefaults and JSON file
-        UserDefaults.standard.removeObject(forKey: "customStationImages")
-        // Remove the JSON file to start fresh
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let file = appSupport.appendingPathComponent("Neos/custom-artwork.json")
+        AppDefaults.store.removeObject(forKey: "customStationImages")
+        let file = AppDefaults.supportDirectory.appendingPathComponent("custom-artwork.json")
         try? FileManager.default.removeItem(at: file)
         StationImageStore.resetCache()
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "customStationImages")
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let file = appSupport.appendingPathComponent("Neos/custom-artwork.json")
+        AppDefaults.store.removeObject(forKey: "customStationImages")
+        let file = AppDefaults.supportDirectory.appendingPathComponent("custom-artwork.json")
         try? FileManager.default.removeItem(at: file)
         StationImageStore.resetCache()
         super.tearDown()
@@ -100,7 +96,7 @@ final class StationImageStoreTests: XCTestCase {
 
     func testMigratesFromUserDefaults() {
         // Simulate legacy data in UserDefaults
-        UserDefaults.standard.set(
+        AppDefaults.store.set(
             ["s/legacy": "https://old.com/legacy.png"],
             forKey: "customStationImages"
         )
@@ -110,7 +106,7 @@ final class StationImageStoreTests: XCTestCase {
         XCTAssertEqual(map["s/legacy"], "https://old.com/legacy.png")
 
         // UserDefaults should be cleaned up
-        XCTAssertNil(UserDefaults.standard.dictionary(forKey: "customStationImages"))
+        XCTAssertNil(AppDefaults.store.dictionary(forKey: "customStationImages"))
 
         // JSON file should persist after migration
         XCTAssertEqual(StationImageStore.imageURL(forMID: "s/legacy"), "https://old.com/legacy.png")
@@ -120,8 +116,7 @@ final class StationImageStoreTests: XCTestCase {
         StationImageStore.setImageURL("https://example.com/art.png", forMID: "s/json")
 
         // Verify file exists
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let file = appSupport.appendingPathComponent("Neos/custom-artwork.json")
+        let file = AppDefaults.supportDirectory.appendingPathComponent("custom-artwork.json")
         XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
 
         // Verify content is valid JSON

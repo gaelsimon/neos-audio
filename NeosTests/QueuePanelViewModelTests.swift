@@ -35,6 +35,30 @@ final class QueuePanelViewModelTests: XCTestCase {
         XCTAssertFalse(mock.calls.contains("getQueue:42"))
     }
 
+    // MARK: - isQueueTabEmpty
+
+    @MainActor
+    func testTheQueueTabIsEmptyOnceNothingPlaysThoughHistoryRemains() {
+        let state = AppState()
+        let vm = QueuePanelViewModel(service: MockAudioService(), state: state)
+
+        vm.historyTracks = [BrowseItem(name: "Past", mid: "m2")]
+        vm.refreshDisplayData()
+
+        XCTAssertEqual([vm.isQueueTabEmpty, vm.isEmpty], [true, false])
+    }
+
+    @MainActor
+    func testTheQueueTabIsNotEmptyWhileATrackPlays() {
+        let state = AppState()
+        let vm = QueuePanelViewModel(service: MockAudioService(), state: state)
+
+        state.setNowPlaying(NowPlayingMedia(mid: "m1"))
+        vm.refreshDisplayData()
+
+        XCTAssertFalse(vm.isQueueTabEmpty)
+    }
+
     // MARK: - nowPlayingQueueItem
 
     @MainActor
@@ -118,6 +142,32 @@ final class QueuePanelViewModelTests: XCTestCase {
         vm.refreshDisplayData()
 
         XCTAssertTrue(vm.upNextItems.isEmpty)
+    }
+
+    /// A speaker reports a station with the queue id 1, which is no place in the queue.
+    @MainActor
+    private func panelOnAStation() -> QueuePanelViewModel {
+        let state = AppState()
+        let vm = QueuePanelViewModel(service: MockAudioService(), state: state)
+        state.setNowPlaying(NowPlayingMedia(type: .station, mid: "s1", qid: 1, station: "FIP"))
+        state.setQueue([QueueItem(qid: 1, song: "A", mid: "m1"), QueueItem(qid: 2, song: "B", mid: "m2")])
+        vm.refreshDisplayData()
+        return vm
+    }
+
+    @MainActor
+    func testAStationLeavesTheWholeQueueToCome() {
+        XCTAssertEqual(panelOnAStation().upNextItems.map(\.song), ["A", "B"])
+    }
+
+    @MainActor
+    func testAStationIsNotTakenForTheFirstQueueItem() {
+        XCTAssertNil(panelOnAStation().nowPlayingQueueItem)
+    }
+
+    @MainActor
+    func testAStationCountsNoQueueItemAsPlayed() {
+        XCTAssertTrue(panelOnAStation().recentSongs.isEmpty)
     }
 
     // MARK: - recentSongs (played queue items + filtered history)

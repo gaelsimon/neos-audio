@@ -41,8 +41,27 @@ enum DS {
 
     // MARK: - Layout
     enum Layout {
+        #if os(macOS)
         static let pageMargin: CGFloat = Spacing.xxl
+        static let pageTop: CGFloat = Spacing.xxl
+        static let listOutdent: CGFloat = 0
+        /// The top bar floats over the page, which leaves this much room under it.
+        static let topOverlay: CGFloat = TopBar.height
+        #else
+        /// The navigation bar's margin on iPhone; the shell sets the iPad's through the environment.
+        static let pageMargin: CGFloat = Spacing.lg
+        static let regularPageMargin: CGFloat = 20
+        static let pageTop: CGFloat = Spacing.sm
+        /// Rows pad their own content by this much, so their text meets the title's edge.
+        static let listOutdent: CGFloat = Spacing.lg
+        /// The navigation bar keeps to the safe area instead of floating over the page.
+        static let topOverlay: CGFloat = 0
+        #endif
         static let surfaceInset: CGFloat = Spacing.lg
+        /// A settings form reads best no wider than this.
+        static let formWidth: CGFloat = 640
+        /// How far the Mac's grouped form insets its sections.
+        static let formInset: CGFloat = 20
     }
 
     // MARK: - Top Bar
@@ -76,14 +95,44 @@ enum DS {
 
     // MARK: - Sidebar
     enum Sidebar {
-        static let itemPaddingH: CGFloat = 10
-        static let itemPaddingV: CGFloat = 8
-        static let sectionPadding: CGFloat = 16
-        static let cornerRadius: CGFloat = Radius.medium
-        static let selectedBackground = Color(white: 0.165)
-        static let defaultBackground = Color.clear
+        /// The sidebar list's own row inset, so the logo lines up with the row icons.
+        static let logoInset: CGFloat = 16
         static let expandedWidth: CGFloat = 200
     }
+
+    // MARK: - Hit Targets
+
+    /// Apple's touch minimum on iPhone and iPad; the Mac keeps its denser controls.
+    enum HitTarget {
+        #if os(iOS)
+        static let button: CGFloat = 44
+        static let slider: CGFloat = 44
+        /// Around a bare glyph: a finger needs the square, a pointer makes do with the glyph's own frame.
+        static let glyph: CGFloat = 44
+        #else
+        static let button: CGFloat = 36
+        static let slider: CGFloat = 14
+        static let glyph: CGFloat = 0
+        #endif
+    }
+
+    /// Touch has no hover, so what hover reveals on the Mac stays visible there.
+    static let revealsControlsOnHover: Bool = {
+        #if os(iOS)
+        false
+        #else
+        true
+        #endif
+    }()
+
+    /// A touch screen removes a row by swiping it; the Mac shows a remove button on the row instead.
+    static let removesRowsBySwiping: Bool = {
+        #if os(iOS)
+        true
+        #else
+        false
+        #endif
+    }()
 
     // MARK: - Animation
     enum Animation {
@@ -181,6 +230,8 @@ enum DS {
         case badge               // 13pt semibold, textTertiary
         case sidebarSection      // 12pt medium, textTertiary
         case footnote            // 11pt regular, textTertiary
+        case cardTitle           // 13pt semibold, textSecondary; under a card's artwork
+        case cardSubtitle        // 13pt regular, textSecondary
     }
 
     // MARK: - Icon Fonts (SF Symbol sizing)
@@ -214,37 +265,66 @@ enum DS {
 
 // MARK: - Typography Modifier
 
-struct TypographyModifier: ViewModifier {
-    let style: DS.Font
+extension DS.Font {
+    /// Fixed sizes on the Mac. On iPhone and iPad, the matching text style, so text follows the reader's size setting.
+    var font: SwiftUI.Font {
+        #if os(macOS)
+        switch self {
+        case .pageTitle: .system(size: 28, weight: .bold)
+        case .sectionHeader: .system(size: 18, weight: .semibold)
+        case .bodyPrimary: .system(size: 14)
+        case .bodyMedium: .system(size: 14, weight: .medium)
+        case .bodyEmphasis: .system(size: 14, weight: .semibold)
+        case .secondary, .cardSubtitle: .system(size: 13)
+        case .secondaryEmphasis, .badge, .cardTitle: .system(size: 13, weight: .semibold)
+        case .sidebarSection: .system(size: 12, weight: .medium)
+        case .footnote: .system(size: 11)
+        }
+        #else
+        switch self {
+        case .pageTitle: .system(.title, weight: .bold)
+        case .sectionHeader: .system(.title2, weight: .bold)
+        case .bodyPrimary: .system(.body)
+        case .bodyMedium: .system(.body, weight: .medium)
+        case .bodyEmphasis: .system(.body, weight: .semibold)
+        case .secondary: .system(.subheadline)
+        case .secondaryEmphasis: .system(.subheadline, weight: .semibold)
+        case .badge, .cardTitle: .system(.footnote, weight: .semibold)
+        case .cardSubtitle: .system(.footnote)
+        case .sidebarSection: .system(.footnote, weight: .medium)
+        case .footnote: .system(.caption2)
+        }
+        #endif
+    }
+}
 
-    func body(content: Content) -> some View {
-        switch style {
-        case .pageTitle:
-            content.font(.system(size: 28, weight: .bold)).foregroundStyle(.primary)
-        case .sectionHeader:
-            content.font(.system(size: 18, weight: .semibold)).foregroundStyle(.primary)
-        case .bodyPrimary:
-            content.font(.system(size: 14)).foregroundStyle(.primary)
-        case .bodyMedium:
-            content.font(.system(size: 14, weight: .medium)).foregroundStyle(.primary)
-        case .bodyEmphasis:
-            content.font(.system(size: 14, weight: .semibold)).foregroundStyle(.primary)
-        case .secondary:
-            content.font(.system(size: 13)).foregroundStyle(DS.Colors.textSecondary)
-        case .secondaryEmphasis:
-            content.font(.system(size: 13, weight: .semibold)).foregroundStyle(DS.Colors.textSecondary)
-        case .badge:
-            content.font(.system(size: 13, weight: .semibold)).foregroundStyle(DS.Colors.textTertiary)
-        case .sidebarSection:
-            content.font(.system(size: 12, weight: .medium)).foregroundStyle(DS.Colors.textTertiary)
-        case .footnote:
-            content.font(.system(size: 11)).foregroundStyle(DS.Colors.textTertiary)
+extension DS.Font {
+    var color: AnyShapeStyle {
+        switch self {
+        case .pageTitle, .sectionHeader, .bodyPrimary, .bodyMedium, .bodyEmphasis:
+            AnyShapeStyle(HierarchicalShapeStyle.primary)
+        case .secondary, .secondaryEmphasis, .cardTitle, .cardSubtitle:
+            AnyShapeStyle(DS.Colors.textSecondary)
+        case .badge, .sidebarSection, .footnote:
+            AnyShapeStyle(DS.Colors.textTertiary)
         }
     }
 }
 
+struct TypographyModifier: ViewModifier {
+    let style: DS.Font
+    var color: Color?
+
+    func body(content: Content) -> some View {
+        content
+            .font(style.font)
+            .foregroundStyle(color.map { AnyShapeStyle($0) } ?? style.color)
+    }
+}
+
 extension View {
-    func typography(_ style: DS.Font) -> some View {
-        modifier(TypographyModifier(style: style))
+    /// A `foregroundStyle` added after this loses to the role's colour: pass `color` instead.
+    func typography(_ style: DS.Font, color: Color? = nil) -> some View {
+        modifier(TypographyModifier(style: style, color: color))
     }
 }

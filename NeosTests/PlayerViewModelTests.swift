@@ -166,6 +166,77 @@ final class PlayerViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testStepVolumeMovesFromTheCurrentLevel() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setVolume(40)
+        state.setMaxVolume(100)
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.stepVolume(by: 5)
+
+        XCTAssertEqual(state.volume, 45)
+        await yieldForTask()
+        XCTAssertTrue(mock.calls.contains("setVolume:1:45"))
+    }
+
+    @MainActor
+    func testStepVolumeStopsAtTheVolumeLimit() {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setVolume(48)
+        state.setMaxVolume(50)
+        let vm = PlayerViewModel(service: MockAudioService(), state: state)
+
+        vm.stepVolume(by: 5)
+
+        XCTAssertEqual(state.volume, 50)
+    }
+
+    @MainActor
+    func testStepVolumeStopsAtZero() {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setVolume(3)
+        state.setMaxVolume(100)
+        let vm = PlayerViewModel(service: MockAudioService(), state: state)
+
+        vm.stepVolume(by: -5)
+
+        XCTAssertEqual(state.volume, 0)
+    }
+
+    @MainActor
+    func testVolumeButtonPressesStepTheSpeaker() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setVolume(40)
+        state.setMaxVolume(100)
+        let mock = MockAudioService()
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.pressVolumeButtons(-2)
+
+        await yieldForTask()
+        XCTAssertTrue(mock.calls.contains("setVolume:1:\(40 - 2 * PlayerViewModel.volumeButtonStep)"))
+    }
+
+    @MainActor
+    func testAVolumeButtonPressHoldsOffTheSpeakersEarlierAnswer() {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setVolume(40)
+        state.setMaxVolume(100)
+        let vm = PlayerViewModel(service: MockAudioService(), state: state)
+
+        vm.pressVolumeButtons(1)
+        state.setVolume(40)
+
+        XCTAssertEqual(state.volume, 40 + PlayerViewModel.volumeButtonStep)
+    }
+
+    @MainActor
     func testSetVolumeNoOpWithoutPlayer() {
         let state = AppState()
         let mock = MockAudioService()
@@ -349,6 +420,34 @@ final class PlayerViewModelTests: XCTestCase {
         XCTAssertEqual(state.playbackPosition, 60_000)
     }
 
+    @MainActor
+    func testAFailedSeekStopsWaitingForTheAmp() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.playback.playbackDuration = 300_000
+        let mock = MockAudioService()
+        mock.seekError = NSError(domain: "test", code: 1)
+        let vm = PlayerViewModel(service: mock, state: state)
+
+        vm.seek(to: 60.0)
+        await Task.yield()
+        await Task.yield()
+
+        XCTAssertNil(state.ampWait)
+    }
+
+    @MainActor
+    func testPressingPlayWaitsForTheAmp() {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        state.setPlayState(.pause)
+        let vm = PlayerViewModel(service: MockAudioService(), state: state)
+
+        vm.togglePlayPause()
+
+        XCTAssertEqual(state.ampWait, .resume)
+    }
+
     // MARK: - resyncPlaybackState
 
     @MainActor
@@ -414,6 +513,48 @@ final class PlayerViewModelTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(10))
         }
         return condition()
+    }
+
+    /// Two raw streams look the same to the speaker's events, so the address is read again at each one.
+    @MainActor
+    func testAnEventForARawStreamReadsItsAddressAgain() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitrate: 192_000, codec: "AAC", streamURL: "https://stream.example.com/a.aac")
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+        let stream = NowPlayingMedia(song: "Url Stream", album: "Url Stream", artist: "Url Stream", mid: "1", qid: 4)
+        state.setNowPlaying(stream)
+        vm.startTrackMetadataObserver()
+        _ = await eventually { state.nowPlaying.displayedTitle == "a" }
+        let before = metadataFetchCount(mock)
+
+        mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitrate: 192_000, codec: "AAC", streamURL: "https://stream.example.com/b.aac")
+        state.setNowPlaying(stream)
+
+        let renamed = await eventually { state.nowPlaying.displayedTitle == "b" }
+        XCTAssertTrue(renamed, "fetches before \(before), after \(metadataFetchCount(mock))")
+    }
+
+    /// As the app wires it: every event for a raw stream restarts the reads.
+    @MainActor
+    func testAStreamFoundStoppedAtLaunchIsNamedOnceItsAddressIsRead() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        mock.trackMetadata = TrackMetadata(sampleRate: 48_000, bitrate: 192_000, codec: "AAC", streamURL: "https://stream.example.com/a.aac")
+        let vm = PlayerViewModel(service: mock, state: state, metadataAttemptGaps: Self.fastGaps)
+        state.onTrackMetadataWanted = { [weak vm] in vm?.startTrackMetadataObserver() }
+        vm.startTrackMetadataObserver()
+        // Measured on a MODEL 40n: stopped, a raw stream comes with an empty mid and album id.
+        let stream = NowPlayingMedia(song: "Url Stream", album: "Url Stream", artist: "Url Stream", mid: "", qid: 1)
+
+        state.setPlayState(.stop)
+        state.setNowPlaying(stream)
+        state.setNowPlaying(stream)
+
+        let named = await eventually { state.nowPlaying.displayedTitle == "a" }
+        XCTAssertTrue(named, "title \(state.nowPlaying.displayedTitle), fetches \(metadataFetchCount(mock))")
     }
 
     @MainActor

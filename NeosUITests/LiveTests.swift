@@ -58,21 +58,13 @@ final class LiveTests: LiveTestCase {
         waitForElement(sidebar.servicesSection)
     }
 
-    func testNavigateIntoMusicSource() throws {
+    func testNavigateIntoMusicSource() {
         let sidebar = SidebarScreen(app: app)
         let browse = BrowseScreen(app: app)
 
-        waitForElement(sidebar.servicesSection)
+        waitForElement(sidebar.firstSourceRow)
+        sidebar.firstSourceRow.click()
 
-        // Find and tap the first available source button within the services section
-        let sourceButtons = sidebar.servicesSection.buttons
-        guard sourceButtons.count > 0 else {
-            throw XCTSkip("No music sources available on this speaker")
-        }
-
-        sourceButtons.firstMatch.click()
-
-        // Wait for browse view to appear with content
         waitForElement(browse.view)
     }
 
@@ -176,18 +168,13 @@ final class LiveTests: LiveTestCase {
         XCTAssertTrue(topBar.forwardButton.exists, "Forward button should exist")
     }
 
-    func testBackButtonNavigatesAfterBrowse() throws {
+    func testBackButtonNavigatesAfterBrowse() {
         let sidebar = SidebarScreen(app: app)
         let topBar = TopBarScreen(app: app)
         let browse = BrowseScreen(app: app)
 
-        waitForElement(sidebar.servicesSection)
-        let sourceButtons = sidebar.servicesSection.buttons
-        guard sourceButtons.count > 0 else {
-            throw XCTSkip("No music sources available")
-        }
-
-        sourceButtons.firstMatch.click()
+        waitForElement(sidebar.firstSourceRow)
+        sidebar.firstSourceRow.click()
         waitForElement(browse.view)
 
         // Navigate back

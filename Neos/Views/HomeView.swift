@@ -5,6 +5,8 @@ struct HomeView: View {
     let state: AppState
     let homeVM: HomeViewModel
     let browseVM: BrowseViewModel
+    @Environment(\.groupInset) private var groupInset
+    @Environment(\.groupSectionStyle) private var groupSectionStyle
 
     /// Maximum categories the VM may fetch (must match HomeViewModel).
     private let maxCategoriesPerService = 4
@@ -14,12 +16,17 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
+                #if os(macOS)
                 header
+                #endif
                 sections
             }
-            .padding(.top, DS.Spacing.xxl)
+            .padding(.top, DS.Layout.pageTop)
             .padding(.bottom, DS.Spacing.xxl)
         }
+        #if os(iOS)
+        .refreshable { homeVM.refresh() }
+        #endif
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityIdentifier(AccessibilityID.Home.view)
         .task {
@@ -29,6 +36,8 @@ struct HomeView: View {
 
     // MARK: - Header
 
+    #if os(macOS)
+    /// The navigation bar titles the page on iPhone and iPad, and pull to refresh reloads it.
     private var header: some View {
         HStack {
             Text("Home")
@@ -38,23 +47,22 @@ struct HomeView: View {
 
             HoverButton(action: { browseVM.navigateToSettings() }) { hovered in
                 Image(systemName: DS.Icons.settings)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                    .typography(.bodyPrimary, color: hovered ? .white : DS.Colors.textSecondary)
             }
             .help("Configure Services")
             .accessibilityIdentifier(AccessibilityID.Home.configButton)
 
             HoverButton(action: { homeVM.refresh() }) { hovered in
                 Image(systemName: DS.Icons.refresh)
-                    .typography(.bodyPrimary)
-                    .foregroundStyle(hovered ? .white : DS.Colors.textSecondary)
+                    .typography(.bodyPrimary, color: hovered ? .white : DS.Colors.textSecondary)
             }
             .help("Refresh")
             .accessibilityIdentifier(AccessibilityID.Home.refreshButton)
         }
-        .padding(.horizontal, DS.Spacing.xxl)
+        .pageMargins()
         .accessibilityIdentifier(AccessibilityID.Home.header)
     }
+    #endif
 
     // MARK: - Sections
 
@@ -67,13 +75,13 @@ struct HomeView: View {
         emptyState
     }
 
-    // MARK: - Recently Played
+    // MARK: - History
 
     @ViewBuilder
     private var recentlyPlayedSection: some View {
         if !homeVM.recentlyPlayed.isEmpty {
             HomeSection(
-                title: "Recently Played",
+                title: "History",
                 isLoading: homeVM.isLoadingRecents,
                 onSeeAll: { browseVM.selectSource(MusicSource(sid: 1026, name: "History")) }
             ) {
@@ -83,8 +91,8 @@ struct HomeView: View {
             }
             .accessibilityIdentifier(AccessibilityID.Home.recentlyPlayed)
         } else if homeVM.isLoadingRecents {
-            HomeSection(title: "Recently Played") {
-                ShimmerCardRow()
+            HomeSection(title: "History") {
+                PlaceholderCardRow()
             }
         }
     }
@@ -95,9 +103,9 @@ struct HomeView: View {
     private var favoritesSection: some View {
         if !homeVM.favorites.isEmpty {
             HomeSection(
-                title: "Stations",
+                title: "Favorites",
                 isLoading: homeVM.isLoadingFavorites,
-                onSeeAll: { browseVM.selectSource(MusicSource(sid: 1028, name: "Stations")) }
+                onSeeAll: { browseVM.selectSource(MusicSource(sid: 1028, name: "Favorites")) }
             ) {
                 HomeCardRow(items: homeVM.favorites, sid: 1028, state: state) { item, sid in
                     homeVM.playItem(item, sid: sid)
@@ -105,8 +113,8 @@ struct HomeView: View {
             }
             .accessibilityIdentifier(AccessibilityID.Home.favorites)
         } else if homeVM.isLoadingFavorites {
-            HomeSection(title: "Stations") {
-                ShimmerCardRow()
+            HomeSection(title: "Favorites") {
+                PlaceholderCardRow()
             }
         }
     }
@@ -142,22 +150,17 @@ struct HomeView: View {
 
                     Spacer()
                 }
-                .padding(.horizontal, DS.Layout.surfaceInset)
+                .padding(.horizontal, groupInset)
 
                 if hasContent {
                     ForEach(categoryIndices, id: \.self) { index in
                         serviceCategoryRow(source: source, categoryIndex: index)
                     }
                 } else {
-                    ShimmerCardRow(inset: DS.Layout.surfaceInset)
+                    PlaceholderCardRow(inset: groupInset)
                 }
             }
-            .padding(.vertical, DS.Spacing.xl)
-            .background(
-                RoundedRectangle(cornerRadius: DS.Radius.large)
-                    .fill(DS.Colors.surfaceContainer)
-            )
-            .padding(.horizontal, DS.Layout.pageMargin)
+            .serviceGroupSurface()
         }
     }
 
@@ -185,6 +188,7 @@ struct HomeView: View {
         if let items, !items.isEmpty {
             HomeSection(
                 title: name ?? "",
+                titleStyle: groupSectionStyle,
                 onSeeAll: {
                     if let cid {
                         browseVM.navigateToContainer(source: source, containerName: name ?? "", cid: cid)
@@ -192,9 +196,9 @@ struct HomeView: View {
                         browseVM.selectSource(source)
                     }
                 },
-                inset: DS.Layout.surfaceInset
+                inset: groupInset
             ) {
-                HomeCardRow(items: items, sid: source.sid, state: state, inset: DS.Layout.surfaceInset) { item, sid in
+                HomeCardRow(items: items, sid: source.sid, state: state, inset: groupInset) { item, sid in
                     handleServiceCardTap(item, sid: sid)
                 }
             }
@@ -242,7 +246,11 @@ struct HomeView: View {
         let isNotLoading = !homeVM.isLoadingRecents && !homeVM.isLoadingFavorites && homeVM.loadingServiceSIDs.isEmpty
 
         if hasNoContent && isNotLoading {
-            EmptyStateView(icon: DS.Icons.musicNoteHouse, message: "Select a source to start browsing")
+            ContentUnavailableView(
+                "Nothing Here Yet",
+                systemImage: DS.Icons.musicNoteHouse,
+                description: Text("Select a source to start browsing.")
+            )
                 .padding(.top, DS.Spacing.xxxl)
                 .accessibilityIdentifier(AccessibilityID.Home.emptyState)
         }

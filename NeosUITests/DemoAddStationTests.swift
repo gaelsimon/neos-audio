@@ -5,18 +5,14 @@ final class DemoAddStationTests: DemoTestCase {
 
     private var browse: BrowseScreen { BrowseScreen(app: app) }
 
-    override func setUp() {
-        super.setUp()
-        resetToHome()
-    }
-
     /// The picker button stands for the form: its Text labels are not exposed to XCUI.
     private var form: XCUIElement {
         app.buttons.matching(NSPredicate(format: "label CONTAINS 'Choose Image'")).firstMatch
     }
 
     private func openForm() {
-        let stations = app.buttons.matching(NSPredicate(format: "label == 'Favorites'")).firstMatch
+        if form.exists { return }
+        let stations = SidebarScreen(app: app).sourceButton(sid: 1028)
         waitForElement(stations)
         stations.click()
         waitForElement(browse.addStationButton)
@@ -34,8 +30,8 @@ final class DemoAddStationTests: DemoTestCase {
 
         form.click()
 
-        // The open panel is a separate key window; dismissing it must leave the form standing.
-        let panel = app.dialogs.firstMatch
+        // The open panel comes down as a sheet on the form's sheet; dismissing it must leave the form standing.
+        let panel = app.sheets["open-panel"]
         waitForElement(panel)
         app.typeKey(.escape, modifierFlags: [])
         waitForElementToDisappear(panel)

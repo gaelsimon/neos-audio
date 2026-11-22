@@ -3,36 +3,22 @@ import NeosDomain
 
 struct NowPlayingCanvasView: View {
     let state: AppState
+    /// What leads the header: the artist on the Mac; the speaker on iPhone and iPad, which name the artist under the artwork.
+    enum HeaderLead {
+        case artist
+        case speaker(open: () -> Void)
+    }
+
+    var headerLead: HeaderLead = .artist
+    /// Shown in place of the artwork, as Apple Music does, so the queue never covers the player.
+    var queue: QueuePanelView?
+
+    static let artworkMaxWidth: CGFloat = 650
 
     private var dominantColors: [Color] { state.canvasDominantColors }
+    private var artwork: NowPlayingArtwork { NowPlayingArtwork(state: state) }
+    @Environment(\.isCompactLayout) private var isCompactLayout
     @FocusState private var isFocused: Bool
-
-    private var nowPlayingResolvedImageURL: String {
-        state.resolvedImageURL(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL)
-    }
-
-    // MARK: - Artwork URL
-
-    /// The artwork already known to load: what the player bar shows.
-    private var baseArtworkURL: URL? {
-        guard !nowPlayingResolvedImageURL.isEmpty else { return nil }
-        return URL(string: nowPlayingResolvedImageURL)
-    }
-
-    /// The better artwork, when the track carries its own. It may fail to load, so it is
-    /// offered as an upgrade over `baseArtworkURL` rather than replacing it.
-    private var artworkURL: URL? {
-        // A custom image is a deliberate choice; the track's own art must not replace it.
-        if state.hasCustomStationImage(forMID: state.nowPlaying.mid) { return nil }
-        let rawURL: String? = {
-            if let uri = state.trackMetadata?.albumArtURI, !uri.isEmpty { return uri }
-            if !nowPlayingResolvedImageURL.isEmpty { return nowPlayingResolvedImageURL }
-            return nil
-        }()
-        guard let rawURL else { return nil }
-        let resolved = ImageURLUpscaler.highResURL(from: rawURL) ?? ImageURLUpscaler.httpsURL(rawURL)
-        return URL(string: resolved)
-    }
 
     // MARK: - Body
 
@@ -42,23 +28,26 @@ struct NowPlayingCanvasView: View {
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.top, DS.Spacing.lg)
 
-            Spacer(minLength: DS.Spacing.lg)
+            if let queue {
+                queue
+                    .frame(maxWidth: Self.artworkMaxWidth)
+                    .padding(.top, DS.Spacing.lg)
+            } else {
+                Spacer(minLength: DS.Spacing.lg)
 
-            heroArtwork
-                .padding(.horizontal, DS.Spacing.xxxl)
-                .padding(.trailing, state.isQueuePanelOpen ? 350 : 0)
+                heroArtwork
+                    .padding(.horizontal, isCompactLayout ? DS.Spacing.xl : DS.Spacing.xxxl)
 
-            Spacer(minLength: DS.Spacing.xl)
+                Spacer(minLength: DS.Spacing.xl)
+            }
         }
-        .animation(.easeInOut(duration: DS.Animation.standard), value: state.isQueuePanelOpen)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             AmbientBackground(colors: dominantColors)
                 .ignoresSafeArea()
         }
-        .task(id: nowPlayingResolvedImageURL) {
-            await updateColors()
-        }
+        .tracksArtworkColors(state)
+        #if os(macOS)
         .focusable()
         .focusEffectDisabled()
         .focused($isFocused)
@@ -69,6 +58,7 @@ struct NowPlayingCanvasView: View {
         .onAppear {
             DispatchQueue.main.async { isFocused = true }
         }
+        #endif
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.NowPlayingCanvas.view)
     }
@@ -77,10 +67,13 @@ struct NowPlayingCanvasView: View {
 
     private var canvasHeader: some View {
         HStack {
-            // Artist chip (Tidal style; pill with translucent background)
-            if !state.nowPlaying.artist.isEmpty {
+            switch headerLead {
+            case .speaker(let open):
+                speakerButton(action: open)
+            case .artist where !state.nowPlaying.artist.isEmpty:
+                // Artist chip (Tidal style; pill with translucent background)
                 HStack(spacing: DS.Spacing.md) {
-                    CachedAsyncImage(url: artworkURL) {
+                    CachedAsyncImage(url: artwork.trackURL) {
                         Image(systemName: DS.Icons.personCircleFill)
                             .font(DS.IconFont.xxxl)
                             .foregroundStyle(DS.Colors.textTertiary)
@@ -89,14 +82,15 @@ struct NowPlayingCanvasView: View {
                     .clipShape(Circle())
 
                     Text(state.nowPlaying.artist)
-                        .typography(.sectionHeader)
-                        .foregroundStyle(.white)
+                        .typography(.sectionHeader, color: .white)
                         .accessibilityIdentifier(AccessibilityID.NowPlayingCanvas.artistName)
                 }
                 .padding(.trailing, DS.Spacing.lg)
                 .padding(.leading, DS.Spacing.xs)
                 .padding(.vertical, DS.Spacing.xs)
                 .background(.white.opacity(0.12), in: Capsule())
+            case .artist:
+                EmptyView()
             }
 
             Spacer()
@@ -111,13 +105,42 @@ struct NowPlayingCanvasView: View {
                     .frame(width: 32, height: 32)
                     .background(DS.Colors.surfaceElevated.opacity(hovered ? 1 : 0.6), in: Circle())
             }
+            .accessibilityLabel("Close Player")
+            #if os(iOS)
+            // The Mac closes on Escape through the canvas's keyboard focus, which iOS cannot take.
+            .keyboardShortcut(.cancelAction)
+            #endif
+        }
+    }
+
+    @ViewBuilder
+    private func speakerButton(action: @escaping () -> Void) -> some View {
+        if let target = state.playbackTargetName {
+            Button(action: action) {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: DS.Icons.speaker)
+                    Text(target)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(DS.IconFont.sm)
+                }
+                .typography(.bodyMedium)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(.white.opacity(0.12), in: Capsule())
+                .frame(minHeight: DS.HitTarget.button)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Playing on \(target)")
+            .accessibilityHint("Shows the speakers")
         }
     }
 
     // MARK: - Hero Artwork
 
     private var heroArtwork: some View {
-        CachedAsyncImage(url: baseArtworkURL ?? artworkURL, highResURL: artworkURL) {
+        CachedAsyncImage(url: artwork.baseURL ?? artwork.trackURL, highResURL: artwork.trackURL) {
             Image(systemName: DS.Icons.musicNote)
                 .font(DS.IconFont.mega)
                 .foregroundStyle(DS.Colors.textTertiary)
@@ -125,48 +148,31 @@ struct NowPlayingCanvasView: View {
                 .background(DS.Colors.surfaceElevated)
         }
         .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: 650)
+        .frame(maxWidth: Self.artworkMaxWidth)
+        .overlay {
+            if state.isWaitingForAmp {
+                Color.black.opacity(0.35)
+                Spinner(size: 32, lineWidth: 3, color: .white)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.artworkLarge))
+        .background {
+            GeometryReader { geo in
+                Color.clear.preference(key: NowPlayingArtworkWidthKey.self, value: geo.size.width)
+            }
+        }
         .shadow(color: .black.opacity(0.5), radius: 40, y: 10)
+        .accessibilityLabel("Artwork")
         .accessibilityIdentifier(AccessibilityID.NowPlayingCanvas.artwork)
     }
+}
 
-    // MARK: - Color Extraction
+/// The artwork's width, so a player can line its controls up under it.
+struct NowPlayingArtworkWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat? = nil
 
-    private func updateColors() async {
-        guard let url = artworkURL else {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                state.canvasDominantColors = DominantColorExtractor.defaultColors
-            }
-            return
-        }
-
-        // Colours come from whichever artwork is actually on screen, so try the same
-        // order the view does: the track's own image, then the one that always loads.
-        var nsImage: NSImage?
-        for candidate in [url, baseArtworkURL].compactMap({ $0 }) {
-            if let cached = await ImageCache.shared.load(candidate) {
-                nsImage = cached
-                break
-            }
-            if let data = try? await NeosURLSession.shared.data(from: candidate).0,
-               let downloaded = NSImage(data: data) {
-                nsImage = downloaded
-                break
-            }
-        }
-
-        guard let nsImage else {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                state.canvasDominantColors = DominantColorExtractor.defaultColors
-            }
-            return
-        }
-
-        let colors = await DominantColorExtractor.extractColors(from: nsImage)
-        withAnimation(.easeInOut(duration: 0.5)) {
-            state.canvasDominantColors = colors
-        }
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        value = nextValue() ?? value
     }
 }
 
@@ -177,5 +183,8 @@ private struct AmbientBackground: View {
 
     var body: some View {
         (colors.first ?? DS.Colors.background)
+            .overlay {
+                LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+            }
     }
 }

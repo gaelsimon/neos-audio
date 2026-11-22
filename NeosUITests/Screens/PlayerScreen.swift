@@ -9,8 +9,8 @@ struct PlayerScreen: Screen {
     var shuffleButton: XCUIElement { app.buttons[AccessibilityID.Player.shuffle] }
     var repeatButton: XCUIElement { app.buttons[AccessibilityID.Player.repeatMode] }
     var volumeMuteButton: XCUIElement { app.buttons[AccessibilityID.Player.volumeMute] }
-    var volumeSlider: XCUIElement { app.otherElements[AccessibilityID.Player.volumeSlider] }
-    var progressBar: XCUIElement { app.otherElements[AccessibilityID.Player.progressBar] }
+    var volumeSlider: XCUIElement { app.sliders[AccessibilityID.Player.volumeSlider] }
+    var progressBar: XCUIElement { app.sliders[AccessibilityID.Player.progressBar] }
     var songTitle: XCUIElement { app.staticTexts[AccessibilityID.Player.songTitle] }
     var artistName: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Player.artistName] }
     var albumArt: XCUIElement { app.descendants(matching: .any)[AccessibilityID.Player.albumArt] }

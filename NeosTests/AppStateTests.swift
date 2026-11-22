@@ -123,6 +123,106 @@ final class AppStateTests: XCTestCase {
         XCTAssertTrue(state.isLoadingTrack)
     }
 
+    // MARK: - Waiting for the amp
+
+    @MainActor
+    func testASeekKeepsItsPlaceWhenTheAmpFirstReportsZero() {
+        let state = AppState()
+        state.beginSeek(toMillis: 1_992_000)
+
+        state.setProgress(position: 0, duration: 3_709_000)
+
+        XCTAssertEqual(state.playbackPosition, 1_992_000)
+        XCTAssertEqual(state.ampWait, .seek(toMillis: 1_992_000))
+    }
+
+    @MainActor
+    func testASeekEndsWhenTheAmpReportsWhereItLanded() {
+        let state = AppState()
+        state.beginSeek(toMillis: 1_992_000)
+
+        state.setProgress(position: 1_991_000, duration: 3_709_000)
+
+        XCTAssertNil(state.ampWait)
+        XCTAssertEqual(state.playbackPosition, 1_991_000)
+    }
+
+    @MainActor
+    func testASeekEndsWhenAnotherTrackStarts() {
+        let state = AppState()
+        state.setNowPlaying(NowPlayingMedia(song: "Show", mid: "m1"))
+        state.beginSeek(toMillis: 1_992_000)
+
+        state.setNowPlaying(NowPlayingMedia(song: "Next", mid: "m2"))
+
+        XCTAssertNil(state.ampWait)
+    }
+
+    @MainActor
+    func testAPlayWaitEndsWhenTheAmpStartsPlaying() {
+        let state = AppState()
+        state.setPlayStateOptimistically(.play)
+        state.awaitAmp(.resume)
+
+        state.setPlayState(.play)
+
+        XCTAssertNil(state.ampWait)
+    }
+
+    @MainActor
+    func testAResumeKeepsThePausedPlaceWhenTheAmpFirstReportsZero() {
+        let state = AppState()
+        state.setPlayState(.play)
+        state.setProgress(position: 2_100_000, duration: 3_709_000)
+        state.setPlayState(.pause)
+        state.setPlayStateOptimistically(.play)
+        state.awaitAmp(.resume)
+
+        state.setProgress(position: 0, duration: 3_709_000)
+
+        XCTAssertEqual(state.playbackPosition, 2_100_000)
+    }
+
+    @MainActor
+    func testPausingDropsTheWait() {
+        let state = AppState()
+        state.beginSeek(toMillis: 60_000)
+
+        state.setPlayStateOptimistically(.pause)
+
+        XCTAssertNil(state.ampWait)
+    }
+
+    @MainActor
+    func testAQuickAnswerShowsNoSpinner() {
+        let state = AppState()
+
+        state.awaitAmp(.resume)
+
+        XCTAssertFalse(state.isWaitingForAmp)
+    }
+
+    @MainActor
+    func testASlowAnswerShowsTheSpinner() async throws {
+        let state = AppState()
+        state.awaitAmp(.resume, showAfter: .milliseconds(20))
+
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertTrue(state.isWaitingForAmp)
+    }
+
+    @MainActor
+    func testAWaitTheAmpNeverAnswersEnds() async throws {
+        let state = AppState()
+        state.awaitAmp(.resume, timeout: .milliseconds(50), showAfter: .zero)
+
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertFalse(state.isWaitingForAmp)
+        XCTAssertNil(state.ampWait)
+    }
+
     @MainActor
     func testASupersededPlayCannotRollBackTheLoadThatReplacedIt() {
         let state = AppState()
@@ -325,11 +425,42 @@ final class AppStateTests: XCTestCase {
     @MainActor
     func testSetMaxVolumeNilClearsValue() {
         let state = AppState()
-        state.playback.maxVolume = 50
+        state.setMaxVolume(50)
 
         state.setMaxVolume(nil)
 
         XCTAssertNil(state.maxVolume)
+    }
+
+    @MainActor
+    func testTheSpeakersOwnLimitDoesNotLiftTheOneSetInSettings() {
+        let state = AppState()
+        state.playback.volumeLimit = 40
+
+        state.setMaxVolume(57)
+
+        XCTAssertEqual(state.maxVolume, 40)
+    }
+
+    @MainActor
+    func testALowerSpeakerLimitWinsOverTheOneSetInSettings() {
+        let state = AppState()
+        state.playback.volumeLimit = 80
+
+        state.setMaxVolume(57)
+
+        XCTAssertEqual(state.maxVolume, 57)
+    }
+
+    @MainActor
+    func testTheLimitSetInSettingsOutlastsTheConnection() {
+        let state = AppState()
+        state.playback.volumeLimit = 40
+        state.setMaxVolume(57)
+
+        state.setMaxVolume(nil)
+
+        XCTAssertEqual(state.maxVolume, 40)
     }
 
     // MARK: - Computed Properties
@@ -726,6 +857,77 @@ final class AppStateTests: XCTestCase {
         XCTAssertNil(state.trackMetadata)
     }
 
+    /// What the Marantz reports for BBC Radio 4 on TuneIn, playing and then paused.
+    private func bbcRadio4(paused: Bool) -> NowPlayingMedia {
+        let stream = "https://open.live.bbc.co.uk/mediaselector/6/redir/version/2.0/mediaset/audio-syndication-low/vpid/bbc_radio_fourfm"
+        return NowPlayingMedia(
+            type: .station, song: paused ? "96 kbps hls" : "",
+            imageURL: paused ? "" : "https://cdn-profiles.tunein.com/s25419/images/logod.png?t=1",
+            albumID: "s25419", mid: paused ? stream + "?jwt_auth=token" : String(stream.prefix(40)) + "s25419",
+            qid: 1, sid: 3, station: paused ? "BBC Radio 4 (London, UK)" : "BBC Radio 4"
+        )
+    }
+
+    @MainActor
+    func testAPausedStationKeepsItsArtwork() {
+        let state = AppState()
+        state.setNowPlaying(bbcRadio4(paused: false))
+
+        state.setNowPlaying(bbcRadio4(paused: true))
+
+        XCTAssertEqual(state.nowPlaying.imageURL, "https://cdn-profiles.tunein.com/s25419/images/logod.png?t=1")
+    }
+
+    /// What the Marantz reports for a raw URL stream, a TuneIn custom URL among them.
+    private let urlStream = NowPlayingMedia(
+        type: .song, song: "Url Stream", album: "Url Stream", artist: "Url Stream",
+        albumID: "1", mid: "1", qid: 1, sid: 1024
+    )
+
+    @MainActor
+    func testAURLStreamTakesNoImageFromAnEarlierTrack() {
+        let state = AppState()
+        // SoundCloud tracks report "1" as their album id, the URL streams' placeholder.
+        state.setNowPlaying(NowPlayingMedia(
+            type: .song, song: "Shambhala", imageURL: "https://i1.sndcdn.com/\(UUID().uuidString).jpg",
+            albumID: "1", mid: "soundcloud:tracks:\(UUID().uuidString)", sid: 9
+        ))
+
+        state.setNowPlaying(urlStream)
+
+        XCTAssertEqual(state.resolvedImageURL(forMID: state.nowPlaying.mid, originalURL: state.nowPlaying.imageURL), "")
+    }
+
+    @MainActor
+    func testATracksAlbumIDKeysNoImage() {
+        let state = AppState()
+        let album = "album-\(UUID().uuidString)"
+
+        state.setNowPlaying(NowPlayingMedia(type: .song, song: "Track", imageURL: "https://art/x.jpg", albumID: album, mid: "t1"))
+
+        XCTAssertNil(state.cachedImageURLs[album])
+    }
+
+    @MainActor
+    func testAURLStreamsImageIsNotKeptUnderThePlaceholder() {
+        let state = AppState()
+        let image = "https://art/\(UUID().uuidString).jpg"
+
+        state.setNowPlaying(NowPlayingMedia(type: .song, song: "Url Stream", imageURL: image, albumID: "1", mid: "1", sid: 1024))
+
+        XCTAssertNotEqual(state.cachedImageURLs["1"], image)
+    }
+
+    @MainActor
+    func testATrackWithoutArtworkTakesNoStationsImage() {
+        let state = AppState()
+        state.setNowPlaying(bbcRadio4(paused: false))
+
+        state.setNowPlaying(NowPlayingMedia(type: .song, song: "Track", albumID: "s25419", mid: "t1"))
+
+        XCTAssertEqual(state.nowPlaying.imageURL, "")
+    }
+
     @MainActor
     func testAStationMovingToItsNextSongKeepsPlayingTheTimeline() {
         let state = AppState()
@@ -857,8 +1059,36 @@ final class AppStateTests: XCTestCase {
     }
 
     @MainActor
+    func testAnInputNamedAsBothSongAndStationShowsOneLine() {
+        let media = NowPlayingMedia(type: .station, song: "Line In", mid: "inputs/line_in_1", station: "Line In")
+
+        XCTAssertEqual(media.displayedTitle, "Line In")
+        XCTAssertNil(media.displayedStation)
+    }
+
+    @MainActor
     func testNothingPlayingStillSaysNotPlaying() {
         XCTAssertEqual(NowPlayingMedia().displayedTitle, "Not Playing")
+    }
+
+    // MARK: - Errors
+
+    @MainActor
+    func testAFailedGroupingShowsABanner() {
+        let state = AppState()
+
+        state.setError(.groupFailed("The speaker did not answer"))
+
+        XCTAssertEqual(state.toast?.text, "The speaker did not answer")
+    }
+
+    @MainActor
+    func testAnAmpSystemErrorShowsNoBanner() {
+        let state = AppState()
+
+        state.setError(.deviceError("Command under process"))
+
+        XCTAssertNil(state.toast)
     }
 
     // MARK: - Playback Error Dedupe
@@ -1457,5 +1687,37 @@ final class AppStateTests: XCTestCase {
         state.setAdjustingVolume(pid: 5001, true)
         state.setPlayerVolume(pid: 5002, level: 55)
         XCTAssertEqual(state.playerVolumes[5002], 55)
+    }
+
+    // MARK: - A radio started from here
+
+    @MainActor
+    private func radioStarts(awaited: Bool, reports: [PlayState]) -> Int {
+        let state = AppState()
+        var starts = 0
+        state.onRadioStarted = { starts += 1 }
+        state.playback.awaitsRadioStart = awaited
+        reports.forEach(state.setPlayState)
+        return starts
+    }
+
+    @MainActor
+    func testTheSpeakerPlayingTheRadioAskedForReportsItsStart() {
+        XCTAssertEqual(radioStarts(awaited: true, reports: [.stop, .play]), 1)
+    }
+
+    @MainActor
+    func testARadioStartIsReportedOnce() {
+        XCTAssertEqual(radioStarts(awaited: true, reports: [.play, .pause, .play]), 1)
+    }
+
+    @MainActor
+    func testPlayWithNoRadioAskedForReportsNoStart() {
+        XCTAssertEqual(radioStarts(awaited: false, reports: [.play]), 0)
+    }
+
+    @MainActor
+    func testARadioStillLoadingHasNotStarted() {
+        XCTAssertEqual(radioStarts(awaited: true, reports: [.stop]), 0)
     }
 }

@@ -65,7 +65,7 @@ extension BrowseViewModel {
         }
     }
 
-    func addContainerToQueue() {
+    func addContainerToQueue(criteria: AddCriteria = .addToEnd) {
         guard let pid = state.selectedPlayerID else {
             state.showNoPlayerToast()
             return
@@ -74,9 +74,10 @@ extension BrowseViewModel {
         let sid = last.sid
         Task {
             do {
-                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: nil, criteria: .addToEnd)
+                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: nil, criteria: criteria)
                 state.noteQueueEdit()
-                state.showToast("Added to queue", icon: DS.Icons.addedToQueue, style: .success)
+                let message = criteria == .playNext ? "Playing next" : "Added to queue"
+                state.showToast(message, icon: DS.Icons.addedToQueue, style: .success)
             } catch {
                 state.showToast(error.localizedDescription, icon: DS.Icons.warning, style: .error)
             }
@@ -144,10 +145,12 @@ extension BrowseViewModel {
         }
         let sid = item.sid ?? browseStack.last?.sid ?? 0
         let cid = item.cid ?? browseStack.last?.cid ?? ""
+        // A folder goes in whole: the speaker adds a container when it gets no track id.
+        let mid = item.browsable ? nil : item.mid
         addingToQueueItemID = item.id
         Task {
             do {
-                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: item.mid, criteria: criteria)
+                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: mid, criteria: criteria)
                 state.noteQueueEdit()
                 let message = criteria == .playNext ? "Playing next" : "Added to queue"
                 state.showToast(message, icon: DS.Icons.addedToQueue, style: .success)
@@ -187,7 +190,7 @@ extension BrowseViewModel {
                 #endif
             } catch {
                 guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                reportBrowseError(error)
+                await reportBrowseError(error, requestID: requestID)
             }
             guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoading = false
@@ -223,7 +226,7 @@ extension BrowseViewModel {
                 }
             } catch {
                 guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                reportBrowseError(error)
+                await reportBrowseError(error, requestID: requestID)
             }
             guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoading = false
@@ -245,6 +248,44 @@ extension BrowseViewModel {
             browseTask.cancel()
         }
         return browseTracker.next()
+    }
+
+    // MARK: - Errors
+
+    enum RefusedAccess {
+        case accountSignedOut
+        case serviceLinkExpired
+    }
+
+    var refusedAccess: RefusedAccess? {
+        guard let errorMessage, Self.isAuthError(errorMessage) else { return nil }
+        return refusedWhileSignedIn ? .serviceLinkExpired : .accountSignedOut
+    }
+
+    /// A page refused for want of an account loads again once the account is back.
+    func accountChanged(signedIn: Bool) {
+        guard signedIn, refusedAccess == .accountSignedOut else { return }
+        retry()
+    }
+
+    static func isAuthError(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return lower.contains("not logged in") || lower.contains("not signed in")
+    }
+
+    // A service whose own link expired refuses like a speaker that dropped its account, so the speaker is asked which it is.
+    func reportBrowseError(_ error: Error, requestID: Int) async {
+        var shown = error
+        if state.signedInUser != nil, Self.isAuthError(error.localizedDescription) {
+            do {
+                if try await service.checkAccount() == nil { state.setSignedInUser(nil) }
+            } catch {
+                shown = error
+            }
+            guard browseTracker.isCurrent(requestID), !Task.isCancelled else { return }
+        }
+        refusedWhileSignedIn = state.signedInUser != nil
+        errorMessage = shown.localizedDescription
     }
 
     // MARK: - Scroll Position

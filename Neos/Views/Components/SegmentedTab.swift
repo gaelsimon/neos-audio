@@ -46,6 +46,8 @@ struct SegmentedTab<Tab: Hashable>: View {
                         : DS.Colors.textTertiary
                 )
                 .padding(.vertical, DS.Spacing.lg)
+                // Without it only the text takes the tap, not the padding around it.
+                .contentShape(Rectangle())
                 .overlay(alignment: .bottom) {
                     // Underline indicator; same width as text
                     if selection == tab {
@@ -57,5 +59,6 @@ struct SegmentedTab<Tab: Hashable>: View {
                 }
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(selection == tab ? .isSelected : [])
     }
 }
