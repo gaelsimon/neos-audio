@@ -356,6 +356,20 @@ final class HomeViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testAContainerTooSlowToAnswerStillLetsTheProbeFinish() async {
+        let (vm, mock, _) = makeProbeVM(cacheIsFresh: false)
+        mock.browseContainerError = TransportError.timeout
+
+        vm.loadHome()
+        for _ in 0..<100 where vm.loadingServiceSIDs.contains(5) || !mock.calls.contains(where: { $0.hasPrefix("browseContainer:5") }) {
+            await yieldForTask()
+        }
+
+        XCTAssertFalse(HomeCacheStore.isStale(), "A slow service is not a lost speaker")
+        HomeCacheStore.clearAll()
+    }
+
+    @MainActor
     func testAContainerTheServiceRefusesStillLetsTheProbeFinish() async {
         let (vm, mock, _) = makeProbeVM(cacheIsFresh: false)
         mock.browseContainerError = NSError(domain: "HEOS", code: 2)
