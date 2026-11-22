@@ -29,8 +29,6 @@ struct PagedStack<Root: View>: View {
 
     @Environment(\.showsPadChrome) private var showsPadChrome
     @Environment(\.miniPlayerInTabBar) private var miniPlayerInTabBar
-    @Environment(\.tabBarPlacement) private var tabBarPlacement
-    @Environment(\.isSidebarShowing) private var isSidebarShowing
     @Environment(\.toastDepth) private var toastDepth
     @State private var rootModel: BrowseViewModel?
     @State private var pages: [BrowsePage] = []
@@ -65,9 +63,6 @@ struct PagedStack<Root: View>: View {
                     .accessibilityIdentifier(AccessibilityID.Player.bar)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { playerBarHeight = $0 }
             }
-        }
-        .onChange(of: tabBarPlacement == .sidebar, initial: true) { _, isShowing in
-            isSidebarShowing.wrappedValue = isShowing
         }
         .onChange(of: state.pageRequestedFromPlayer) { _, page in
             guard isSelected, let page, let rootModel else { return }
