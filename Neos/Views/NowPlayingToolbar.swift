@@ -153,19 +153,26 @@ struct NowPlayingToolbar: View {
         }
     }
 
-    /// The quality is the first thing the line gives up when the name needs the room.
+    /// The quality shortens to its codec, then goes, when the name needs the room.
     @ViewBuilder private func followedByQuality<Line: View>(@ViewBuilder _ line: () -> Line) -> some View {
         if let quality = state.trackMetadata?.qualityDescription {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.xs) {
-                    line()
-                    Text("·").typography(.footnote)
-                    qualityText(quality)
+                lineWithQuality(quality, line)
+                if let codec = state.trackMetadata?.codec, codec != quality {
+                    lineWithQuality(codec, line)
                 }
                 line()
             }
         } else {
             line()
+        }
+    }
+
+    private func lineWithQuality<Line: View>(_ quality: String, _ line: () -> Line) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.xs) {
+            line()
+            Text("·").typography(.footnote)
+            qualityText(quality)
         }
     }
 
