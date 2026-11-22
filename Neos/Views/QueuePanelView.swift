@@ -81,7 +81,7 @@ struct QueuePanelView: View {
                 SegmentedTab(selection: $selectedTab, tabs: [.queue, .recentlyPlayed]) { tab in
                     switch tab {
                     case .queue: "Queue"
-                    case .recentlyPlayed: "Recently Played"
+                    case .recentlyPlayed: "History"
                     }
                 }
                 .accessibilityIdentifier(AccessibilityID.QueuePanel.tabBar)
@@ -227,7 +227,7 @@ struct QueuePanelView: View {
     @ViewBuilder
     private var upNextRows: some View {
         if viewModel.upNextItems.isEmpty {
-            Text("Queue is empty")
+            Text("Nothing up next")
                 .typography(.secondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, DS.Spacing.lg)

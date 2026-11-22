@@ -39,7 +39,7 @@ final class GroupViewModel {
                 state.setGroups(groups)
             } catch {
                 guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                state.error = .groupFailed(error.localizedDescription)
+                state.setError(.groupFailed(error.localizedDescription))
             }
             guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoadingGroups = false
@@ -56,7 +56,7 @@ final class GroupViewModel {
                 try await service.refreshSpeakers()
             } catch {
                 guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                state.error = .groupFailed(error.localizedDescription)
+                state.setError(.groupFailed(error.localizedDescription))
             }
             guard groupsTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoadingGroups = false
@@ -79,7 +79,7 @@ final class GroupViewModel {
                     selectedMemberPIDs = []
                     refresh()
                 } else {
-                    state.error = .groupFailed(error.localizedDescription)
+                    state.setError(.groupFailed(error.localizedDescription))
                 }
             }
             guard !Task.isCancelled else { return }
@@ -97,7 +97,7 @@ final class GroupViewModel {
             } catch {
                 guard !Task.isCancelled else { return }
                 if await groupsAfterSettling().contains(where: { $0.leader?.pid == pid }) {
-                    state.error = .groupFailed(error.localizedDescription)
+                    state.setError(.groupFailed(error.localizedDescription))
                 } else {
                     refresh()
                 }
@@ -142,7 +142,7 @@ final class GroupViewModel {
             do {
                 try await service.setGroupVolume(gid: gid, level: level)
             } catch {
-                state.error = .groupFailed(error.localizedDescription)
+                state.setError(.groupFailed(error.localizedDescription))
             }
         })
     }
@@ -158,7 +158,7 @@ final class GroupViewModel {
             do {
                 try await service.setVolume(pid: pid, level: level)
             } catch {
-                state.error = .groupFailed(error.localizedDescription)
+                state.setError(.groupFailed(error.localizedDescription))
             }
         })
     }

@@ -245,10 +245,12 @@ final class MockAudioService: AudioService, @unchecked Sendable {
     var addToQueueSlowMIDs: Set<String> = []
 
     var lastAddedToQueue: (cid: String, mid: String?)?
+    var lastAddCriteria: AddCriteria?
 
     func addToQueue(pid: Int, sid: Int, cid: String, mid: String?, criteria: AddCriteria) async throws {
         calls.append("addToQueue:\(pid)")
         lastAddedToQueue = (cid, mid)
+        lastAddCriteria = criteria
         if let mid, addToQueueSlowMIDs.contains(mid) {
             try? await Task.sleep(for: .milliseconds(200))
         }

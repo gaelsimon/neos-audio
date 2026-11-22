@@ -110,7 +110,7 @@ final class AppState: StateUpdater {
     private(set) var showsAmpWait = false
     private var ampWaitTask: Task<Void, Never>?
     var isAdjustingVolume: Bool = false
-    var error: AppError?
+    private(set) var error: AppError?
     var discoveryError: String?
     var isDiscovering: Bool = false
     var toast: ToastMessage?
@@ -125,8 +125,8 @@ final class AppState: StateUpdater {
     var canvasDominantColors: [Color] = DominantColorExtractor.defaultColors
     var diagnostics: [DiagnosticEvent] = []
     private var toastDismissTask: Task<Void, Never>?
-    private var lastPlaybackErrorMessage: String?
-    private var lastPlaybackErrorAt: Date?
+    private var lastErrorMessage: String?
+    private var lastErrorAt: Date?
     private var trackLoadWatchdog: Task<Void, Never>?
     /// Called for every device discovery reports, so a remembered speaker can reconnect on its own.
     @ObservationIgnored var onDeviceDiscovered: ((DiscoveredDevice) -> Void)?
@@ -330,17 +330,17 @@ final class AppState: StateUpdater {
 
     // MARK: - Track Loading
 
-    /// Clears the playback error dedupe so a user retry gets feedback.
-    private func resetPlaybackErrorDedupe() {
-        lastPlaybackErrorMessage = nil
-        lastPlaybackErrorAt = nil
+    /// Clears the error dedupe so a user retry gets feedback.
+    private func resetErrorDedupe() {
+        lastErrorMessage = nil
+        lastErrorAt = nil
     }
 
     /// Arms the spinner and its watchdog: a device that never reports the track must not strand it.
     /// Returns the load's generation; hand it to `failTrackLoad` so a superseded play cannot roll it back.
     @discardableResult
     func beginTrackLoad(timeout: Duration = .seconds(30)) -> UInt64 {
-        resetPlaybackErrorDedupe()
+        resetErrorDedupe()
         trackLoadGeneration += 1
         isLoadingTrack = true
         trackLoadWatchdog?.cancel()
@@ -524,13 +524,21 @@ final class AppState: StateUpdater {
 
     func setError(_ error: AppError?) {
         self.error = error
-        if case .playbackFailed(let msg) = error {
-            // The amp retries a failed stream and errors again seconds later; one banner is enough.
-            if msg == lastPlaybackErrorMessage, let at = lastPlaybackErrorAt,
-               Date().timeIntervalSince(at) < 10 { return }
-            lastPlaybackErrorMessage = msg
-            lastPlaybackErrorAt = Date()
-            showToast(msg, icon: DS.Icons.warning, style: .error)
+        guard let error, Self.isShown(error) else { return }
+        let message = error.message
+        // The amp retries a failed stream and errors again seconds later; one banner is enough.
+        if message == lastErrorMessage, let at = lastErrorAt,
+           Date().timeIntervalSince(at) < 10 { return }
+        lastErrorMessage = message
+        lastErrorAt = Date()
+        showToast(message, icon: DS.Icons.warning, style: .error)
+    }
+
+    /// The amp's own system errors answer no action the user took.
+    private static func isShown(_ error: AppError) -> Bool {
+        switch error {
+        case .deviceError, .discoveryFailed, .generic: false
+        default: true
         }
     }
 

@@ -1,5 +1,4 @@
 # SwiftLint configuration for Neos
-# Aligned with project conventions (CLAUDE.md)
 
 included:
   - Neos

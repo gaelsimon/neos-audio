@@ -300,6 +300,22 @@ final class SpeakerListViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testAFailedReconnectOnItsOwnShowsNoBanner() async {
+        let cached = DiscoveredDevice(host: "192.168.1.10", serialNumber: "S1")
+        DeviceCache.save(device: cached, selectedPlayerID: nil)
+        defer { DeviceCache.clear() }
+        let state = AppState()
+        let mock = MockAudioService()
+        mock.connectError = NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Refused"])
+        let vm = SpeakerListViewModel(service: mock, state: state)
+
+        vm.autoConnectIfCached(cached)
+
+        await yieldForTask()
+        XCTAssertNil(state.toast)
+    }
+
+    @MainActor
     func testAnUnknownSpeakerIsNotConnectedTo() async {
         DeviceCache.save(device: DiscoveredDevice(host: "192.168.1.10", serialNumber: "S1"), selectedPlayerID: nil)
         defer { DeviceCache.clear() }

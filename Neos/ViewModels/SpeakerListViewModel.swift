@@ -75,7 +75,7 @@ final class SpeakerListViewModel {
         }
     }
 
-    func connectToDevice(_ device: DiscoveredDevice, cachedPlayerID: Int? = nil) {
+    func connectToDevice(_ device: DiscoveredDevice, cachedPlayerID: Int? = nil, reportsFailure: Bool = true) {
         state.connectionState = .connecting
         connectTask.replace(with: Task {
             do {
@@ -87,7 +87,9 @@ final class SpeakerListViewModel {
             } catch {
                 guard !Task.isCancelled else { return }
                 state.connectedDevice = nil
-                state.error = .connectionFailed("Failed to connect: \(error.localizedDescription)")
+                if reportsFailure {
+                    state.setError(.connectionFailed("Failed to connect: \(error.localizedDescription)"))
+                }
                 state.setConnectionState(.disconnected)
             }
         })
@@ -131,7 +133,7 @@ final class SpeakerListViewModel {
         guard state.connectionState == .disconnected,
               let cached = DeviceCache.load(),
               cached.matches(device) else { return }
-        connectToDevice(device, cachedPlayerID: cached.selectedPlayerID)
+        connectToDevice(device, cachedPlayerID: cached.selectedPlayerID, reportsFailure: false)
     }
 
     func connectManual(host: String) {
@@ -150,7 +152,7 @@ final class SpeakerListViewModel {
             } catch {
                 guard !Task.isCancelled else { return }
                 state.connectedDevice = nil
-                state.error = .connectionFailed("Failed to connect to \(trimmed): \(error.localizedDescription)")
+                state.setError(.connectionFailed("Failed to connect to \(trimmed): \(error.localizedDescription)"))
                 state.setConnectionState(.disconnected)
             }
         })
@@ -179,7 +181,7 @@ final class SpeakerListViewModel {
             } catch {
                 guard !Task.isCancelled else { return }
                 state.isPoweredOn = wasOn
-                state.error = .powerFailed("Power control failed: \(error.localizedDescription)")
+                state.setError(.powerFailed("Power control failed: \(error.localizedDescription)"))
             }
         })
     }

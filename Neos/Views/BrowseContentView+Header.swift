@@ -252,7 +252,7 @@ extension BrowseContentView {
     // MARK: - Container Action Buttons
 
     #if os(iOS)
-    /// Add to Queue goes in the navigation bar's menu.
+    /// Play Next and Add to Queue go in the navigation bar's menu.
     private var containerActionButtons: some View {
         HStack(spacing: DS.Spacing.md) {
             Button { browseVM.playContainer() } label: {
@@ -278,6 +278,10 @@ extension BrowseContentView {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") {
+                        browseVM.addContainerToQueue(criteria: .playNext)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.Browse.playNext)
                     Button("Add to Queue", systemImage: DS.Icons.addedToQueue) { browseVM.addContainerToQueue() }
                         .accessibilityIdentifier(AccessibilityID.Browse.addToQueue)
                 } label: {

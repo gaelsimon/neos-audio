@@ -75,13 +75,13 @@ struct HomeView: View {
         emptyState
     }
 
-    // MARK: - Recently Played
+    // MARK: - History
 
     @ViewBuilder
     private var recentlyPlayedSection: some View {
         if !homeVM.recentlyPlayed.isEmpty {
             HomeSection(
-                title: "Recently Played",
+                title: "History",
                 isLoading: homeVM.isLoadingRecents,
                 onSeeAll: { browseVM.selectSource(MusicSource(sid: 1026, name: "History")) }
             ) {
@@ -91,7 +91,7 @@ struct HomeView: View {
             }
             .accessibilityIdentifier(AccessibilityID.Home.recentlyPlayed)
         } else if homeVM.isLoadingRecents {
-            HomeSection(title: "Recently Played") {
+            HomeSection(title: "History") {
                 PlaceholderCardRow()
             }
         }
@@ -103,9 +103,9 @@ struct HomeView: View {
     private var favoritesSection: some View {
         if !homeVM.favorites.isEmpty {
             HomeSection(
-                title: "Stations",
+                title: "Favorites",
                 isLoading: homeVM.isLoadingFavorites,
-                onSeeAll: { browseVM.selectSource(MusicSource(sid: 1028, name: "Stations")) }
+                onSeeAll: { browseVM.selectSource(MusicSource(sid: 1028, name: "Favorites")) }
             ) {
                 HomeCardRow(items: homeVM.favorites, sid: 1028, state: state) { item, sid in
                     homeVM.playItem(item, sid: sid)
@@ -113,7 +113,7 @@ struct HomeView: View {
             }
             .accessibilityIdentifier(AccessibilityID.Home.favorites)
         } else if homeVM.isLoadingFavorites {
-            HomeSection(title: "Stations") {
+            HomeSection(title: "Favorites") {
                 PlaceholderCardRow()
             }
         }

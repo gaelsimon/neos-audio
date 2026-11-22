@@ -65,7 +65,7 @@ extension BrowseViewModel {
         }
     }
 
-    func addContainerToQueue() {
+    func addContainerToQueue(criteria: AddCriteria = .addToEnd) {
         guard let pid = state.selectedPlayerID else {
             state.showNoPlayerToast()
             return
@@ -74,9 +74,10 @@ extension BrowseViewModel {
         let sid = last.sid
         Task {
             do {
-                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: nil, criteria: .addToEnd)
+                try await service.addToQueue(pid: pid, sid: sid, cid: cid, mid: nil, criteria: criteria)
                 state.noteQueueEdit()
-                state.showToast("Added to queue", icon: DS.Icons.addedToQueue, style: .success)
+                let message = criteria == .playNext ? "Playing next" : "Added to queue"
+                state.showToast(message, icon: DS.Icons.addedToQueue, style: .success)
             } catch {
                 state.showToast(error.localizedDescription, icon: DS.Icons.warning, style: .error)
             }

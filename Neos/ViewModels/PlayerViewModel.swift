@@ -115,7 +115,7 @@ final class PlayerViewModel {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 // Revert
                 state.setPlayStateOptimistically(wasPlaying ? .play : .pause)
-                state.error = .playbackFailed(error.localizedDescription)
+                state.setError(.playbackFailed(error.localizedDescription))
             }
         })
     }
@@ -129,7 +129,7 @@ final class PlayerViewModel {
                 try await service.next(pid: pid)
             } catch {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
-                state.error = .playbackFailed(error.localizedDescription)
+                state.setError(.playbackFailed(error.localizedDescription))
             }
         })
     }
@@ -143,7 +143,7 @@ final class PlayerViewModel {
                 try await service.previous(pid: pid)
             } catch {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
-                state.error = .playbackFailed(error.localizedDescription)
+                state.setError(.playbackFailed(error.localizedDescription))
             }
         })
     }
@@ -157,7 +157,7 @@ final class PlayerViewModel {
                 try await service.setVolume(pid: pid, level: capped)
             } catch {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
-                state.error = .playbackFailed(error.localizedDescription)
+                state.setError(.playbackFailed(error.localizedDescription))
             }
         })
     }
@@ -200,7 +200,7 @@ final class PlayerViewModel {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 // Revert
                 state.setMuted(wasMuted)
-                state.error = .playbackFailed(error.localizedDescription)
+                state.setError(.playbackFailed(error.localizedDescription))
             }
         })
     }
@@ -221,7 +221,7 @@ final class PlayerViewModel {
             } catch {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 state.playback.repeatMode = previousMode
-                state.error = .playbackFailed(error.localizedDescription)
+                state.setError(.playbackFailed(error.localizedDescription))
             }
         })
     }
@@ -236,7 +236,7 @@ final class PlayerViewModel {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 // Let the next HEOS progress event self-correct
                 state.endAmpWait()
-                state.error = .playbackFailed(error.localizedDescription)
+                state.setError(.playbackFailed(error.localizedDescription))
             }
         })
     }
@@ -253,7 +253,7 @@ final class PlayerViewModel {
             } catch {
                 guard !Task.isCancelled, state.selectedPlayerID == pid else { return }
                 state.playback.shuffleMode = previousShuffle
-                state.error = .playbackFailed(error.localizedDescription)
+                state.setError(.playbackFailed(error.localizedDescription))
             }
         })
     }

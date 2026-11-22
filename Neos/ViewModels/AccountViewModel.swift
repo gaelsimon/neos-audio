@@ -132,7 +132,7 @@ final class AccountViewModel {
                 await refreshSources(untilAvailable: false, requestID: requestID)
             } catch {
                 guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
-                state.error = .accountFailed(error.localizedDescription)
+                state.setError(.accountFailed(error.localizedDescription))
             }
             guard operationTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isSigningOut = false

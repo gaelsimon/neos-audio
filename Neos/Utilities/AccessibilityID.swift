@@ -68,6 +68,7 @@ enum AccessibilityID {
         static let containerArtist = "browse.containerArtist"
         static let playContainer = "browse.playContainer"
         static let addToQueue = "browse.addToQueue"
+        static let playNext = "browse.playNext"
         static let shuffleContainer = "browse.shuffleContainer"
     }
 

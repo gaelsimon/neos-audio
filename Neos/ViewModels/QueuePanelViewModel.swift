@@ -174,7 +174,7 @@ final class QueuePanelViewModel {
             do {
                 try await service.playQueueItem(pid: pid, qid: item.qid)
             } catch {
-                state.error = .queueFailed(error.localizedDescription)
+                state.setError(.queueFailed(error.localizedDescription))
             }
         }
     }
@@ -210,7 +210,7 @@ final class QueuePanelViewModel {
                 guard state.selectedPlayerID == pid else { return }
                 QueueRollback.reinsert(item, into: &state.playback.queue)
                 refreshDisplayData()
-                state.error = .queueFailed(error.localizedDescription)
+                state.setError(.queueFailed(error.localizedDescription))
             }
         }
     }

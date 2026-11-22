@@ -1071,6 +1071,26 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(NowPlayingMedia().displayedTitle, "Not Playing")
     }
 
+    // MARK: - Errors
+
+    @MainActor
+    func testAFailedGroupingShowsABanner() {
+        let state = AppState()
+
+        state.setError(.groupFailed("The speaker did not answer"))
+
+        XCTAssertEqual(state.toast?.text, "The speaker did not answer")
+    }
+
+    @MainActor
+    func testAnAmpSystemErrorShowsNoBanner() {
+        let state = AppState()
+
+        state.setError(.deviceError("Command under process"))
+
+        XCTAssertNil(state.toast)
+    }
+
     // MARK: - Playback Error Dedupe
 
     @MainActor

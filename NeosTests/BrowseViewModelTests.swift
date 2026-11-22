@@ -1144,6 +1144,22 @@ final class BrowseViewModelTests: XCTestCase {
         XCTAssertEqual(state.toast?.style, .error)
     }
 
+    @MainActor
+    func testPlayNextOnAnAlbumQueuesItAfterTheCurrentTrack() async {
+        let state = AppState()
+        state.selectedPlayerID = 1
+        let mock = MockAudioService()
+        let vm = BrowseViewModel(service: mock, state: state, browseContainer: { _, _, _ in BrowseResult(items: []) })
+        let album = BrowseTarget(sid: 1, cid: "c1", name: "Album", mediaType: .album, serviceName: "TIDAL")
+        vm.start(at: BrowseLocation(destination: .browse(album), browseStack: [album], searchContext: nil))
+
+        vm.addContainerToQueue(criteria: .playNext)
+        await waitUntil { state.toast != nil }
+
+        XCTAssertEqual(mock.lastAddCriteria, .playNext)
+        XCTAssertEqual(state.toast?.text, "Playing next")
+    }
+
     // MARK: - Cross-Link Tests
 
     @MainActor

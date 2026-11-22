@@ -8,7 +8,7 @@ struct StationImageEditorTests {
     private static let mid = "test-mid-station-image-editor"
 
     private var artworkDirectory: URL {
-        URL.applicationSupportDirectory.appendingPathComponent("Neos/CustomArtwork", isDirectory: true)
+        AppDefaults.supportDirectory.appendingPathComponent("CustomArtwork", isDirectory: true)
     }
 
     private enum Swatch {

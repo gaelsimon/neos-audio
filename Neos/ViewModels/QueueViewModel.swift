@@ -37,7 +37,7 @@ final class QueueViewModel {
                 state.setQueue(items)
             } catch {
                 guard queueTracker.isCurrent(requestID), !Task.isCancelled, state.selectedPlayerID == pid else { return }
-                state.error = .queueFailed(error.localizedDescription)
+                state.setError(.queueFailed(error.localizedDescription))
             }
             guard queueTracker.isCurrent(requestID), !Task.isCancelled else { return }
             isLoadingQueue = false
@@ -69,7 +69,7 @@ final class QueueViewModel {
             do {
                 try await service.playQueueItem(pid: pid, qid: item.qid)
             } catch {
-                state.error = .queueFailed(error.localizedDescription)
+                state.setError(.queueFailed(error.localizedDescription))
             }
         }
     }
@@ -84,7 +84,7 @@ final class QueueViewModel {
             } catch {
                 guard state.selectedPlayerID == pid else { return }
                 QueueRollback.reinsert(item, into: &state.playback.queue)
-                state.error = .queueFailed(error.localizedDescription)
+                state.setError(.queueFailed(error.localizedDescription))
             }
         }
     }
@@ -101,7 +101,7 @@ final class QueueViewModel {
             } catch {
                 guard state.selectedPlayerID == pid else { return }
                 state.playback.queue = previousQueue
-                state.error = .queueFailed(error.localizedDescription)
+                state.setError(.queueFailed(error.localizedDescription))
             }
             isClearing = false
         }
