@@ -4,8 +4,6 @@ import NeosDomain
 extension EnvironmentValues {
     /// The tab bar holds the mini player, so the pages leave it out.
     @Entry var miniPlayerInTabBar = false
-    /// Written by the pages: only a tab's content knows where its tab view draws the tabs.
-    @Entry var isSidebarShowing = Binding.constant(false)
 }
 
 /// Tabs on iPhone and a sidebar on iPad, from one declaration. A wide iPad lists every source in its sidebar; its
@@ -14,7 +12,6 @@ struct MobileTabView: View {
     let state: AppState
     let container: ViewModelContainer
     @State private var selection: MobileTab = .home
-    @State private var isSidebarShowing = false
     @Environment(\.showsPadChrome) private var showsPadChrome
 
     var body: some View {
@@ -52,8 +49,6 @@ struct MobileTabView: View {
                     LibraryView(state: state, container: container, model: model)
                 }
             }
-            // The sidebar lists the sources itself. The tab stays while it is the page on screen.
-            .hidden(isSidebarShowing && selection != .library)
             Tab(value: MobileTab.search, role: .search) {
                 PagedStack(state: state, container: container, isSelected: selection == .search) { model in
                     MobileSearchView(state: state, container: container, model: model)
@@ -90,7 +85,6 @@ struct MobileTabView: View {
             .tabPlacement(.sidebarOnly)
         }
         .tabViewStyle(.sidebarAdaptable)
-        .environment(\.isSidebarShowing, $isSidebarShowing)
         // A narrower window or a source going away takes the open tab with it. iOS 27 can crash on a selection
         // whose tab is hidden, and a binding that corrects it on the way in breaks the iPad's search there.
         .onChange(of: shown) { _, tab in selection = tab }

@@ -53,19 +53,13 @@ final class NeosMobileNavigationTests: MobileDemoTestCase {
         openSidebarEntry("Home")
     }
 
-    func testTheSidebarListsLibraryOnlyWhileItIsThePageShowing() throws {
+    func testTheSidebarKeepsTheLibraryTabAboveItsSection() throws {
         try XCTSkipUnless(isPad, "Only the iPad has a sidebar")
-        tab("Library").tap()
         showSidebar()
         XCTAssertTrue(sidebarEntry("Favorites").waitForExistence(timeout: 5))
+
         // The tab and the section of the same name.
         XCTAssertEqual(sidebarRows(named: "Library"), sidebarRows(named: "Services") + 1)
-
-        openSidebarEntry("Home")
-        showSidebar()
-        XCTAssertTrue(sidebarEntry("Favorites").waitForExistence(timeout: 5))
-
-        XCTAssertEqual(sidebarRows(named: "Library"), sidebarRows(named: "Services"), "Only the section should be left")
         openSidebarEntry("Home")
     }
 
