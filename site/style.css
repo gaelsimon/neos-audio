@@ -78,7 +78,8 @@ header.site nav a:hover { color: var(--text); text-decoration: none; }
 
 .mobile { text-align: center; }
 .mobile h2 { font-size: clamp(28px, 4.5vw, 40px); letter-spacing: -0.02em; margin: 0 0 12px; }
-.mobile p { color: var(--text-secondary); max-width: 640px; margin: 0 auto 36px; }
+.mobile p { color: var(--text-secondary); max-width: 640px; margin: 0 auto 20px; }
+.mobile .actions { display: flex; justify-content: center; margin-bottom: 36px; }
 .phones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding-bottom: 24px; }
 .phones .shot { border-radius: 28px; }
 @media (max-width: 720px) { .phones { gap: 10px; } .phones .shot { border-radius: 14px; } }

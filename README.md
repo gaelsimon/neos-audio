@@ -1,8 +1,8 @@
 # Neos
 
-A native macOS app for controlling Denon and Marantz HEOS speakers, now also on iPhone and iPad (in beta, coming to the App Store). Built with SwiftUI. No third-party dependencies. Open source, MIT licensed.
+A native app for controlling Denon and Marantz HEOS speakers from your Mac, iPhone and iPad. Built with SwiftUI. No third-party dependencies. Open source, MIT licensed.
 
-[![Mac App Store](https://img.shields.io/badge/Mac%20App%20Store-Neos%20Audio-0d96f6?style=for-the-badge&logo=appstore&logoColor=white)](https://apps.apple.com/app/neos-audio/id6823660859)
+[![App Store](https://img.shields.io/badge/App%20Store-Neos%20Audio-0d96f6?style=for-the-badge&logo=appstore&logoColor=white)](https://apps.apple.com/app/neos-audio/id6823660859)
 [![Download](https://img.shields.io/github/v/release/gaelsimon/neos-audio?label=Download&style=for-the-badge&logo=apple&logoColor=white)](https://github.com/gaelsimon/neos-audio/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/gaelsimon/neos-audio/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/gaelsimon/neos-audio/actions/workflows/ci.yml)
@@ -71,7 +71,7 @@ The DMG is signed with a Developer ID and notarized by Apple, so macOS opens it 
 
 ### iPhone and iPad
 
-**Requires** iOS 18 or later. The iPhone and iPad version is in beta on TestFlight and will be on the App Store once Apple approves it.
+**Requires** iOS 18 or later. Get it on the [App Store](https://apps.apple.com/app/neos-audio/id6823660859), the same listing as the Mac app.
 
 ## How It Works
 
